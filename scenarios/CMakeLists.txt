@@ -1,6 +1,7 @@
 add_subdirectory(artery)
 add_subdirectory(gemv2)
 add_subdirectory(highway-police)
+add_subdirectory(f2md)
 if(WITH_ENVMOD)
     add_subdirectory(rsu_grid)
 endif()
