@@ -9,7 +9,8 @@
  * All rights reserved.
  *******************************************************************************/
 
-#include <veins/modules/application/f2md/mdSupport/HTTPRequest.h>
+// #include <veins/modules/application/f2md/mdSupport/HTTPRequest.h>
+#include "artery/application/md/HTTPRequest.h"
 
 using namespace std;
 using namespace boost;

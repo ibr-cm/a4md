@@ -1,18 +1,20 @@
 
-#ifndef ARTERY_CASERVICE_H_
-#define ARTERY_CASERVICE_H_
+#ifndef ARTERY_MDSERVICE_H_
+#define ARTERY_MDSERVICE_H_
 
-#include "artery/application/ItsG5BaseService.h"
+#include "artery/application/ItsG5Service.h"
 #include "artery/application/md/HTTPRequest.h"
 namespace artery
 {
-    class MisbehaviorDetectionService : public ItsG5BaseService
+    class MisbehaviorDetectionService : public ItsG5Service
     {
     public:
         MisbehaviorDetectionService();
+        ~MisbehaviorDetectionService();
         void initialize() override;
-        void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
+        void indicate(const vanetza::btp::DataIndication&, omnetpp::cPacket*, const NetworkInterface&) override;
         void trigger() override;
+        void receiveSignal(omnetpp::cComponent*, omnetpp::simsignal_t, omnetpp::cObject*, omnetpp::cObject*) override;
     protected: 
         void handleMessage(omnetpp::cMessage*) override;
     private:
@@ -21,4 +23,4 @@ namespace artery
 
 } // namespace artery
 
-#endif /* ARTERY_CASERVICE_H_ */
+#endif /* ARTERY_MDSERVICE_H_ */

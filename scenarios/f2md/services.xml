@@ -6,11 +6,18 @@
 			<type pattern="artery.inet.Person" match="inverse" />
 		</filters>
 	</service>
-	<service type="artery.application.ExampleService">
+	<!-- <service type="artery.application.ExampleService">
 		<listener port="4711" />
 		<filters>
 			<name pattern="flow0\.1.*" />
 			<penetration rate="0.1" />
 		</filters>
+	</service> -->
+	<service type="artery.application.MisbehaviorDetectionService">
+		<listener port="4712" />
+		<filters>
+			<type pattern="artery.inet.Person" match="inverse" />
+		</filters>
 	</service>
+		
 </services>
