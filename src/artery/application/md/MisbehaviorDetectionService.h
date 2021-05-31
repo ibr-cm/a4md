@@ -4,6 +4,8 @@
 
 #include "artery/application/ItsG5Service.h"
 #include "artery/application/md/HTTPRequest.h"
+#include <curl/curl.h>
+
 namespace artery
 {
     class MisbehaviorDetectionService : public ItsG5Service
@@ -19,6 +21,7 @@ namespace artery
         void handleMessage(omnetpp::cMessage*) override;
     private:
         omnetpp::cMessage* m_self_msg;
+        CURL *curl;
     };
 
 } // namespace artery

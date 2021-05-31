@@ -69,9 +69,12 @@ add_library(core SHARED
     utility/IdentityRegistry.cc
     utility/FilterRules.cc
     utility/Geometry.cc
-    application/MisbehaviorDetectionService.cc
+    application/md/MisbehaviorDetectionService.cc
     application/md/HTTPRequest.cc
 )
+find_package(CURL REQUIRED)
+find_package(RapidJSON REQUIRED)
+target_link_libraries(core PUBLIC CURL::libcurl)
 target_link_libraries(artery INTERFACE core)
 add_library(Artery::Core ALIAS core)
 
