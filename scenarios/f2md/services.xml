@@ -13,7 +13,7 @@
 			<penetration rate="0.1" />
 		</filters>
 	</service> -->
-	<service type="artery.application.MisbehaviorDetectionService">
+	<service type="artery.application.md.MisbehaviorDetectionService">
 		<listener port="4712" />
 		<filters>
 			<type pattern="artery.inet.Person" match="inverse" />

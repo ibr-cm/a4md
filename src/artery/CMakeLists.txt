@@ -71,6 +71,7 @@ add_library(core SHARED
     utility/Geometry.cc
     application/md/MisbehaviorDetectionService.cc
     application/md/HTTPRequest.cc
+    application/md/base64.cc
 )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)

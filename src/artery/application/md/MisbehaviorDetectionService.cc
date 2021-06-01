@@ -9,6 +9,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/writer.h>
+#include "artery/application/md/base64.h"
 namespace artery
 {
     using namespace omnetpp;
@@ -66,58 +67,140 @@ namespace artery
         }
     }
 
+    std::string MisbehaviorDetectionService::getCamJson(vanetza::asn1::Cam message)
+    {
+        rapidjson::Document d;
+        d.SetObject();
+        rapidjson::Document::AllocatorType &allocator = d.GetAllocator();
+
+        // Header
+        ItsPduHeader_t &header = message->header;
+        rapidjson::Value headerJson(rapidjson::kObjectType);
+        headerJson.AddMember("protocolVersion", header.protocolVersion, allocator);
+        headerJson.AddMember("messageID", header.messageID, allocator);
+        headerJson.AddMember("stationID", header.stationID, allocator);
+        d.AddMember("header", headerJson, allocator);
+
+        // CoopAwareness
+        CoopAwareness_t &cam = message->cam;
+        rapidjson::Value camParameters(rapidjson::kObjectType);
+        rapidjson::Value coopAwarenessJson(rapidjson::kObjectType);
+        coopAwarenessJson.AddMember("generationDeltaTime", cam.generationDeltaTime, allocator);
+
+        // Basic Container
+        BasicContainer_t &basic = cam.camParameters.basicContainer;
+        rapidjson::Value basicContainer(rapidjson::kObjectType);
+        basicContainer.AddMember("stationType", header.stationID, allocator);
+        rapidjson::Value referencePosition(rapidjson::kObjectType);
+        referencePosition.AddMember("latitude", basic.referencePosition.latitude, allocator);
+        referencePosition.AddMember("longitude", basic.referencePosition.longitude, allocator);
+        referencePosition.AddMember("altitude", basic.referencePosition.altitude.altitudeValue, allocator);
+        rapidjson::Value positionConfidenceEllipse(rapidjson::kObjectType);
+        positionConfidenceEllipse.AddMember("semiMajorConfidence", basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence, allocator);
+        positionConfidenceEllipse.AddMember("semiMinorConfidence", basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence, allocator);
+        positionConfidenceEllipse.AddMember("semiMajorOrientation", basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation, allocator);
+        referencePosition.AddMember("positionConfidenceEllipse", positionConfidenceEllipse, allocator);
+        basicContainer.AddMember("referencePosition", referencePosition, allocator);
+        camParameters.AddMember("basicContainer", basicContainer, allocator);
+
+        // HighFrequencyContainer
+        BasicVehicleContainerHighFrequency_t &high = cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+        rapidjson::Value highJson(rapidjson::kObjectType);
+        rapidjson::Value heading(rapidjson::kObjectType);
+        heading.AddMember("headingValue", high.heading.headingValue, allocator);
+        heading.AddMember("headingConfidence", high.heading.headingConfidence, allocator);
+        highJson.AddMember("heading", heading, allocator);
+        rapidjson::Value speed(rapidjson::kObjectType);
+        speed.AddMember("speedValue", high.speed.speedValue, allocator);
+        speed.AddMember("speedConfidence", high.speed.speedConfidence, allocator);
+        highJson.AddMember("speed", speed, allocator);
+        highJson.AddMember("driveDirection", high.driveDirection, allocator);
+        rapidjson::Value vehicleLength(rapidjson::kObjectType);
+        vehicleLength.AddMember("vehicleLengthValue", high.vehicleLength.vehicleLengthValue, allocator);
+        vehicleLength.AddMember("vehicleLengthConfidenceIndication", high.vehicleLength.vehicleLengthConfidenceIndication, allocator);
+        highJson.AddMember("vehicleLength", vehicleLength, allocator);
+        highJson.AddMember("vehicleWidth", high.vehicleWidth, allocator);
+        rapidjson::Value longitudinalAcceleration(rapidjson::kObjectType);
+        longitudinalAcceleration.AddMember("longitudinalAccelerationValue", high.longitudinalAcceleration.longitudinalAccelerationValue, allocator);
+        longitudinalAcceleration.AddMember("longitudinalAccelerationConfidence", high.longitudinalAcceleration.longitudinalAccelerationConfidence, allocator);
+        highJson.AddMember("longitudinalAcceleration", longitudinalAcceleration, allocator);
+        rapidjson::Value curvature(rapidjson::kObjectType);
+        curvature.AddMember("curvatureValue", high.curvature.curvatureValue, allocator);
+        curvature.AddMember("curvatureConfidence", high.curvature.curvatureConfidence, allocator);
+        highJson.AddMember("curvature", curvature, allocator);
+        highJson.AddMember("curvatureCalculationMode", high.curvatureCalculationMode, allocator);
+        rapidjson::Value yawRate(rapidjson::kObjectType);
+        yawRate.AddMember("yawRateValue", high.yawRate.yawRateValue, allocator);
+        yawRate.AddMember("yawRateConfidence", high.yawRate.yawRateConfidence, allocator);
+        highJson.AddMember("yawRate", yawRate, allocator);
+        if (high.accelerationControl)
+        {
+            highJson.AddMember("accelerationControl", *high.accelerationControl->buf, allocator);
+        }
+        if (high.lanePosition)
+        {
+            highJson.AddMember("lanePosition", *high.lanePosition, allocator);
+        }
+        if (high.steeringWheelAngle)
+        {
+            rapidjson::Value steeringWheelAngle(rapidjson::kObjectType);
+            steeringWheelAngle.AddMember("steeringWheelAngleValue", high.steeringWheelAngle->steeringWheelAngleValue, allocator);
+            steeringWheelAngle.AddMember("steeringWheelAngleConfidence", high.steeringWheelAngle->steeringWheelAngleConfidence, allocator);
+            highJson.AddMember("steeringWheelAngle", steeringWheelAngle, allocator);
+        }
+        if (high.lateralAcceleration)
+        {
+            rapidjson::Value lateralAcceleration(rapidjson::kObjectType);
+            lateralAcceleration.AddMember("lateralAccelerationValue", high.lateralAcceleration->lateralAccelerationValue, allocator);
+            lateralAcceleration.AddMember("lateralAccelerationConfidence", high.lateralAcceleration->lateralAccelerationConfidence, allocator);
+            highJson.AddMember("lateralAcceleration", lateralAcceleration, allocator);
+        }
+        if (high.verticalAcceleration)
+        {
+            rapidjson::Value verticalAcceleration(rapidjson::kObjectType);
+            verticalAcceleration.AddMember("verticalAccelerationValue", high.verticalAcceleration->verticalAccelerationValue, allocator);
+            verticalAcceleration.AddMember("verticalAccelerationConfidence", high.verticalAcceleration->verticalAccelerationConfidence, allocator);
+            highJson.AddMember("verticalAcceleration", verticalAcceleration, allocator);
+        }
+        if (high.performanceClass)
+        {
+            highJson.AddMember("performanceClass", *high.performanceClass, allocator);
+        }
+        if (high.cenDsrcTollingZone)
+        {
+            rapidjson::Value cenDsrcTollingZone(rapidjson::kObjectType);
+            cenDsrcTollingZone.AddMember("protectedZoneLatitude", high.cenDsrcTollingZone->protectedZoneLatitude, allocator);
+            cenDsrcTollingZone.AddMember("protectedZoneLongitude", high.cenDsrcTollingZone->protectedZoneLongitude, allocator);
+            if (high.cenDsrcTollingZone->cenDsrcTollingZoneID)
+            {
+                cenDsrcTollingZone.AddMember("cenDsrcTollingZoneID", *high.cenDsrcTollingZone->cenDsrcTollingZoneID, allocator);
+            }
+            highJson.AddMember("cenDsrcTollingZone", cenDsrcTollingZone, allocator);
+        }
+        camParameters.AddMember("highFrequencyContainer", highJson, allocator);
+        coopAwarenessJson.AddMember("camParameters", camParameters, allocator);
+        d.AddMember("coopAwarenessJson", coopAwarenessJson, allocator);
+
+        rapidjson::StringBuffer strbuf;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+        d.Accept(writer);
+        std::string bla = strbuf.GetString();
+        return bla;
+    }
+
     void MisbehaviorDetectionService::receiveSignal(cComponent *source, simsignal_t signal, cObject *c_obj, cObject *)
     {
         Enter_Method("receiveSignal");
         if (signal == scSignalCamReceived)
         {
             CaObject *ca = dynamic_cast<CaObject *>(c_obj);
-            vanetza::asn1::Cam msg = ca->asn1();
-            CoopAwareness_t &cam = msg->cam;
-            BasicContainer_t &basic = cam.camParameters.basicContainer;
-            auto &vehicle = getFacilities().get_const<traci::VehicleController>();
-            EV_INFO << "Vehicle " << vehicle.getVehicleId() << " received a CAM in sibling serivce\n";
-            EV_INFO << "stationID: " << msg->header.stationID << "\n";
-
-            rapidjson::Document d;
-            d.SetObject();
-            rapidjson::Document::AllocatorType &allocator = d.GetAllocator();
-            d.AddMember("generationDeltaTime", 23445, allocator);
-
-            rapidjson::Value camParameters(rapidjson::kObjectType);
-
-            rapidjson::Value basicContainer(rapidjson::kObjectType);
-            basicContainer.AddMember("stationType", msg->header.stationID, allocator);
-            rapidjson::Value referencePosition(rapidjson::kObjectType);
-            referencePosition.AddMember("latitude", basic.referencePosition.latitude, allocator);
-            referencePosition.AddMember("longitude", basic.referencePosition.longitude, allocator);
-            referencePosition.AddMember("altitude", basic.referencePosition.altitude.altitudeValue, allocator);
-            rapidjson::Value positionConfidenceEllipse(rapidjson::kObjectType);
-            positionConfidenceEllipse.AddMember("semiMajorConfidence", basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence, allocator);
-            positionConfidenceEllipse.AddMember("semiMinorConfidence", basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence, allocator);
-            // rapidjson::Value semiMajorOrientation(rapidjson::kObjectType);
-            positionConfidenceEllipse.AddMember("semiMajorOrientation", basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation, allocator);
-            // semiMajorOrientation.AddMember("headingConfidence", 10, allocator);
-            // positionConfidenceEllipse.AddMember("semiMajorOrientation", semiMajorOrientation, allocator);
-            referencePosition.AddMember("positionConfidenceEllipse", positionConfidenceEllipse, allocator);
-            basicContainer.AddMember("referencePosition", referencePosition, allocator);
-            camParameters.AddMember("basicContainer", basicContainer, allocator);
-            d.AddMember("camParameters", camParameters, allocator);
-
-            rapidjson::StringBuffer strbuf;
-            rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-            d.Accept(writer);
-            // std::cout << strbuf.GetString() << std::endl;
-            // std::string reportStr = "curTime: ";
-            // reportStr.append(std::to_string(simTime().dbl()));
-            // reportStr.append(" vehicleID:");
-            // reportStr.append(vehicle.getVehicleId());
-            // reportStr.append(" stationID:");
-            // reportStr.append(std::to_string(msg->header.stationID));
+            vanetza::ByteBuffer byteBuffer = ca->asn1().encode();
+            std::string encoded(byteBuffer.begin(), byteBuffer.end());
+            std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char*>(encoded.c_str()),encoded.length(),false);
             if (curl)
             {
                 curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strbuf.GetString());
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
                 CURLcode curlResponse = curl_easy_perform(curl);
                 if (curlResponse != CURLE_OK)
                 {

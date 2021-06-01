@@ -7,3 +7,4 @@ src/artery/messages/*_m.h
 www/
 .vagrant/
 build/
+.qtenvrc
