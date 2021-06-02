@@ -10,6 +10,10 @@
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/writer.h>
 #include "artery/application/md/base64.h"
+#include "artery/application/CaService.h"
+#include <vanetza/btp/ports.hpp>
+#include "artery/application/VehicleDataProvider.h"
+
 namespace artery
 {
     using namespace omnetpp;
@@ -31,16 +35,11 @@ namespace artery
     void MisbehaviorDetectionService::initialize()
     {
         ItsG5BaseService::initialize();
-        m_self_msg = new cMessage("Misbehavior Detection Service");
+        m_self_msg = new cMessage("InitializeMessage");
         subscribe(scSignalCamReceived);
         scheduleAt(simTime() + 3.0, m_self_msg);
-
-        //     auto &vehicle = getFacilities().get_const<traci::VehicleController>();
-        //     std::string reportStr = "curTime: ";
-        //     // reportStr.append(std::to_string(simTime().dbl()));
-        //     reportStr.append(vehicle.getVehicleId());
-        //     HTTPRequest httpr = HTTPRequest(9981, "localhost");
-        //     std::string response = httpr.Request(reportStr);
+        mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
+        mTimer = &getFacilities().get_const<Timer>();
     }
 
     void MisbehaviorDetectionService::trigger()
@@ -64,6 +63,30 @@ namespace artery
         if (msg == m_self_msg)
         {
             EV_INFO << "self message\n";
+
+            uint16_t genDeltaTimeMod = countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
+            auto message = createCooperativeAwarenessMessage(*mVehicleDataProvider, genDeltaTimeMod);
+
+            message->cam.camParameters.basicContainer.referencePosition.latitude = 3.14;
+
+            using namespace vanetza;
+            btp::DataRequestB request;
+            request.destination_port = btp::ports::CAM;
+            request.gn.its_aid = aid::CA;
+            request.gn.transport_type = geonet::TransportType::SHB;
+            request.gn.maximum_lifetime = geonet::Lifetime{geonet::Lifetime::Base::One_Second, 1};
+            request.gn.traffic_class.tc_id(static_cast<unsigned>(dcc::Profile::DP2));
+            request.gn.communication_profile = geonet::CommunicationProfile::ITS_G5;
+
+            CaObject obj(std::move(message));
+
+            using CamByteBuffer = convertible::byte_buffer_impl<asn1::Cam>;
+            std::unique_ptr<geonet::DownPacket> payload{new geonet::DownPacket()};
+            std::unique_ptr<convertible::byte_buffer> buffer{new CamByteBuffer(obj.shared_ptr())};
+            payload->layer(OsiLayer::Application) = std::move(buffer);
+            this->request(request, std::move(payload));
+            EV_INFO << "sent attack cam with latitude " << message->cam.camParameters.basicContainer.referencePosition.latitude << "\n";
+
         }
     }
 
@@ -194,18 +217,23 @@ namespace artery
         if (signal == scSignalCamReceived)
         {
             CaObject *ca = dynamic_cast<CaObject *>(c_obj);
-            vanetza::ByteBuffer byteBuffer = ca->asn1().encode();
-            std::string encoded(byteBuffer.begin(), byteBuffer.end());
-            std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char*>(encoded.c_str()),encoded.length(),false);
-            if (curl)
+            vanetza::asn1::Cam message = ca->asn1();
+            if (message->cam.camParameters.basicContainer.referencePosition.latitude < 4)
             {
-                curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
-                CURLcode curlResponse = curl_easy_perform(curl);
-                if (curlResponse != CURLE_OK)
+                EV_INFO << "Received manipulated CAM!";
+                vanetza::ByteBuffer byteBuffer = ca->asn1().encode();
+                std::string encoded(byteBuffer.begin(), byteBuffer.end());
+                std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()), encoded.length(), false);
+                if (curl)
                 {
-                    EV_ERROR << "curl_easy_perform() failed: %s\n"
-                             << curl_easy_strerror(curlResponse);
+                    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
+                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
+                    CURLcode curlResponse = curl_easy_perform(curl);
+                    if (curlResponse != CURLE_OK)
+                    {
+                        EV_ERROR << "curl_easy_perform() failed: %s\n"
+                                 << curl_easy_strerror(curlResponse);
+                    }
                 }
             }
         }

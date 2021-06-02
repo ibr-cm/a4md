@@ -3,9 +3,9 @@
 #define ARTERY_MDSERVICE_H_
 
 #include "artery/application/ItsG5Service.h"
-#include "artery/application/md/HTTPRequest.h"
 #include <vanetza/asn1/asn1c_wrapper.hpp>
 #include <curl/curl.h>
+#include "artery/application/VehicleDataProvider.h"
 
 namespace artery
 {
@@ -24,6 +24,8 @@ namespace artery
         omnetpp::cMessage* m_self_msg;
         CURL *curl;
         std::string getCamJson(vanetza::asn1::Cam);
+		const VehicleDataProvider* mVehicleDataProvider = nullptr;
+		const Timer* mTimer = nullptr;
     };
 
 } // namespace artery
