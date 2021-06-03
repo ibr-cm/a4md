@@ -43,4 +43,7 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         double GLOBAL_ATTACKER_PROB = default(0.0);
         int GLOBAL_ATTACK_TYPE = default(20);
 
+        double MaxRandomOffsetLatitude = default(0.001)
+        double MaxRandomOffsetLongitude = default(0.001)
+
 }

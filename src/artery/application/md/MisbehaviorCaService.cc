@@ -20,7 +20,6 @@
 #include <vanetza/facilities/cam_functions.hpp>
 #include <chrono>
 
-
 #include "artery/application/CaService.h"
 
 namespace artery
@@ -101,11 +100,26 @@ namespace artery
 		// look up primary channel for CA
 		mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
 
+		playgroundSizeX = 1500;
+		playgroundSizeY = 1500;
+
+		ConstPosX = uniform(0, playgroundSizeX);
+		ConstPosY = uniform(0, playgroundSizeY);
+
 		LOCAL_ATTACKER_PROBABILITY = par("LOCAL_ATTACKER_PROB");
 		GLOBAL_ATTACKER_PROBABILITY = par("GLOBAL_ATTACKER_PROB");
 		ATTACK_START_TIME = par("START_ATTACK");
 
+		MaxRandomOffsetLatitude = par("MaxRandomOffsetLatitude");
+		MaxRandomOffsetLongitude = par("MaxRandomOffsetLongitude");
+
+		MaxRandomOffsetLatitudeMicrodegrees = MaxRandomOffsetLatitude * 100000;
+		MaxRandomOffsetLongitudeMicrodegrees = MaxRandomOffsetLatitude * 100000;
+		ConstPosOffsetLatitude = uniform(-MaxRandomOffsetLatitudeMicrodegrees, MaxRandomOffsetLatitudeMicrodegrees);
+		ConstPosOffsetLongitude = uniform(-MaxRandomOffsetLongitudeMicrodegrees, MaxRandomOffsetLongitudeMicrodegrees);
+
 		mMisbehaviorType = setMisbehaviorType(LOCAL_ATTACKER_PROBABILITY, GLOBAL_ATTACKER_PROBABILITY);
+		mAttackType = attackTypes::RandomPosOffset;
 	}
 
 	static double totalGenuine = 0;
@@ -217,7 +231,6 @@ namespace artery
 	{
 		uint16_t genDeltaTimeMod = countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
 		vanetza::asn1::Cam cam;
-
 		switch (mMisbehaviorType)
 		{
 		case misbehaviorTypes::Benign:
@@ -278,7 +291,7 @@ namespace artery
 		return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
 	}
 
-	vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime)
+	vanetza::asn1::Cam MisbehaviorCaService::createBenignCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime)
 	{
 		vanetza::asn1::Cam message;
 
@@ -347,11 +360,27 @@ namespace artery
 		return message;
 	}
 
-	vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime)
+	vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime)
 	{
 		vanetza::asn1::Cam message = createBenignCAM(vdp, genDeltaTime);
 
-		message->cam.camParameters.basicContainer.referencePosition.latitude = 3.14;
+		// EV_INFO << "vehicle " << vdp.getStationId() << " latitude: " << round(vdp.latitude(), microdegree2) * Latitude_oneMicrodegreeNorth
+		// 		<< " CAM latitude: " << (round(vdp.latitude(), microdegree2) + ConstPosOffsetLatitude) * Latitude_oneMicrodegreeNorth << "\n";
+		//set Position
+
+		switch (mAttackType)
+		{
+		case attackTypes::RandomPosOffset:
+			message->cam.camParameters.basicContainer.referencePosition.latitude =
+				(round(vdp.latitude(), microdegree2) + ConstPosOffsetLatitude) * Latitude_oneMicrodegreeNorth;
+			message->cam.camParameters.basicContainer.referencePosition.longitude =
+				(round(vdp.longitude(), microdegree2) + ConstPosOffsetLongitude) * Longitude_oneMicrodegreeEast;
+			break;
+
+		default:
+			EV_ERROR << "invalid attack type \n";
+			break;
+		}
 		return message;
 	}
 

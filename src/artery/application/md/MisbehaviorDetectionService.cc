@@ -39,7 +39,6 @@ namespace artery
         subscribe(scSignalCamReceived);
         scheduleAt(simTime() + 3.0, m_self_msg);
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
-        mTimer = &getFacilities().get_const<Timer>();
     }
 
     void MisbehaviorDetectionService::trigger()

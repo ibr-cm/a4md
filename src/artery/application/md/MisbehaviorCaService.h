@@ -16,6 +16,8 @@
 #include <vanetza/units/velocity.hpp>
 #include <omnetpp/simtime.h>
 #include "artery/application/md/MisbehaviorTypes.h"
+#include "artery/application/md/AttackTypes.h"
+#include <omnetpp/crng.h>
 
 namespace artery
 {
@@ -38,6 +40,8 @@ namespace artery
 		bool checkPositionDelta() const;
 		bool checkSpeedDelta() const;
 		void sendCam(const omnetpp::SimTime &);
+		vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
+		vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
 		omnetpp::SimTime genCamDcc();
 
 		misbehaviorTypes::MisbehaviorTypes setMisbehaviorType(double, double);
@@ -65,14 +69,29 @@ namespace artery
 		bool mFixedRate;
 
 		misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
+		attackTypes::AttackTypes mAttackType;
 
 		double LOCAL_ATTACKER_PROBABILITY;
 		double GLOBAL_ATTACKER_PROBABILITY;
 		double ATTACK_START_TIME;
+
+		double playgroundSizeX;
+		double playgroundSizeY;
+
+		double ConstPosX;
+		double ConstPosY;
+		int ConstPosOffsetLatitude;
+		int ConstPosOffsetLongitude;
+		double ConstSpeedX;
+		double ConstSpeedY;
+		double ConstSpeedOffsetX;
+		double ConstSpeedOffsetY;
+		double MaxRandomOffsetLatitude;
+		long MaxRandomOffsetLatitudeMicrodegrees;
+		long MaxRandomOffsetLongitudeMicrodegrees;
+		double MaxRandomOffsetLongitude;
 	};
 
-	vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
-	vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
 	void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
 } // namespace artery
