@@ -70,7 +70,7 @@ add_library(core SHARED
     utility/FilterRules.cc
     utility/Geometry.cc
     application/md/MisbehaviorDetectionService.cc
-    application/md/HTTPRequest.cc
+    application/md/MisbehaviorCaService.cc
     application/md/base64.cc
 )
 find_package(CURL REQUIRED)
