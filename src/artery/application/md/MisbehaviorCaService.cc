@@ -70,7 +70,8 @@ namespace artery
 	{
 	}
 
-	MisbehaviorCaService::~MisbehaviorCaService(){
+	MisbehaviorCaService::~MisbehaviorCaService()
+	{
 		auto it = mStationIdMisbehaviorTypeMap.find(mVehicleDataProvider->getStationId());
 		if (it != mStationIdMisbehaviorTypeMap.end())
 		{
@@ -78,7 +79,6 @@ namespace artery
 		}
 	}
 
-	static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
 	void MisbehaviorCaService::initialize()
 	{
 		ItsG5BaseService::initialize();
@@ -112,20 +112,56 @@ namespace artery
 		playgroundSizeX = 1500;
 		playgroundSizeY = 1500;
 
-		ConstPosX = uniform(0, playgroundSizeX);
-		ConstPosY = uniform(0, playgroundSizeY);
-
 		LOCAL_ATTACKER_PROBABILITY = par("LOCAL_ATTACKER_PROB");
 		GLOBAL_ATTACKER_PROBABILITY = par("GLOBAL_ATTACKER_PROB");
 		ATTACK_START_TIME = par("START_ATTACK");
 
-		MaxRandomOffsetLatitude = par("MaxRandomOffsetLatitude");
-		MaxRandomOffsetLongitude = par("MaxRandomOffsetLongitude");
+		// Constant Position Attack
+		AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
+		AttackConstantPositionMaxLatitude = par("AttackConstantPositionMaxLatitude");
+		AttackConstantPositionMinLongitude = par("AttackConstantPositionMinLongitude");
+		AttackConstantPositionMaxLongitude = par("AttackConstantPositionMaxLongitude");
+		AttackConstantPositionLatitudeMicrodegrees = uniform(AttackConstantPositionMinLatitude, AttackConstantPositionMaxLatitude) * 100000;
+		AttackConstantPositionLongitudeMicrodegrees = uniform(AttackConstantPositionMinLongitude, AttackConstantPositionMaxLongitude) * 100000;
 
-		MaxRandomOffsetLatitudeMicrodegrees = MaxRandomOffsetLatitude * 100000;
-		MaxRandomOffsetLongitudeMicrodegrees = MaxRandomOffsetLatitude * 100000;
-		ConstPosOffsetLatitude = uniform(-MaxRandomOffsetLatitudeMicrodegrees, MaxRandomOffsetLatitudeMicrodegrees);
-		ConstPosOffsetLongitude = uniform(-MaxRandomOffsetLongitudeMicrodegrees, MaxRandomOffsetLongitudeMicrodegrees);
+		// Constant Position Offset Attack
+		AttackConstantPositionOffsetMaxLatitudeOffset = par("AttackConstantPositionOffsetMaxLatitudeOffset");
+		AttackConstantPositionOffsetMaxLongitudeOffset = par("AttackConstantPositionOffsetMaxLongitudeOffset");
+		AttackConstantPositionOffsetLatitudeMicrodegrees = uniform(-AttackConstantPositionOffsetMaxLatitudeOffset, AttackConstantPositionOffsetMaxLatitudeOffset);
+		AttackConstantPositionOffsetLongitudeMicrodegrees = uniform(-AttackConstantPositionOffsetMaxLongitudeOffset, AttackConstantPositionOffsetMaxLongitudeOffset);
+
+		// Random Position Attack
+		AttackRandomPositionMinLatitude = par("AttackRandomPositionMinLatitude");
+		AttackRandomPositionMaxLatitude = par("AttackRandomPositionMaxLatitude");
+		AttackRandomPositionMinLongitude = par("AttackRandomPositionMinLongitude");
+		AttackRandomPositionMaxLongitude = par("AttackRandomPositionMaxLongitude");
+
+		// Random Position Offset Attack
+		AttackRandomPositionOffsetMaxLatitudeOffset = par("AttackRandomPositionOffsetMaxLatitudeOffset");
+		AttackRandomPositionOffsetMaxLongitudeOffset = par("AttackRandomPositionOffsetMaxLongitudeOffset");
+
+		// Constant Speed Attack
+		// Meters per Second
+		AttackConstantSpeedMin = par("AttackConstantSpeedMin");
+		AttackConstantSpeedMax = par("AttackConstantSpeedMax");
+		AttackConstantSpeedValue = buildSpeedValue2(uniform(AttackConstantSpeedMin, AttackConstantSpeedMax) * boost::units::si::meter_per_second);
+
+		// Constant Speed Offset Attack
+		AttackConstantSpeedOffsetMax = par("AttackConstantSpeedOffsetMax");
+		double speedOffset = uniform(0, AttackConstantSpeedOffsetMax);
+		AttackConstantSpeedOffsetValue = ((long)speedOffset) * boost::units::si::meter_per_second;
+
+		// Random Speed Attack
+		// Meters per Second
+		AttackRandomSpeedMin = par("AttackRandomSpeedMin");
+		AttackRandomSpeedMax = par("AttackRandomSpeedMax");
+
+		// Random Speed Offset Attack
+		AttackRandomSpeedOffsetMax = par("AttackRandomSpeedOffsetMax");
+
+		// Eventual Stop Attack
+		AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
+		attackEventualStopHasStopped = false;
 
 		mMisbehaviorType = setMisbehaviorType(LOCAL_ATTACKER_PROBABILITY, GLOBAL_ATTACKER_PROBABILITY);
 		mAttackType = attackTypes::RandomPosOffset;
@@ -146,9 +182,6 @@ namespace artery
 		}
 	}
 
-	static double totalGenuine = 0;
-	static double totalLocalAttacker = 0;
-	static double totalGlobalAttacker = 0;
 	misbehaviorTypes::MisbehaviorTypes MisbehaviorCaService::setMisbehaviorType(double localAttacker, double globalAttacker)
 	{
 		if (simTime().dbl() < ATTACK_START_TIME)
@@ -390,12 +423,120 @@ namespace artery
 
 		switch (mAttackType)
 		{
-		case attackTypes::RandomPosOffset:
-			message->cam.camParameters.basicContainer.referencePosition.latitude =
-				(round(vdp.latitude(), microdegree2) + ConstPosOffsetLatitude) * Latitude_oneMicrodegreeNorth;
-			message->cam.camParameters.basicContainer.referencePosition.longitude =
-				(round(vdp.longitude(), microdegree2) + ConstPosOffsetLongitude) * Longitude_oneMicrodegreeEast;
+		case attackTypes::ConstPos:
+		{
+			message->cam.camParameters.basicContainer.referencePosition.latitude = AttackConstantPositionLatitudeMicrodegrees * Latitude_oneMicrodegreeNorth;
+			message->cam.camParameters.basicContainer.referencePosition.longitude = AttackConstantPositionLongitudeMicrodegrees * Longitude_oneMicrodegreeEast;
 			break;
+		}
+		case attackTypes::ConstPosOffset:
+		{
+			message->cam.camParameters.basicContainer.referencePosition.latitude =
+				(round(vdp.latitude(), microdegree2) + AttackConstantPositionOffsetLatitudeMicrodegrees) * Latitude_oneMicrodegreeNorth;
+			message->cam.camParameters.basicContainer.referencePosition.longitude =
+				(round(vdp.longitude(), microdegree2) + AttackConstantPositionOffsetLongitudeMicrodegrees) * Longitude_oneMicrodegreeEast;
+			break;
+		}
+		case attackTypes::RandomPos:
+		{
+			long attackLatitude = uniform(-AttackRandomPositionMinLatitude, AttackRandomPositionMaxLatitude) * 100000;
+			long attackLongitude = uniform(-AttackRandomPositionMinLongitude, AttackRandomPositionMaxLongitude) * 100000;
+			message->cam.camParameters.basicContainer.referencePosition.latitude = attackLatitude * Latitude_oneMicrodegreeNorth;
+			message->cam.camParameters.basicContainer.referencePosition.longitude = attackLongitude * Longitude_oneMicrodegreeEast;
+			break;
+		}
+		case attackTypes::RandomPosOffset:
+		{
+			long attackLatitudeOffset = uniform(-AttackRandomPositionOffsetMaxLatitudeOffset, AttackRandomPositionOffsetMaxLatitudeOffset) * 100000;
+			long attackLongitudeOffset = uniform(-AttackRandomPositionMinLongitude, AttackRandomPositionMaxLongitude) * 100000;
+			message->cam.camParameters.basicContainer.referencePosition.latitude =
+				(round(vdp.latitude(), microdegree2) + attackLatitudeOffset) * Latitude_oneMicrodegreeNorth;
+			message->cam.camParameters.basicContainer.referencePosition.longitude =
+				(round(vdp.longitude(), microdegree2) + attackLongitudeOffset) * Longitude_oneMicrodegreeEast;
+			break;
+		}
+		case attackTypes::ConstSpeed:
+		{
+			message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = AttackConstantSpeedValue;
+			break;
+		}
+		case attackTypes::ConstSpeedOffset:
+		{
+			message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(vdp.speed() + AttackConstantSpeedOffsetValue);
+			break;
+		}
+		case attackTypes::RandomSpeed:
+		{
+			double randomSpeed = uniform(AttackRandomSpeedMin, AttackRandomSpeedMax);
+			message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(randomSpeed * boost::units::si::meter_per_second);
+			break;
+		}
+		case attackTypes::RandomSpeedOffset:
+		{
+			message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(vdp.speed() + (uniform(0, AttackRandomSpeedOffsetMax) * boost::units::si::meter_per_second));
+			break;
+		}
+		case attackTypes::EventualStop:
+		{
+			if (attackEventualStopHasStopped)
+			{
+				message->cam.camParameters.basicContainer.referencePosition = attackEventualStopPosition;
+				message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
+				message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
+			}
+			else if (AttackEventualStopProbabilityThreshold < uniform(0, 1))
+			{
+				attackEventualStopHasStopped = true;
+				attackEventualStopPosition = message->cam.camParameters.basicContainer.referencePosition;
+				message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
+				message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
+			}
+			break;
+		}
+		case attackTypes::Disruptive:
+		{
+			break;
+		}
+		case attackTypes::DataReplay:
+		{
+			break;
+		}
+		case attackTypes::StaleMessages:
+		{
+			break;
+		}
+		case attackTypes::DoS:
+		{
+			break;
+		}
+		case attackTypes::DoSRandom:
+		{
+			break;
+		}
+		case attackTypes::DoSDisruptive:
+		{
+			break;
+		}
+		case attackTypes::GridSybil:
+		{
+			break;
+		}
+		case attackTypes::DataReplaySybil:
+		{
+			break;
+		}
+		case attackTypes::DoSRandomSybil:
+		{
+			break;
+		}
+		case attackTypes::DoSDisruptiveSybil:
+		{
+			break;
+		}
+		case attackTypes::MAStress:
+		{
+			break;
+		}
 
 		default:
 			EV_ERROR << "invalid attack type \n";

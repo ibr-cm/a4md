@@ -17,7 +17,7 @@
 namespace attackTypes {
 
 enum AttackTypes {
-    Genuine = 0,
+    Benign = 0,
     ConstPos,
     ConstPosOffset,
     RandomPos,
@@ -41,7 +41,7 @@ enum AttackTypes {
     SIZE_OF_ENUM
 };
 
-static const char* AttackNames[] = { "Genuine", "ConstPos", "ConstPosOffset",
+static const char* AttackNames[] = { "Benign", "ConstPos", "ConstPosOffset",
         "RandomPos", "RandomPosOffset", "ConstSpeed", "ConstSpeedOffset",
         "RandomSpeed", "RandomSpeedOffset", "EventualStop", "Disruptive",
         "DataReplay", "StaleMessages", "DoS", "DoSRandom", "DoSDisruptive",
@@ -51,7 +51,7 @@ static const char* AttackNames[] = { "Genuine", "ConstPos", "ConstPosOffset",
 static_assert(sizeof(attackTypes::AttackNames)/sizeof(char*) == attackTypes::SIZE_OF_ENUM
         , "sizes dont match");
 
-static const attackTypes::AttackTypes intAttacks[] = { Genuine, ConstPos,
+static const attackTypes::AttackTypes intAttacks[] = { Benign, ConstPos,
         ConstPosOffset, RandomPos, RandomPosOffset, ConstSpeed,
         ConstSpeedOffset, RandomSpeed, RandomSpeedOffset, EventualStop,
         Disruptive, DataReplay, StaleMessages, DoS, DoSRandom, DoSDisruptive,

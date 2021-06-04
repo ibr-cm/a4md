@@ -81,21 +81,58 @@ namespace artery
 		double playgroundSizeX;
 		double playgroundSizeY;
 
-		double ConstPosX;
-		double ConstPosY;
-		int ConstPosOffsetLatitude;
-		int ConstPosOffsetLongitude;
-		double ConstSpeedX;
-		double ConstSpeedY;
-		double ConstSpeedOffsetX;
-		double ConstSpeedOffsetY;
-		double MaxRandomOffsetLatitude;
-		double MaxRandomOffsetLongitude;
-		long MaxRandomOffsetLatitudeMicrodegrees;
-		long MaxRandomOffsetLongitudeMicrodegrees;
+        //Constant Position Attack
+		double AttackConstantPositionMinLatitude;
+        double AttackConstantPositionMaxLatitude;
+        double AttackConstantPositionMinLongitude;
+        double AttackConstantPositionMaxLongitude;
+		long AttackConstantPositionLatitudeMicrodegrees;
+		long AttackConstantPositionLongitudeMicrodegrees;
+
+		//Constant Position Offset Attack
+        double AttackConstantPositionOffsetMaxLatitudeOffset;
+        double AttackConstantPositionOffsetMaxLongitudeOffset;
+		long AttackConstantPositionOffsetLatitudeMicrodegrees;
+		long AttackConstantPositionOffsetLongitudeMicrodegrees;
+
+        // Random Position Attack
+        double AttackRandomPositionMinLatitude;
+        double AttackRandomPositionMaxLatitude;
+        double AttackRandomPositionMinLongitude;
+        double AttackRandomPositionMaxLongitude;
+
+        // Random Position Offset Attack
+        double AttackRandomPositionOffsetMaxLatitudeOffset;
+        double AttackRandomPositionOffsetMaxLongitudeOffset;
+
+		// Constant Speed Attack
+        double AttackConstantSpeedMin;
+        double AttackConstantSpeedMax;
+		long AttackConstantSpeedValue;
+
+        //Constant Speed Offset Attack
+        double AttackConstantSpeedOffsetMax;
+        vanetza::units::Velocity AttackConstantSpeedOffsetValue;
+
+		// Random Speed Attack
+        double AttackRandomSpeedMin;
+        double AttackRandomSpeedMax;
+
+        // Random Speed Offset Attack
+        double AttackRandomSpeedOffsetMax;
+
+		// Eventual Stop Attack
+		double AttackEventualStopProbabilityThreshold;
+        ReferencePosition_t attackEventualStopPosition;
+        bool attackEventualStopHasStopped;
+		
 	};
 
+	static double totalGenuine = 0;
+	static double totalLocalAttacker = 0;
+	static double totalGlobalAttacker = 0;
 	void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
+	static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
 
 } // namespace artery
 

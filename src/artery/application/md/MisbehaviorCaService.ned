@@ -46,4 +46,47 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         double MaxRandomOffsetLatitude = default(0.001);
         double MaxRandomOffsetLongitude = default(0.001);
 
+        // ------ Attacks Parameters -- Start
+
+        // Constant Position Attack
+        double AttackConstantPositionMinLatitude = default(49.58);
+        double AttackConstantPositionMaxLatitude = default(49.63);
+        double AttackConstantPositionMinLongitude = default(6.09);
+        double AttackConstantPositionMaxLongitude = default(6.16);
+
+        // Constant Position Offset Attack
+        double AttackConstantPositionOffsetMaxLatitudeOffset = default(0.001);
+        double AttackConstantPositionOffsetMaxLongitudeOffset = default(0.001);
+
+        // Random Position Attack
+        double AttackRandomPositionMinLatitude = default(49.58);
+        double AttackRandomPositionMaxLatitude = default(49.63);
+        double AttackRandomPositionMinLongitude = default(6.09);
+        double AttackRandomPositionMaxLongitude = default(6.16);
+
+        // Random Position Offset Attack
+        double AttackRandomPositionOffsetMaxLatitudeOffset = default(0.001);
+        double AttackRandomPositionOffsetMaxLongitudeOffset = default(0.001);
+
+        // Constant Speed Attack
+        // Meters per Second
+        double AttackConstantSpeedMin = default(0.0);
+        double AttackConstantSpeedMax = default(163.82);
+
+        // Constant Speed Offset Attack
+        // only adds speed so that there aren't negative values
+        double AttackConstantSpeedOffsetMax = default(5.0);
+
+        // Random Speed Attack
+        // Meters per Second
+        double AttackRandomSpeedMin = default(0.0);
+        double AttackRandomSpeedMax = default(163.82);
+
+        // Random Speed Offset Attack
+        // only adds speed so that there aren't negative values
+        double AttackRandomSpeedOffsetMax = default(5.0);
+
+        // Eventual Stop Attack
+        double AttackEventualStopProbabilityThreshold = default(0.05);
+
 }
