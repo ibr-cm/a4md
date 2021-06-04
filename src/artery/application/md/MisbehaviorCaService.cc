@@ -70,6 +70,15 @@ namespace artery
 	{
 	}
 
+	MisbehaviorCaService::~MisbehaviorCaService(){
+		auto it = mStationIdMisbehaviorTypeMap.find(mVehicleDataProvider->getStationId());
+		if (it != mStationIdMisbehaviorTypeMap.end())
+		{
+			it = mStationIdMisbehaviorTypeMap.erase(it);
+		}
+	}
+
+	static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
 	void MisbehaviorCaService::initialize()
 	{
 		ItsG5BaseService::initialize();
@@ -120,6 +129,21 @@ namespace artery
 
 		mMisbehaviorType = setMisbehaviorType(LOCAL_ATTACKER_PROBABILITY, GLOBAL_ATTACKER_PROBABILITY);
 		mAttackType = attackTypes::RandomPosOffset;
+
+		mStationIdMisbehaviorTypeMap[mVehicleDataProvider->getStationId()] = mMisbehaviorType;
+	}
+
+	misbehaviorTypes::MisbehaviorTypes MisbehaviorCaService::getMisbehaviorTypeOfStationId(uint32_t stationId)
+	{
+		auto search = mStationIdMisbehaviorTypeMap.find(stationId);
+		if (search != mStationIdMisbehaviorTypeMap.end())
+		{
+			return search->second;
+		}
+		else
+		{
+			return misbehaviorTypes::SIZE_OF_ENUM;
+		}
 	}
 
 	static double totalGenuine = 0;
@@ -363,10 +387,6 @@ namespace artery
 	vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime)
 	{
 		vanetza::asn1::Cam message = createBenignCAM(vdp, genDeltaTime);
-
-		// EV_INFO << "vehicle " << vdp.getStationId() << " latitude: " << round(vdp.latitude(), microdegree2) * Latitude_oneMicrodegreeNorth
-		// 		<< " CAM latitude: " << (round(vdp.latitude(), microdegree2) + ConstPosOffsetLatitude) * Latitude_oneMicrodegreeNorth << "\n";
-		//set Position
 
 		switch (mAttackType)
 		{

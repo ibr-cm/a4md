@@ -18,6 +18,7 @@
 #include "artery/application/md/MisbehaviorTypes.h"
 #include "artery/application/md/AttackTypes.h"
 #include <omnetpp/crng.h>
+#include <map>
 
 namespace artery
 {
@@ -30,9 +31,11 @@ namespace artery
 	{
 	public:
 		MisbehaviorCaService();
+		~MisbehaviorCaService();
 		void initialize() override;
 		void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
 		void trigger() override;
+		static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
 
 	private:
 		void checkTriggeringConditions(const omnetpp::SimTime &);
@@ -87,9 +90,9 @@ namespace artery
 		double ConstSpeedOffsetX;
 		double ConstSpeedOffsetY;
 		double MaxRandomOffsetLatitude;
+		double MaxRandomOffsetLongitude;
 		long MaxRandomOffsetLatitudeMicrodegrees;
 		long MaxRandomOffsetLongitudeMicrodegrees;
-		double MaxRandomOffsetLongitude;
 	};
 
 	void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);

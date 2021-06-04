@@ -1,5 +1,6 @@
 
 #include "artery/application/md/MisbehaviorDetectionService.h"
+#include "artery/application/md/MisbehaviorCaService.h"
 #include "artery/traci/VehicleController.h"
 #include <omnetpp/cmessage.h>
 #include <omnetpp/cpacket.h>
@@ -13,6 +14,7 @@
 #include "artery/application/CaService.h"
 #include <vanetza/btp/ports.hpp>
 #include "artery/application/VehicleDataProvider.h"
+#include "artery/application/md/MisbehaviorTypes.h"
 
 namespace artery
 {
@@ -72,7 +74,10 @@ namespace artery
         {
             CaObject *ca = dynamic_cast<CaObject *>(c_obj);
             vanetza::asn1::Cam message = ca->asn1();
-            if (message->cam.camParameters.basicContainer.referencePosition.latitude < 4)
+            uint32_t senderStationId = message->header.stationID;
+            // if (message->cam.camParameters.basicContainer.referencePosition.latitude < 4)
+            misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = MisbehaviorCaService::getMisbehaviorTypeOfStationId(senderStationId);
+            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker)
             {
                 EV_INFO << "Received manipulated CAM!";
                 vanetza::ByteBuffer byteBuffer = ca->asn1().encode();
@@ -89,6 +94,10 @@ namespace artery
                                  << curl_easy_strerror(curlResponse);
                     }
                 }
+            } else if(senderMisbehaviorType == misbehaviorTypes::Benign){
+                EV_INFO << "Received benign CAM!";
+            } else {
+                EV_INFO << "Received weird misbehaviorType";
             }
         }
     }
