@@ -25,6 +25,7 @@
 #include "artery/traci/ControllableVehicle.h"
 #include "artery/traci/VehicleController.h"
 
+
 namespace artery
 {
 
@@ -32,7 +33,6 @@ namespace artery
 	auto decidegree2 = vanetza::units::degree * boost::units::si::deci;
 	auto degree_per_second2 = vanetza::units::degree / vanetza::units::si::second;
 	auto centimeter_per_second2 = vanetza::units::si::meter_per_second * boost::units::si::centi;
-
 
 	static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
 	static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
@@ -84,6 +84,7 @@ namespace artery
 	void MisbehaviorCaService::initialize()
 	{
 		ItsG5BaseService::initialize();
+
 		mNetworkInterfaceTable = &getFacilities().get_const<NetworkInterfaceTable>();
 		mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
 		mTimer = &getFacilities().get_const<Timer>();
@@ -177,7 +178,7 @@ namespace artery
 		AttackStaleDelayCount = par("AttackStaleDelayCount");
 
 		mMisbehaviorType = setMisbehaviorType(LOCAL_ATTACKER_PROBABILITY, GLOBAL_ATTACKER_PROBABILITY);
-		mAttackType = attackTypes::DoS;
+		mAttackType = attackTypes::RandomPosOffset;
 
 		if (mAttackType == attackTypes::DoS)
 		{
@@ -186,15 +187,21 @@ namespace artery
 			mFixedRate = true;
 		}
 
+		// traciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
+		const traci::VehicleController *mVehicleController = &getFacilities().get_const<traci::VehicleController>();
+		const TraCIAPI::VehicleScope &vehicle_api = mVehicleController->getTraCI()->vehicle;
+		auto &bla = mVehicleController->getTraCI()->poi;
+		if (mMisbehaviorType == misbehaviorTypes::Benign)
+		{
+			vehicle_api.setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(0, 255, 0, 255));
+		}
+		else
+		{
+			vehicle_api.setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
+		}
+
 		mStationIdMisbehaviorTypeMap[mVehicleDataProvider->getStationId()] = mMisbehaviorType;
-
-		
-		// auto mobility = inet::getModuleFromPar<ControllableVehicle>(par("artery.application.VehicleMiddleware.mobilityModule"), findHost());
-		// traci::VehicleController* mVehicleController = mobility->getVehicleController();
-		// ASSERT(mVehicleController);
-		// EV_INFO << "Vehicle ID: " << mVehicleController->getVehicleId() << "\n";
 	}
-
 
 	misbehaviorTypes::MisbehaviorTypes MisbehaviorCaService::getMisbehaviorTypeOfStationId(uint32_t stationId)
 	{
@@ -247,10 +254,10 @@ namespace artery
 	void MisbehaviorCaService::trigger()
 	{
 		Enter_Method("trigger");
-		if (mMisbehaviorType != misbehaviorTypes::Benign)
-		{
-			EV_INFO << "Trigger " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << "\n";
-		}
+		// if (mMisbehaviorType != misbehaviorTypes::Benign)
+		// {
+		// 	EV_INFO << "Trigger " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << "\n";
+		// }
 		checkTriggeringConditions(simTime());
 	}
 
@@ -265,9 +272,11 @@ namespace artery
 			CaObject obj = visitor.shared_wrapper;
 			emit(scSignalCamReceived, &obj);
 			mLocalDynamicMap->updateAwareness(obj);
-			if (mAttackType == attackTypes::Disruptive){
+			if (mAttackType == attackTypes::Disruptive)
+			{
 				disruptiveMessageQueue.emplace_back(*cam);
-				if(disruptiveMessageQueue.size() > AttackDisruptiveBufferSize){
+				if (disruptiveMessageQueue.size() > AttackDisruptiveBufferSize)
+				{
 					disruptiveMessageQueue.pop_front();
 				}
 			}
@@ -331,8 +340,17 @@ namespace artery
 			cam = createBenignCAM(*mVehicleDataProvider, genDeltaTimeMod);
 			break;
 		case misbehaviorTypes::LocalAttacker:
+		{
 			cam = createAttackCAM(*mVehicleDataProvider, genDeltaTimeMod);
+			const traci::VehicleController *mVehicleController = &getFacilities().get_const<traci::VehicleController>();
+			auto &bla = mVehicleController->getTraCI()->poi;
+			traci::TraCIGeoPosition traciGeoPosition = {cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0, cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
+			traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
+			std::string id = "CamLocation_";
+			id += std::to_string(cam->cam.generationDeltaTime);
+			bla.add(id, traciPosition.x, traciPosition.y, libsumo::TraCIColor(255, 0, 255, 255), id, 5, "", 105, 105, 0);
 			break;
+		}
 		case misbehaviorTypes::GlobalAttacker:
 			cam = createAttackCAM(*mVehicleDataProvider, genDeltaTimeMod);
 			break;
@@ -480,16 +498,16 @@ namespace artery
 		}
 		case attackTypes::RandomPos:
 		{
-			long attackLatitude = uniform(-AttackRandomPositionMinLatitude, AttackRandomPositionMaxLatitude) * 100000;
-			long attackLongitude = uniform(-AttackRandomPositionMinLongitude, AttackRandomPositionMaxLongitude) * 100000;
+			long attackLatitude = uniform(-AttackRandomPositionMinLatitude, AttackRandomPositionMaxLatitude) * 1000000;
+			long attackLongitude = uniform(-AttackRandomPositionMinLongitude, AttackRandomPositionMaxLongitude) * 1000000;
 			message->cam.camParameters.basicContainer.referencePosition.latitude = attackLatitude * Latitude_oneMicrodegreeNorth;
 			message->cam.camParameters.basicContainer.referencePosition.longitude = attackLongitude * Longitude_oneMicrodegreeEast;
 			break;
 		}
 		case attackTypes::RandomPosOffset:
 		{
-			long attackLatitudeOffset = uniform(-AttackRandomPositionOffsetMaxLatitudeOffset, AttackRandomPositionOffsetMaxLatitudeOffset) * 100000;
-			long attackLongitudeOffset = uniform(-AttackRandomPositionMinLongitude, AttackRandomPositionMaxLongitude) * 100000;
+			long attackLatitudeOffset = uniform(-AttackRandomPositionOffsetMaxLatitudeOffset, AttackRandomPositionOffsetMaxLatitudeOffset) * 1000000;
+			long attackLongitudeOffset = uniform(-AttackRandomPositionOffsetMaxLongitudeOffset, AttackRandomPositionOffsetMaxLongitudeOffset) * 1000000;
 			message->cam.camParameters.basicContainer.referencePosition.latitude =
 				(round(vdp.latitude(), microdegree2) + attackLatitudeOffset) * Latitude_oneMicrodegreeNorth;
 			message->cam.camParameters.basicContainer.referencePosition.longitude =
@@ -536,10 +554,11 @@ namespace artery
 		}
 		case attackTypes::Disruptive:
 		{
-			if(disruptiveMessageQueue.size() >= AttackDisruptiveMinimumReceived){
-				int index = uniform(0,disruptiveMessageQueue.size());
+			if (disruptiveMessageQueue.size() >= AttackDisruptiveMinimumReceived)
+			{
+				int index = uniform(0, disruptiveMessageQueue.size());
 				auto it = disruptiveMessageQueue.begin();
-				std::advance(it,index);
+				std::advance(it, index);
 				message = *it;
 				message->cam.generationDeltaTime = (uint16_t)countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
 				message->header.stationID = vdp.getStationId();

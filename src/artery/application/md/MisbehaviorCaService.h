@@ -19,6 +19,8 @@
 #include "artery/application/md/AttackTypes.h"
 #include <omnetpp/crng.h>
 #include <map>
+#include "veins/modules/mobility/traci/TraCIMobility.h"
+#include "veins/modules/mobility/traci/TraCICommandInterface.h"
 
 namespace artery
 {
@@ -46,6 +48,13 @@ namespace artery
 		vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
 		vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
 		omnetpp::SimTime genCamDcc();
+
+		// /* pointers will be set when used with TraCIMobility */
+		// veins::TraCIMobility *mobility;
+		// veins::TraCICommandInterface *traci;
+		// veins::TraCICommandInterface::Vehicle *traciVehicle;
+		// std::shared_ptr<const traci::API> traciAPI;
+		
 
 		misbehaviorTypes::MisbehaviorTypes setMisbehaviorType(double, double);
 
