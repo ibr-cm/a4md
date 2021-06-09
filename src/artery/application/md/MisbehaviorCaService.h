@@ -81,51 +81,63 @@ namespace artery
 		double playgroundSizeX;
 		double playgroundSizeY;
 
-        //Constant Position Attack
+		//Constant Position Attack
 		double AttackConstantPositionMinLatitude;
-        double AttackConstantPositionMaxLatitude;
-        double AttackConstantPositionMinLongitude;
-        double AttackConstantPositionMaxLongitude;
+		double AttackConstantPositionMaxLatitude;
+		double AttackConstantPositionMinLongitude;
+		double AttackConstantPositionMaxLongitude;
 		long AttackConstantPositionLatitudeMicrodegrees;
 		long AttackConstantPositionLongitudeMicrodegrees;
 
 		//Constant Position Offset Attack
-        double AttackConstantPositionOffsetMaxLatitudeOffset;
-        double AttackConstantPositionOffsetMaxLongitudeOffset;
+		double AttackConstantPositionOffsetMaxLatitudeOffset;
+		double AttackConstantPositionOffsetMaxLongitudeOffset;
 		long AttackConstantPositionOffsetLatitudeMicrodegrees;
 		long AttackConstantPositionOffsetLongitudeMicrodegrees;
 
-        // Random Position Attack
-        double AttackRandomPositionMinLatitude;
-        double AttackRandomPositionMaxLatitude;
-        double AttackRandomPositionMinLongitude;
-        double AttackRandomPositionMaxLongitude;
+		// Random Position Attack
+		double AttackRandomPositionMinLatitude;
+		double AttackRandomPositionMaxLatitude;
+		double AttackRandomPositionMinLongitude;
+		double AttackRandomPositionMaxLongitude;
 
-        // Random Position Offset Attack
-        double AttackRandomPositionOffsetMaxLatitudeOffset;
-        double AttackRandomPositionOffsetMaxLongitudeOffset;
+		// Random Position Offset Attack
+		double AttackRandomPositionOffsetMaxLatitudeOffset;
+		double AttackRandomPositionOffsetMaxLongitudeOffset;
 
 		// Constant Speed Attack
-        double AttackConstantSpeedMin;
-        double AttackConstantSpeedMax;
+		double AttackConstantSpeedMin;
+		double AttackConstantSpeedMax;
 		long AttackConstantSpeedValue;
 
-        //Constant Speed Offset Attack
-        double AttackConstantSpeedOffsetMax;
-        vanetza::units::Velocity AttackConstantSpeedOffsetValue;
+		//Constant Speed Offset Attack
+		double AttackConstantSpeedOffsetMax;
+		vanetza::units::Velocity AttackConstantSpeedOffsetValue;
 
 		// Random Speed Attack
-        double AttackRandomSpeedMin;
-        double AttackRandomSpeedMax;
+		double AttackRandomSpeedMin;
+		double AttackRandomSpeedMax;
 
-        // Random Speed Offset Attack
-        double AttackRandomSpeedOffsetMax;
+		// Random Speed Offset Attack
+		double AttackRandomSpeedOffsetMax;
 
 		// Eventual Stop Attack
 		double AttackEventualStopProbabilityThreshold;
-        ReferencePosition_t attackEventualStopPosition;
-        bool attackEventualStopHasStopped;
-		
+		ReferencePosition_t attackEventualStopPosition;
+		bool attackEventualStopHasStopped;
+
+		// Disruptive Attack
+		int AttackDisruptiveBufferSize;
+		int AttackDisruptiveMinimumReceived;
+		std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
+
+		// Denial of Service Attack
+		int AttackDoSInterval;
+		bool AttackDoSIgnoreDCC;
+
+		// Stale Messages Attack
+		int AttackStaleDelayCount;
+		std::queue<vanetza::asn1::Cam> staleMessageQueue;
 	};
 
 	static double totalGenuine = 0;

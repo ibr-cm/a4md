@@ -21,6 +21,9 @@
 #include <chrono>
 
 #include "artery/application/CaService.h"
+#include "inet/common/ModuleAccess.h"
+#include "artery/traci/ControllableVehicle.h"
+#include "artery/traci/VehicleController.h"
 
 namespace artery
 {
@@ -30,7 +33,6 @@ namespace artery
 	auto degree_per_second2 = vanetza::units::degree / vanetza::units::si::second;
 	auto centimeter_per_second2 = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
-	using namespace omnetpp;
 
 	static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
 	static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
@@ -163,11 +165,36 @@ namespace artery
 		AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
 		attackEventualStopHasStopped = false;
 
+		// Disruptive Attack
+		AttackDisruptiveBufferSize = par("AttackDisruptiveBufferSize");
+		AttackDisruptiveMinimumReceived = par("AttackDisruptiveMinimumReceived");
+
+		// Denial of Service Attack
+		AttackDoSInterval = par("AttackDoSInterval");
+		AttackDoSIgnoreDCC = par("AttackDoSIgnoreDCC");
+
+		// Stale Messages Attack
+		AttackStaleDelayCount = par("AttackStaleDelayCount");
+
 		mMisbehaviorType = setMisbehaviorType(LOCAL_ATTACKER_PROBABILITY, GLOBAL_ATTACKER_PROBABILITY);
-		mAttackType = attackTypes::RandomPosOffset;
+		mAttackType = attackTypes::DoS;
+
+		if (mAttackType == attackTypes::DoS)
+		{
+			mGenCamMin = {AttackDoSInterval, SIMTIME_MS};
+			mDccRestriction = !AttackDoSIgnoreDCC;
+			mFixedRate = true;
+		}
 
 		mStationIdMisbehaviorTypeMap[mVehicleDataProvider->getStationId()] = mMisbehaviorType;
+
+		
+		// auto mobility = inet::getModuleFromPar<ControllableVehicle>(par("artery.application.VehicleMiddleware.mobilityModule"), findHost());
+		// traci::VehicleController* mVehicleController = mobility->getVehicleController();
+		// ASSERT(mVehicleController);
+		// EV_INFO << "Vehicle ID: " << mVehicleController->getVehicleId() << "\n";
 	}
+
 
 	misbehaviorTypes::MisbehaviorTypes MisbehaviorCaService::getMisbehaviorTypeOfStationId(uint32_t stationId)
 	{
@@ -220,6 +247,10 @@ namespace artery
 	void MisbehaviorCaService::trigger()
 	{
 		Enter_Method("trigger");
+		if (mMisbehaviorType != misbehaviorTypes::Benign)
+		{
+			EV_INFO << "Trigger " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << "\n";
+		}
 		checkTriggeringConditions(simTime());
 	}
 
@@ -234,6 +265,12 @@ namespace artery
 			CaObject obj = visitor.shared_wrapper;
 			emit(scSignalCamReceived, &obj);
 			mLocalDynamicMap->updateAwareness(obj);
+			if (mAttackType == attackTypes::Disruptive){
+				disruptiveMessageQueue.emplace_back(*cam);
+				if(disruptiveMessageQueue.size() > AttackDisruptiveBufferSize){
+					disruptiveMessageQueue.pop_front();
+				}
+			}
 		}
 	}
 
@@ -301,6 +338,10 @@ namespace artery
 			break;
 		default:
 			cam = createBenignCAM(*mVehicleDataProvider, genDeltaTimeMod);
+		}
+		if (&cam->header == nullptr)
+		{
+			return;
 		}
 
 		mLastCamPosition = mVehicleDataProvider->position();
@@ -495,6 +536,14 @@ namespace artery
 		}
 		case attackTypes::Disruptive:
 		{
+			if(disruptiveMessageQueue.size() >= AttackDisruptiveMinimumReceived){
+				int index = uniform(0,disruptiveMessageQueue.size());
+				auto it = disruptiveMessageQueue.begin();
+				std::advance(it,index);
+				message = *it;
+				message->cam.generationDeltaTime = (uint16_t)countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
+				message->header.stationID = vdp.getStationId();
+			}
 			break;
 		}
 		case attackTypes::DataReplay:
@@ -503,10 +552,25 @@ namespace artery
 		}
 		case attackTypes::StaleMessages:
 		{
+			staleMessageQueue.push(message);
+			if (staleMessageQueue.size() >= AttackStaleDelayCount)
+			{
+
+				message = staleMessageQueue.front();
+				message->cam.generationDeltaTime = (uint16_t)countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
+				staleMessageQueue.pop();
+			}
+			else
+			{
+				vanetza::asn1::Cam emptyMessage;
+				return emptyMessage;
+			}
 			break;
 		}
 		case attackTypes::DoS:
 		{
+			EV_INFO << "Sent DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " old:  " << message->cam.generationDeltaTime << " new: " << (uint16_t)countTaiMilliseconds(mTimer->getTimeFor(simTime())) << "\n";
+			message->cam.generationDeltaTime = (uint16_t)countTaiMilliseconds(mTimer->getTimeFor(simTime()));
 			break;
 		}
 		case attackTypes::DoSRandom:

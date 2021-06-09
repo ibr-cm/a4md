@@ -80,6 +80,7 @@ namespace artery
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker)
             {
                 EV_INFO << "Received manipulated CAM!";
+                EV_INFO << "Received DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " delta:  " << message->cam.generationDeltaTime << "\n";
                 vanetza::ByteBuffer byteBuffer = ca->asn1().encode();
                 std::string encoded(byteBuffer.begin(), byteBuffer.end());
                 std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()), encoded.length(), false);

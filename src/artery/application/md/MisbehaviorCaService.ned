@@ -89,4 +89,18 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         // Eventual Stop Attack
         double AttackEventualStopProbabilityThreshold = default(0.05);
 
+		// Disruptive Attack
+		int AttackDisruptiveBufferSize = default(500);
+		int AttackDisruptiveMinimumReceived = default(50);
+
+        // Denial of Service Attack
+        // Interval in ms
+        // Keep in mind that appl.middleware.updateInterval might need to be customized
+		int AttackDoSInterval = default(10);
+		bool AttackDoSIgnoreDCC = default(true);
+
+
+		// Stale Messages Attack
+		int AttackStaleDelayCount = default(50);
+
 }
