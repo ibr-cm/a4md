@@ -8,3 +8,5 @@ www/
 .vagrant/
 build/
 .qtenvrc
+.idea/
+cmake-build-debug/
