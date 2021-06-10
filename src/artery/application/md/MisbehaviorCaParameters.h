@@ -10,6 +10,8 @@ typedef struct MisbehaviorCaParameters {
     double GLOBAL_ATTACKER_PROBABILITY;
     double ATTACK_START_TIME;
 
+    int StaticAttackType;
+
     //Constant Position Attack
     double AttackConstantPositionMinLatitude;
     double AttackConstantPositionMaxLatitude;

@@ -92,6 +92,8 @@ namespace artery {
             parameters.GLOBAL_ATTACKER_PROBABILITY = par("GLOBAL_ATTACKER_PROB");
             parameters.ATTACK_START_TIME = par("START_ATTACK");
 
+            parameters.StaticAttackType = par("StaticAttackType");
+
             // Constant Position Attack
             parameters.AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
             parameters.AttackConstantPositionMaxLatitude = par("AttackConstantPositionMaxLatitude");
@@ -206,8 +208,13 @@ namespace artery {
 
 
         setMisbehaviorType(parameters.LOCAL_ATTACKER_PROBABILITY, parameters.GLOBAL_ATTACKER_PROBABILITY);
-        mAttackType = attackTypes::EventualStop;
+        if(parameters.StaticAttackType > 0){
+            mAttackType = attackTypes::AttackTypes(parameters.StaticAttackType);
+        } else {
+            mAttackType = attackTypes::EventualStop;
+        }
 
+        par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
         if (mMisbehaviorType == misbehaviorTypes::Benign) {
             mAttackType = attackTypes::Benign;
@@ -566,9 +573,7 @@ namespace artery {
                     message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
                     message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
                 } else {
-                    double num = uniform(0, 1);
-                    std::cout << num << std::endl;
-                    if (parameters.AttackEventualStopProbabilityThreshold > num) {
+                    if (parameters.AttackEventualStopProbabilityThreshold > uniform(0, 1)) {
                         attackEventualStopHasStopped = true;
                         attackEventualStopPosition = message->cam.camParameters.basicContainer.referencePosition;
                         message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;

@@ -46,8 +46,9 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         double GLOBAL_ATTACKER_PROB = default(0.0);
         int GLOBAL_ATTACK_TYPE = default(20);
 
-        double MaxRandomOffsetLatitude = default(0.001);
-        double MaxRandomOffsetLongitude = default(0.001);
+        // Specify static attack type according to attacktypes enum
+        int StaticAttackType = default(-1);
+        string AttackType = default("");
 
         // ------ Attacks Parameters -- Start
 
