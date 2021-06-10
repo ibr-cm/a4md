@@ -35,6 +35,8 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         
         string appName = default("MisbehaviorCaService");
 
+        int CamLocationVisualizerMaxLength = default(500);
+
         double START_ATTACK = default(10);
 
         double LOCAL_ATTACKER_PROB = default(0.05);

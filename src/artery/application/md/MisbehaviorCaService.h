@@ -19,141 +19,159 @@
 #include "artery/application/md/AttackTypes.h"
 #include <omnetpp/crng.h>
 #include <map>
-#include "veins/modules/mobility/traci/TraCIMobility.h"
-#include "veins/modules/mobility/traci/TraCICommandInterface.h"
+#include "artery/traci/VehicleController.h"
 
-namespace artery
-{
+namespace artery {
 
-	class NetworkInterfaceTable;
-	class Timer;
-	class VehicleDataProvider;
+    class NetworkInterfaceTable;
 
-	class MisbehaviorCaService : public ItsG5BaseService
-	{
-	public:
-		MisbehaviorCaService();
-		~MisbehaviorCaService();
-		void initialize() override;
-		void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
-		void trigger() override;
-		static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
+    class Timer;
 
-	private:
-		void checkTriggeringConditions(const omnetpp::SimTime &);
-		bool checkHeadingDelta() const;
-		bool checkPositionDelta() const;
-		bool checkSpeedDelta() const;
-		void sendCam(const omnetpp::SimTime &);
-		vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
-		vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
-		omnetpp::SimTime genCamDcc();
+    class VehicleDataProvider;
 
-		// /* pointers will be set when used with TraCIMobility */
-		// veins::TraCIMobility *mobility;
-		// veins::TraCICommandInterface *traci;
-		// veins::TraCICommandInterface::Vehicle *traciVehicle;
-		// std::shared_ptr<const traci::API> traciAPI;
-		
+    class MisbehaviorCaService : public ItsG5BaseService {
+    public:
+        MisbehaviorCaService();
 
-		misbehaviorTypes::MisbehaviorTypes setMisbehaviorType(double, double);
+        ~MisbehaviorCaService();
 
-		ChannelNumber mPrimaryChannel = channel::CCH;
-		const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
-		const VehicleDataProvider *mVehicleDataProvider = nullptr;
-		const Timer *mTimer = nullptr;
-		LocalDynamicMap *mLocalDynamicMap = nullptr;
+        void initialize() override;
 
-		omnetpp::SimTime mGenCamMin;
-		omnetpp::SimTime mGenCamMax;
-		omnetpp::SimTime mGenCam;
-		unsigned mGenCamLowDynamicsCounter;
-		unsigned mGenCamLowDynamicsLimit;
-		Position mLastCamPosition;
-		vanetza::units::Velocity mLastCamSpeed;
-		vanetza::units::Angle mLastCamHeading;
-		omnetpp::SimTime mLastCamTimestamp;
-		omnetpp::SimTime mLastLowCamTimestamp;
-		vanetza::units::Angle mHeadingDelta;
-		vanetza::units::Length mPositionDelta;
-		vanetza::units::Velocity mSpeedDelta;
-		bool mDccRestriction;
-		bool mFixedRate;
+        void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
 
-		misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
-		attackTypes::AttackTypes mAttackType;
+        void trigger() override;
 
-		double LOCAL_ATTACKER_PROBABILITY;
-		double GLOBAL_ATTACKER_PROBABILITY;
-		double ATTACK_START_TIME;
+        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
 
-		double playgroundSizeX;
-		double playgroundSizeY;
+    private:
+        void checkTriggeringConditions(const omnetpp::SimTime &);
 
-		//Constant Position Attack
-		double AttackConstantPositionMinLatitude;
-		double AttackConstantPositionMaxLatitude;
-		double AttackConstantPositionMinLongitude;
-		double AttackConstantPositionMaxLongitude;
-		long AttackConstantPositionLatitudeMicrodegrees;
-		long AttackConstantPositionLongitudeMicrodegrees;
+        bool checkHeadingDelta() const;
 
-		//Constant Position Offset Attack
-		double AttackConstantPositionOffsetMaxLatitudeOffset;
-		double AttackConstantPositionOffsetMaxLongitudeOffset;
-		long AttackConstantPositionOffsetLatitudeMicrodegrees;
-		long AttackConstantPositionOffsetLongitudeMicrodegrees;
+        bool checkPositionDelta() const;
 
-		// Random Position Attack
-		double AttackRandomPositionMinLatitude;
-		double AttackRandomPositionMaxLatitude;
-		double AttackRandomPositionMinLongitude;
-		double AttackRandomPositionMaxLongitude;
+        bool checkSpeedDelta() const;
 
-		// Random Position Offset Attack
-		double AttackRandomPositionOffsetMaxLatitudeOffset;
-		double AttackRandomPositionOffsetMaxLongitudeOffset;
+        void sendCam(const omnetpp::SimTime &);
 
-		// Constant Speed Attack
-		double AttackConstantSpeedMin;
-		double AttackConstantSpeedMax;
-		long AttackConstantSpeedValue;
+        vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
 
-		//Constant Speed Offset Attack
-		double AttackConstantSpeedOffsetMax;
-		vanetza::units::Velocity AttackConstantSpeedOffsetValue;
+        vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
 
-		// Random Speed Attack
-		double AttackRandomSpeedMin;
-		double AttackRandomSpeedMax;
+        omnetpp::SimTime genCamDcc();
 
-		// Random Speed Offset Attack
-		double AttackRandomSpeedOffsetMax;
 
-		// Eventual Stop Attack
-		double AttackEventualStopProbabilityThreshold;
-		ReferencePosition_t attackEventualStopPosition;
-		bool attackEventualStopHasStopped;
 
-		// Disruptive Attack
-		int AttackDisruptiveBufferSize;
-		int AttackDisruptiveMinimumReceived;
-		std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
 
-		// Denial of Service Attack
-		int AttackDoSInterval;
-		bool AttackDoSIgnoreDCC;
+        std::queue<std::string> activePoIs;
+        int CamLocationVisualizerMaxLength;
 
-		// Stale Messages Attack
-		int AttackStaleDelayCount;
-		std::queue<vanetza::asn1::Cam> staleMessageQueue;
-	};
+        void setMisbehaviorType(double localAttacker, double globalAttacker);
 
-	static double totalGenuine = 0;
-	static double totalLocalAttacker = 0;
-	static double totalGlobalAttacker = 0;
-	void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
-	static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
+        ChannelNumber mPrimaryChannel = channel::CCH;
+        const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
+        const VehicleDataProvider *mVehicleDataProvider = nullptr;
+        const Timer *mTimer = nullptr;
+        LocalDynamicMap *mLocalDynamicMap = nullptr;
+        const traci::VehicleController *mVehicleController = nullptr;
+
+        omnetpp::SimTime mGenCamMin;
+        omnetpp::SimTime mGenCamMax;
+        omnetpp::SimTime mGenCam;
+        unsigned mGenCamLowDynamicsCounter;
+        unsigned mGenCamLowDynamicsLimit;
+        Position mLastCamPosition;
+        vanetza::units::Velocity mLastCamSpeed;
+        vanetza::units::Angle mLastCamHeading;
+        omnetpp::SimTime mLastCamTimestamp;
+        omnetpp::SimTime mLastLowCamTimestamp;
+        vanetza::units::Angle mHeadingDelta;
+        vanetza::units::Length mPositionDelta;
+        vanetza::units::Velocity mSpeedDelta;
+        bool mDccRestriction;
+        bool mFixedRate;
+
+        misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
+        attackTypes::AttackTypes mAttackType;
+
+        double LOCAL_ATTACKER_PROBABILITY;
+        double GLOBAL_ATTACKER_PROBABILITY;
+        double ATTACK_START_TIME;
+
+        double playgroundSizeX;
+        double playgroundSizeY;
+
+        //Constant Position Attack
+        double AttackConstantPositionMinLatitude;
+        double AttackConstantPositionMaxLatitude;
+        double AttackConstantPositionMinLongitude;
+        double AttackConstantPositionMaxLongitude;
+        long AttackConstantPositionLatitudeMicrodegrees;
+        long AttackConstantPositionLongitudeMicrodegrees;
+
+        //Constant Position Offset Attack
+        double AttackConstantPositionOffsetMaxLatitudeOffset;
+        double AttackConstantPositionOffsetMaxLongitudeOffset;
+        long AttackConstantPositionOffsetLatitudeMicrodegrees;
+        long AttackConstantPositionOffsetLongitudeMicrodegrees;
+
+        // Random Position Attack
+        double AttackRandomPositionMinLatitude;
+        double AttackRandomPositionMaxLatitude;
+        double AttackRandomPositionMinLongitude;
+        double AttackRandomPositionMaxLongitude;
+
+        // Random Position Offset Attack
+        double AttackRandomPositionOffsetMaxLatitudeOffset;
+        double AttackRandomPositionOffsetMaxLongitudeOffset;
+
+        // Constant Speed Attack
+        double AttackConstantSpeedMin;
+        double AttackConstantSpeedMax;
+        long AttackConstantSpeedValue;
+
+        //Constant Speed Offset Attack
+        double AttackConstantSpeedOffsetMax;
+        vanetza::units::Velocity AttackConstantSpeedOffsetValue;
+
+        // Random Speed Attack
+        double AttackRandomSpeedMin;
+        double AttackRandomSpeedMax;
+
+        // Random Speed Offset Attack
+        double AttackRandomSpeedOffsetMax;
+
+        // Eventual Stop Attack
+        double AttackEventualStopProbabilityThreshold;
+        ReferencePosition_t attackEventualStopPosition;
+        bool attackEventualStopHasStopped;
+
+        // Disruptive Attack
+        int AttackDisruptiveBufferSize;
+        int AttackDisruptiveMinimumReceived;
+        std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
+
+        // Denial of Service Attack
+        int AttackDoSInterval;
+        bool AttackDoSIgnoreDCC;
+
+        // Stale Messages Attack
+        int AttackStaleDelayCount;
+        std::queue<vanetza::asn1::Cam> staleMessageQueue;
+    };
+
+    static double totalGenuine = 0;
+    static double totalLocalAttacker = 0;
+    static double totalGlobalAttacker = 0;
+    static bool staticInitializationComplete = false;
+
+    void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
+
+    static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
+
+    static TraCIAPI::VehicleScope *traciVehicleScope;
+    static std::shared_ptr<const traci::API> traciAPI;
+    static const TraCIAPI::POIScope *traciPoiScope;
 
 } // namespace artery
 
