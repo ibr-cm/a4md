@@ -67,7 +67,7 @@ namespace artery {
             mStationIdMisbehaviorTypeMap.erase(it);
         }
 
-        while(!activePoIs.empty()){
+        while (!activePoIs.empty()) {
             traciPoiScope->remove(activePoIs.front());
             activePoIs.pop();
         }
@@ -83,11 +83,103 @@ namespace artery {
         mVehicleController = &getFacilities().get_const<traci::VehicleController>();
 
         if (!staticInitializationComplete) {
+            staticInitializationComplete = true;
             traciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
             traciPoiScope = &traciAPI->poi;
             traciVehicleScope = (TraCIAPI::VehicleScope *) &traciAPI->vehicle;
-            staticInitializationComplete = true;
+
+            parameters.LOCAL_ATTACKER_PROBABILITY = par("LOCAL_ATTACKER_PROB");
+            parameters.GLOBAL_ATTACKER_PROBABILITY = par("GLOBAL_ATTACKER_PROB");
+            parameters.ATTACK_START_TIME = par("START_ATTACK");
+
+            // Constant Position Attack
+            parameters.AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
+            parameters.AttackConstantPositionMaxLatitude = par("AttackConstantPositionMaxLatitude");
+            parameters.AttackConstantPositionMinLongitude = par("AttackConstantPositionMinLongitude");
+            parameters.AttackConstantPositionMaxLongitude = par("AttackConstantPositionMaxLongitude");
+
+            // Constant Position Offset Attack
+            parameters.AttackConstantPositionOffsetMaxLatitudeOffset = par(
+                    "AttackConstantPositionOffsetMaxLatitudeOffset");
+            parameters.AttackConstantPositionOffsetMaxLongitudeOffset = par(
+                    "AttackConstantPositionOffsetMaxLongitudeOffset");
+
+            // Random Position Attack
+            parameters.AttackRandomPositionMinLatitude = par("AttackRandomPositionMinLatitude");
+            parameters.AttackRandomPositionMaxLatitude = par("AttackRandomPositionMaxLatitude");
+            parameters.AttackRandomPositionMinLongitude = par("AttackRandomPositionMinLongitude");
+            parameters.AttackRandomPositionMaxLongitude = par("AttackRandomPositionMaxLongitude");
+
+            // Random Position Offset Attack
+            parameters.AttackRandomPositionOffsetMaxLatitudeOffset = par("AttackRandomPositionOffsetMaxLatitudeOffset");
+            parameters.AttackRandomPositionOffsetMaxLongitudeOffset = par(
+                    "AttackRandomPositionOffsetMaxLongitudeOffset");
+
+            // Constant Speed Attack
+            // Meters per Second
+            parameters.AttackConstantSpeedMin = par("AttackConstantSpeedMin");
+            parameters.AttackConstantSpeedMax = par("AttackConstantSpeedMax");
+
+            // Constant Speed Offset Attack
+            parameters.AttackConstantSpeedOffsetMax = par("AttackConstantSpeedOffsetMax");
+
+            // Random Speed Attack
+            // Meters per Second
+            parameters.AttackRandomSpeedMin = par("AttackRandomSpeedMin");
+            parameters.AttackRandomSpeedMax = par("AttackRandomSpeedMax");
+
+            // Random Speed Offset Attack
+            parameters.AttackRandomSpeedOffsetMax = par("AttackRandomSpeedOffsetMax");
+
+            // Eventual Stop Attack
+            parameters.AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
+
+            // Disruptive Attack
+            parameters.AttackDisruptiveBufferSize = par("AttackDisruptiveBufferSize");
+            parameters.AttackDisruptiveMinimumReceived = par("AttackDisruptiveMinimumReceived");
+
+            // Denial of Service Attack
+            parameters.AttackDoSInterval = par("AttackDoSInterval");
+            parameters.AttackDoSIgnoreDCC = par("AttackDoSIgnoreDCC");
+
+            // Stale Messages Attack
+            parameters.AttackStaleDelayCount = par("AttackStaleDelayCount");
+
+
+            // CAM Location Visualizer (PoI)
+            parameters.CamLocationVisualizer = par("CamLocationVisualizer");
+            parameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
         }
+
+        //Constant Position Attack
+        AttackConstantPositionLatitudeMicrodegrees =
+                (long) (uniform(parameters.AttackConstantPositionMinLatitude,
+                                parameters.AttackConstantPositionMaxLatitude) * 1000000);
+        AttackConstantPositionLongitudeMicrodegrees =
+                (long) (uniform(parameters.AttackConstantPositionMinLongitude,
+                                parameters.AttackConstantPositionMaxLongitude) * 1000000);
+
+        //Constant Position Offset Attack
+        AttackConstantPositionOffsetLatitudeMicrodegrees = (long) (uniform(
+                -parameters.AttackConstantPositionOffsetMaxLatitudeOffset,
+                parameters.AttackConstantPositionOffsetMaxLatitudeOffset) * 1000000);
+        AttackConstantPositionOffsetLongitudeMicrodegrees = (long) (uniform(
+                -parameters.AttackConstantPositionOffsetMaxLongitudeOffset,
+                parameters.AttackConstantPositionOffsetMaxLongitudeOffset) * 1000000);
+
+        // Constant Speed Attack
+        AttackConstantSpeedValue = buildSpeedValue2(
+                uniform(parameters.AttackConstantSpeedMin, parameters.AttackConstantSpeedMax) *
+                boost::units::si::meter_per_second);
+
+        //Constant Speed Offset Attack
+        AttackConstantSpeedOffsetValue =
+                ((long) uniform(0, parameters.AttackConstantSpeedOffsetMax)) * boost::units::si::meter_per_second;
+
+
+        attackEventualStopHasStopped = false;
+        attackDataReplayCurrentStationId = -1;
+
 
         // avoid unreasonable high elapsed time values for newly inserted vehicles
         mLastCamTimestamp = simTime();
@@ -108,93 +200,26 @@ namespace artery {
         mDccRestriction = par("withDccRestriction");
         mFixedRate = par("fixedRate");
 
-        CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
 
         // look up primary channel for CA
         mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
 
-        playgroundSizeX = 1500;
-        playgroundSizeY = 1500;
 
-        LOCAL_ATTACKER_PROBABILITY = par("LOCAL_ATTACKER_PROB");
-        GLOBAL_ATTACKER_PROBABILITY = par("GLOBAL_ATTACKER_PROB");
-        ATTACK_START_TIME = par("START_ATTACK");
+        setMisbehaviorType(parameters.LOCAL_ATTACKER_PROBABILITY, parameters.GLOBAL_ATTACKER_PROBABILITY);
+        mAttackType = attackTypes::EventualStop;
 
-        // Constant Position Attack
-        AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
-        AttackConstantPositionMaxLatitude = par("AttackConstantPositionMaxLatitude");
-        AttackConstantPositionMinLongitude = par("AttackConstantPositionMinLongitude");
-        AttackConstantPositionMaxLongitude = par("AttackConstantPositionMaxLongitude");
-        AttackConstantPositionLatitudeMicrodegrees =
-                (long) uniform(AttackConstantPositionMinLatitude, AttackConstantPositionMaxLatitude) * 100000;
-        AttackConstantPositionLongitudeMicrodegrees =
-                (long) uniform(AttackConstantPositionMinLongitude, AttackConstantPositionMaxLongitude) * 100000;
 
-        // Constant Position Offset Attack
-        AttackConstantPositionOffsetMaxLatitudeOffset = par("AttackConstantPositionOffsetMaxLatitudeOffset");
-        AttackConstantPositionOffsetMaxLongitudeOffset = par("AttackConstantPositionOffsetMaxLongitudeOffset");
-        AttackConstantPositionOffsetLatitudeMicrodegrees = (long) uniform(
-                -AttackConstantPositionOffsetMaxLatitudeOffset, AttackConstantPositionOffsetMaxLatitudeOffset);
-        AttackConstantPositionOffsetLongitudeMicrodegrees = (long) uniform(
-                -AttackConstantPositionOffsetMaxLongitudeOffset, AttackConstantPositionOffsetMaxLongitudeOffset);
-
-        // Random Position Attack
-        AttackRandomPositionMinLatitude = par("AttackRandomPositionMinLatitude");
-        AttackRandomPositionMaxLatitude = par("AttackRandomPositionMaxLatitude");
-        AttackRandomPositionMinLongitude = par("AttackRandomPositionMinLongitude");
-        AttackRandomPositionMaxLongitude = par("AttackRandomPositionMaxLongitude");
-
-        // Random Position Offset Attack
-        AttackRandomPositionOffsetMaxLatitudeOffset = par("AttackRandomPositionOffsetMaxLatitudeOffset");
-        AttackRandomPositionOffsetMaxLongitudeOffset = par("AttackRandomPositionOffsetMaxLongitudeOffset");
-
-        // Constant Speed Attack
-        // Meters per Second
-        AttackConstantSpeedMin = par("AttackConstantSpeedMin");
-        AttackConstantSpeedMax = par("AttackConstantSpeedMax");
-        AttackConstantSpeedValue = buildSpeedValue2(
-                uniform(AttackConstantSpeedMin, AttackConstantSpeedMax) * boost::units::si::meter_per_second);
-
-        // Constant Speed Offset Attack
-        AttackConstantSpeedOffsetMax = par("AttackConstantSpeedOffsetMax");
-        double speedOffset = uniform(0, AttackConstantSpeedOffsetMax);
-        AttackConstantSpeedOffsetValue = ((long) speedOffset) * boost::units::si::meter_per_second;
-
-        // Random Speed Attack
-        // Meters per Second
-        AttackRandomSpeedMin = par("AttackRandomSpeedMin");
-        AttackRandomSpeedMax = par("AttackRandomSpeedMax");
-
-        // Random Speed Offset Attack
-        AttackRandomSpeedOffsetMax = par("AttackRandomSpeedOffsetMax");
-
-        // Eventual Stop Attack
-        AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
-        attackEventualStopHasStopped = false;
-
-        // Disruptive Attack
-        AttackDisruptiveBufferSize = par("AttackDisruptiveBufferSize");
-        AttackDisruptiveMinimumReceived = par("AttackDisruptiveMinimumReceived");
-
-        // Denial of Service Attack
-        AttackDoSInterval = par("AttackDoSInterval");
-        AttackDoSIgnoreDCC = par("AttackDoSIgnoreDCC");
-
-        // Stale Messages Attack
-        AttackStaleDelayCount = par("AttackStaleDelayCount");
-
-        setMisbehaviorType(LOCAL_ATTACKER_PROBABILITY, GLOBAL_ATTACKER_PROBABILITY);
-        mAttackType = attackTypes::RandomPosOffset;
-
-        if (mAttackType == attackTypes::DoS) {
-            mGenCamMin = {AttackDoSInterval, SIMTIME_MS};
-            mDccRestriction = !AttackDoSIgnoreDCC;
-            mFixedRate = true;
-        }
         if (mMisbehaviorType == misbehaviorTypes::Benign) {
+            mAttackType = attackTypes::Benign;
             traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(0, 255, 0, 255));
         } else {
             traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
+        }
+
+        if (mAttackType == attackTypes::DoS) {
+            mGenCamMin = {parameters.AttackDoSInterval, SIMTIME_MS};
+            mDccRestriction = !parameters.AttackDoSIgnoreDCC;
+            mFixedRate = true;
         }
 
         mStationIdMisbehaviorTypeMap[mVehicleDataProvider->getStationId()] = mMisbehaviorType;
@@ -210,7 +235,7 @@ namespace artery {
     }
 
     void MisbehaviorCaService::setMisbehaviorType(double localAttacker, double globalAttacker) {
-        if (simTime().dbl() < ATTACK_START_TIME) {
+        if (simTime().dbl() < parameters.ATTACK_START_TIME) {
             mMisbehaviorType = misbehaviorTypes::Benign;
             return;
         }
@@ -239,10 +264,6 @@ namespace artery {
 
     void MisbehaviorCaService::trigger() {
         Enter_Method("trigger");
-        // if (mMisbehaviorType != misbehaviorTypes::Benign)
-        // {
-        // 	EV_INFO << "Trigger " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << "\n";
-        // }
         checkTriggeringConditions(simTime());
     }
 
@@ -256,11 +277,23 @@ namespace artery {
             CaObject obj = visitor.shared_wrapper;
             emit(scSignalCamReceived, &obj);
             mLocalDynamicMap->updateAwareness(obj);
-            if (mAttackType == attackTypes::Disruptive) {
-                disruptiveMessageQueue.emplace_back(*cam);
-                if (disruptiveMessageQueue.size() > AttackDisruptiveBufferSize) {
-                    disruptiveMessageQueue.pop_front();
+            vanetza::asn1::Cam message = *cam;
+            switch (mAttackType) {
+                case attackTypes::Disruptive: {
+                    disruptiveMessageQueue.emplace_back(message);
+                    if (disruptiveMessageQueue.size() > parameters.AttackDisruptiveBufferSize) {
+                        disruptiveMessageQueue.pop_front();
+                    }
+                    break;
                 }
+                case attackTypes::DataReplay: {
+                    receivedMessages[message->header.stationID].push(message);
+                }
+                default:
+                    break;
+            }
+            if (mAttackType == attackTypes::Disruptive) {
+
             }
         }
     }
@@ -301,39 +334,46 @@ namespace artery {
         return abs(mLastCamSpeed - mVehicleDataProvider->speed()) > mSpeedDelta;
     }
 
+    void MisbehaviorCaService::visualizeCamPosition(vanetza::asn1::Cam cam) {
+        traci::TraCIGeoPosition traciGeoPosition = {
+                (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
+                (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
+        traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
+        std::string poiId = mVehicleController->getVehicleId();
+        poiId += "_CAM_";
+        poiId += std::to_string(cam->cam.generationDeltaTime);
+        traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, libsumo::TraCIColor(255, 0, 255, 255),
+                           poiId, 5, "", 0,
+                           0, 0);
+        activePoIs.push(poiId);
+        if (activePoIs.size() > parameters.CamLocationVisualizerMaxLength) {
+            traciPoiScope->remove(activePoIs.front());
+            activePoIs.pop();
+        }
+    }
+
     void MisbehaviorCaService::sendCam(const SimTime &T_now) {
         uint16_t genDeltaTimeMod = countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
         vanetza::asn1::Cam cam;
         switch (mMisbehaviorType) {
             case misbehaviorTypes::Benign:
-                cam = createBenignCAM(*mVehicleDataProvider, genDeltaTimeMod);
+                cam = createBenignCAM(genDeltaTimeMod);
                 break;
             case misbehaviorTypes::LocalAttacker: {
-                cam = createAttackCAM(*mVehicleDataProvider, genDeltaTimeMod);
-                traci::TraCIGeoPosition traciGeoPosition = {
-                        (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
-                        (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
-                traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
-                std::string poiId = mVehicleController->getVehicleId();
-                poiId += "_CAM_";
-                poiId += std::to_string(cam->cam.generationDeltaTime);
-                traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, libsumo::TraCIColor(255, 0, 255, 255), poiId, 0, "", 0,
-                                   0, 0);
-                activePoIs.push(poiId);
-                if(activePoIs.size() > CamLocationVisualizerMaxLength){
-                    traciPoiScope->remove(activePoIs.front());
-                    activePoIs.pop();
-                }
+                cam = createAttackCAM(genDeltaTimeMod);
                 break;
             }
             case misbehaviorTypes::GlobalAttacker:
-                cam = createAttackCAM(*mVehicleDataProvider, genDeltaTimeMod);
+                cam = createAttackCAM(genDeltaTimeMod);
                 break;
             default:
-                cam = createBenignCAM(*mVehicleDataProvider, genDeltaTimeMod);
+                cam = createBenignCAM(genDeltaTimeMod);
         }
         if (cam->header.messageID != 2) {
             return;
+        }
+        if (parameters.CamLocationVisualizer && mMisbehaviorType != misbehaviorTypes::Benign) {
+            visualizeCamPosition(cam);
         }
 
         mLastCamPosition = mVehicleDataProvider->position();
@@ -380,13 +420,13 @@ namespace artery {
         return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
     }
 
-    vanetza::asn1::Cam MisbehaviorCaService::createBenignCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime) {
+    vanetza::asn1::Cam MisbehaviorCaService::createBenignCAM(uint16_t genDeltaTime) {
         vanetza::asn1::Cam message;
 
         ItsPduHeader_t &header = (*message).header;
         header.protocolVersion = 2;
         header.messageID = ItsPduHeader__messageID_cam;
-        header.stationID = vdp.station_id();
+        header.stationID = mVehicleDataProvider->station_id();
 
         CoopAwareness_t &cam = (*message).cam;
         cam.generationDeltaTime = genDeltaTime * GenerationDeltaTime_oneMilliSec;
@@ -396,8 +436,10 @@ namespace artery {
         basic.stationType = StationType_passengerCar;
         basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
         basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
-        basic.referencePosition.longitude = round(vdp.longitude(), microDegree) * Longitude_oneMicrodegreeEast;
-        basic.referencePosition.latitude = round(vdp.latitude(), microDegree) * Latitude_oneMicrodegreeNorth;
+        basic.referencePosition.longitude =
+                round(mVehicleDataProvider->longitude(), microDegree) * Longitude_oneMicrodegreeEast;
+        basic.referencePosition.latitude =
+                round(mVehicleDataProvider->latitude(), microDegree) * Latitude_oneMicrodegreeNorth;
         basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
         basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
                 SemiAxisLength_unavailable;
@@ -406,12 +448,14 @@ namespace artery {
 
         hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
         BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
-        bvc.heading.headingValue = round(vdp.heading(), deciDegree);
+        bvc.heading.headingValue = round(mVehicleDataProvider->heading(), deciDegree);
         bvc.heading.headingConfidence = HeadingConfidence_equalOrWithinOneDegree;
-        bvc.speed.speedValue = buildSpeedValue2(vdp.speed());
+        bvc.speed.speedValue = buildSpeedValue2(mVehicleDataProvider->speed());
         bvc.speed.speedConfidence = SpeedConfidence_equalOrWithinOneCentimeterPerSec * 3;
-        bvc.driveDirection = vdp.speed().value() >= 0.0 ? DriveDirection_forward : DriveDirection_backward;
-        const double lonAccelValue = vdp.acceleration() / vanetza::units::si::meter_per_second_squared;
+        bvc.driveDirection =
+                mVehicleDataProvider->speed().value() >= 0.0 ? DriveDirection_forward : DriveDirection_backward;
+        const double lonAccelValue =
+                mVehicleDataProvider->acceleration() / vanetza::units::si::meter_per_second_squared;
         // extreme speed changes can occur when SUMO swaps vehicles between lanes (speed is swapped as well)
         if (lonAccelValue >= -160.0 && lonAccelValue <= 161.0) {
             bvc.longitudinalAcceleration.longitudinalAccelerationValue =
@@ -420,13 +464,15 @@ namespace artery {
             bvc.longitudinalAcceleration.longitudinalAccelerationValue = LongitudinalAccelerationValue_unavailable;
         }
         bvc.longitudinalAcceleration.longitudinalAccelerationConfidence = AccelerationConfidence_unavailable;
-        bvc.curvature.curvatureValue = abs(vdp.curvature() / vanetza::units::reciprocal_metre) * 10000.0;
+        bvc.curvature.curvatureValue =
+                abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) * 10000.0;
         if (bvc.curvature.curvatureValue >= 1023) {
             bvc.curvature.curvatureValue = 1023;
         }
         bvc.curvature.curvatureConfidence = CurvatureConfidence_unavailable;
         bvc.curvatureCalculationMode = CurvatureCalculationMode_yawRateUsed;
-        bvc.yawRate.yawRateValue = round(vdp.yaw_rate(), degree_per_second2) * YawRateValue_degSec_000_01ToLeft * 100.0;
+        bvc.yawRate.yawRateValue =
+                round(mVehicleDataProvider->yaw_rate(), degree_per_second2) * YawRateValue_degSec_000_01ToLeft * 100.0;
         if (bvc.yawRate.yawRateValue < -32766 || bvc.yawRate.yawRateValue > 32766) {
             bvc.yawRate.yawRateValue = YawRateValue_unavailable;
         }
@@ -443,8 +489,8 @@ namespace artery {
         return message;
     }
 
-    vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(const VehicleDataProvider &vdp, uint16_t genDeltaTime) {
-        vanetza::asn1::Cam message = createBenignCAM(vdp, genDeltaTime);
+    vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
+        vanetza::asn1::Cam message = createBenignCAM(genDeltaTime);
 
         switch (mAttackType) {
             case attackTypes::ConstPos: {
@@ -456,18 +502,22 @@ namespace artery {
             }
             case attackTypes::ConstPosOffset: {
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
-                        (round(vdp.latitude(), microDegree) + AttackConstantPositionOffsetLatitudeMicrodegrees) *
+                        (round(mVehicleDataProvider->latitude(), microDegree) +
+                         AttackConstantPositionOffsetLatitudeMicrodegrees) *
                         Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
-                        (round(vdp.longitude(), microDegree) + AttackConstantPositionOffsetLongitudeMicrodegrees) *
+                        (round(mVehicleDataProvider->longitude(), microDegree) +
+                         AttackConstantPositionOffsetLongitudeMicrodegrees) *
                         Longitude_oneMicrodegreeEast;
                 break;
             }
             case attackTypes::RandomPos: {
                 long attackLatitude =
-                        uniform(-AttackRandomPositionMinLatitude, AttackRandomPositionMaxLatitude) * 1000000;
+                        (long) (uniform(-parameters.AttackRandomPositionMinLatitude,
+                                        parameters.AttackRandomPositionMaxLatitude) * 1000000);
                 long attackLongitude =
-                        uniform(-AttackRandomPositionMinLongitude, AttackRandomPositionMaxLongitude) * 1000000;
+                        (long) (uniform(-parameters.AttackRandomPositionMinLongitude,
+                                        parameters.AttackRandomPositionMaxLongitude) * 1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
                         attackLatitude * Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
@@ -475,14 +525,18 @@ namespace artery {
                 break;
             }
             case attackTypes::RandomPosOffset: {
-                long attackLatitudeOffset = uniform(-AttackRandomPositionOffsetMaxLatitudeOffset,
-                                                    AttackRandomPositionOffsetMaxLatitudeOffset) * 1000000;
-                long attackLongitudeOffset = uniform(-AttackRandomPositionOffsetMaxLongitudeOffset,
-                                                     AttackRandomPositionOffsetMaxLongitudeOffset) * 1000000;
+                long attackLatitudeOffset = (long) (uniform(-parameters.AttackRandomPositionOffsetMaxLatitudeOffset,
+                                                            parameters.AttackRandomPositionOffsetMaxLatitudeOffset) *
+                                                    1000000);
+                long attackLongitudeOffset = (long) (uniform(-parameters.AttackRandomPositionOffsetMaxLongitudeOffset,
+                                                             parameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
+                                                     1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
-                        (round(vdp.latitude(), microDegree) + attackLatitudeOffset) * Latitude_oneMicrodegreeNorth;
+                        (round(mVehicleDataProvider->latitude(), microDegree) + attackLatitudeOffset) *
+                        Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
-                        (round(vdp.longitude(), microDegree) + attackLongitudeOffset) * Longitude_oneMicrodegreeEast;
+                        (round(mVehicleDataProvider->longitude(), microDegree) + attackLongitudeOffset) *
+                        Longitude_oneMicrodegreeEast;
                 break;
             }
             case attackTypes::ConstSpeed: {
@@ -491,18 +545,19 @@ namespace artery {
             }
             case attackTypes::ConstSpeedOffset: {
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
-                        vdp.speed() + AttackConstantSpeedOffsetValue);
+                        mVehicleDataProvider->speed() + AttackConstantSpeedOffsetValue);
                 break;
             }
             case attackTypes::RandomSpeed: {
-                double randomSpeed = uniform(AttackRandomSpeedMin, AttackRandomSpeedMax);
+                double randomSpeed = uniform(parameters.AttackRandomSpeedMin, parameters.AttackRandomSpeedMax);
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
                         randomSpeed * boost::units::si::meter_per_second);
                 break;
             }
             case attackTypes::RandomSpeedOffset: {
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
-                        vdp.speed() + (uniform(0, AttackRandomSpeedOffsetMax) * boost::units::si::meter_per_second));
+                        mVehicleDataProvider->speed() +
+                        (uniform(0, parameters.AttackRandomSpeedOffsetMax) * boost::units::si::meter_per_second));
                 break;
             }
             case attackTypes::EventualStop: {
@@ -510,47 +565,86 @@ namespace artery {
                     message->cam.camParameters.basicContainer.referencePosition = attackEventualStopPosition;
                     message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
                     message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
-                } else if (AttackEventualStopProbabilityThreshold < uniform(0, 1)) {
-                    attackEventualStopHasStopped = true;
-                    attackEventualStopPosition = message->cam.camParameters.basicContainer.referencePosition;
-                    message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
-                    message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
+                } else {
+                    double num = uniform(0, 1);
+                    std::cout << num << std::endl;
+                    if (parameters.AttackEventualStopProbabilityThreshold > num) {
+                        attackEventualStopHasStopped = true;
+                        attackEventualStopPosition = message->cam.camParameters.basicContainer.referencePosition;
+                        message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
+                        message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
+                    } else {
+                    }
                 }
                 break;
             }
             case attackTypes::Disruptive: {
-                if (disruptiveMessageQueue.size() >= AttackDisruptiveMinimumReceived) {
-                    int index = uniform(0, disruptiveMessageQueue.size());
+                if (disruptiveMessageQueue.size() >= parameters.AttackDisruptiveMinimumReceived) {
+                    int index = (int) uniform(0, (double) disruptiveMessageQueue.size());
                     auto it = disruptiveMessageQueue.begin();
                     std::advance(it, index);
                     message = *it;
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
-                    message->header.stationID = vdp.getStationId();
+                    message->header.stationID = mVehicleDataProvider->getStationId();
+                } else {
+                    message = vanetza::asn1::Cam();
                 }
                 break;
             }
             case attackTypes::DataReplay: {
+                if (attackDataReplayCurrentStationId == -1) {
+                    auto it = receivedMessages.begin();
+                    if (it != receivedMessages.end()) {
+                        uint32_t mostReceivedStationId = -1;
+                        unsigned long maxSize = 0;
+                        for (; it != receivedMessages.end(); ++it) {
+                            if (receivedMessages[it->first].size() > maxSize) {
+                                maxSize = receivedMessages[it->first].size();
+                                mostReceivedStationId = it->first;
+                            }
+                        }
+                        attackDataReplayCurrentStationId = mostReceivedStationId;
+                        message = receivedMessages[attackDataReplayCurrentStationId].front();
+                        receivedMessages[attackDataReplayCurrentStationId].pop();
+                        message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+                                mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                        message->header.stationID = mVehicleDataProvider->getStationId();
+                    } else {
+                        message = vanetza::asn1::Cam();
+                    }
+                } else {
+                    if (!receivedMessages[attackDataReplayCurrentStationId].empty()) {
+                        message = receivedMessages[attackDataReplayCurrentStationId].front();
+                        receivedMessages[attackDataReplayCurrentStationId].pop();
+                        message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+                                mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                        message->header.stationID = mVehicleDataProvider->getStationId();
+                    } else {
+                        receivedMessages.erase(attackDataReplayCurrentStationId);
+                        attackDataReplayCurrentStationId = -1;
+                        message = vanetza::asn1::Cam();
+                    }
+                }
                 break;
             }
             case attackTypes::StaleMessages: {
                 staleMessageQueue.push(message);
-                if (staleMessageQueue.size() >= AttackStaleDelayCount) {
+                if (staleMessageQueue.size() >= parameters.AttackStaleDelayCount) {
 
                     message = staleMessageQueue.front();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
                     staleMessageQueue.pop();
                 } else {
-                    vanetza::asn1::Cam emptyMessage;
-                    return emptyMessage;
+                    message = vanetza::asn1::Cam();
                 }
                 break;
             }
             case attackTypes::DoS: {
-                EV_INFO << "Sent DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " old:  "
-                        << message->cam.generationDeltaTime << " new: "
-                        << (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) << "\n";
+//                EV_INFO << "Sent DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " old:  "
+//                        << message->cam.generationDeltaTime << " new: "
+//                        << (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) << "\n";
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime()));
                 break;
             }

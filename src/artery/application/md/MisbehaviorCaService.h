@@ -20,6 +20,7 @@
 #include <omnetpp/crng.h>
 #include <map>
 #include "artery/traci/VehicleController.h"
+#include "MisbehaviorCaParameters.h"
 
 namespace artery {
 
@@ -54,19 +55,15 @@ namespace artery {
 
         void sendCam(const omnetpp::SimTime &);
 
-        vanetza::asn1::Cam createBenignCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
+        vanetza::asn1::Cam createBenignCAM(uint16_t genDeltaTime);
 
-        vanetza::asn1::Cam createAttackCAM(const VehicleDataProvider &, uint16_t genDeltaTime);
+        vanetza::asn1::Cam createAttackCAM(uint16_t genDeltaTime);
 
         omnetpp::SimTime genCamDcc();
 
-
-
-
-        std::queue<std::string> activePoIs;
-        int CamLocationVisualizerMaxLength;
-
         void setMisbehaviorType(double localAttacker, double globalAttacker);
+
+        void visualizeCamPosition(vanetza::asn1::Cam cam);
 
         ChannelNumber mPrimaryChannel = channel::CCH;
         const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
@@ -91,73 +88,28 @@ namespace artery {
         bool mDccRestriction;
         bool mFixedRate;
 
+
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
         attackTypes::AttackTypes mAttackType;
 
-        double LOCAL_ATTACKER_PROBABILITY;
-        double GLOBAL_ATTACKER_PROBABILITY;
-        double ATTACK_START_TIME;
-
-        double playgroundSizeX;
-        double playgroundSizeY;
-
-        //Constant Position Attack
-        double AttackConstantPositionMinLatitude;
-        double AttackConstantPositionMaxLatitude;
-        double AttackConstantPositionMinLongitude;
-        double AttackConstantPositionMaxLongitude;
         long AttackConstantPositionLatitudeMicrodegrees;
         long AttackConstantPositionLongitudeMicrodegrees;
-
-        //Constant Position Offset Attack
-        double AttackConstantPositionOffsetMaxLatitudeOffset;
-        double AttackConstantPositionOffsetMaxLongitudeOffset;
         long AttackConstantPositionOffsetLatitudeMicrodegrees;
         long AttackConstantPositionOffsetLongitudeMicrodegrees;
-
-        // Random Position Attack
-        double AttackRandomPositionMinLatitude;
-        double AttackRandomPositionMaxLatitude;
-        double AttackRandomPositionMinLongitude;
-        double AttackRandomPositionMaxLongitude;
-
-        // Random Position Offset Attack
-        double AttackRandomPositionOffsetMaxLatitudeOffset;
-        double AttackRandomPositionOffsetMaxLongitudeOffset;
-
-        // Constant Speed Attack
-        double AttackConstantSpeedMin;
-        double AttackConstantSpeedMax;
         long AttackConstantSpeedValue;
-
-        //Constant Speed Offset Attack
-        double AttackConstantSpeedOffsetMax;
         vanetza::units::Velocity AttackConstantSpeedOffsetValue;
-
-        // Random Speed Attack
-        double AttackRandomSpeedMin;
-        double AttackRandomSpeedMax;
-
-        // Random Speed Offset Attack
-        double AttackRandomSpeedOffsetMax;
-
-        // Eventual Stop Attack
-        double AttackEventualStopProbabilityThreshold;
-        ReferencePosition_t attackEventualStopPosition;
         bool attackEventualStopHasStopped;
+        ReferencePosition_t attackEventualStopPosition;
+        uint32_t attackDataReplayCurrentStationId;
 
-        // Disruptive Attack
-        int AttackDisruptiveBufferSize;
-        int AttackDisruptiveMinimumReceived;
+
+
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
-
-        // Denial of Service Attack
-        int AttackDoSInterval;
-        bool AttackDoSIgnoreDCC;
-
-        // Stale Messages Attack
-        int AttackStaleDelayCount;
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
+        std::map<uint32_t,std::queue<vanetza::asn1::Cam>> receivedMessages;
+        std::queue<std::string> activePoIs;
+
+
     };
 
     static double totalGenuine = 0;
@@ -172,6 +124,7 @@ namespace artery {
     static TraCIAPI::VehicleScope *traciVehicleScope;
     static std::shared_ptr<const traci::API> traciAPI;
     static const TraCIAPI::POIScope *traciPoiScope;
+    static MisbehaviorCaParameters_t parameters;
 
 } // namespace artery
 

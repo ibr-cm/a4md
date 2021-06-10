@@ -35,6 +35,7 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         
         string appName = default("MisbehaviorCaService");
 
+        bool CamLocationVisualizer = default(false);
         int CamLocationVisualizerMaxLength = default(500);
 
         double START_ATTACK = default(10);
@@ -89,7 +90,7 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         double AttackRandomSpeedOffsetMax = default(5.0);
 
         // Eventual Stop Attack
-        double AttackEventualStopProbabilityThreshold = default(0.05);
+        double AttackEventualStopProbabilityThreshold = default(0.2);
 
 		// Disruptive Attack
 		int AttackDisruptiveBufferSize = default(500);
