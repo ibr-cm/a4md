@@ -91,19 +91,21 @@ void Middleware::initialize(int stage)
 void Middleware::initializeServices(int stage)
 {
     cXMLElement* config = par("services").xmlValue();
+    std::list<std::string> applicableServiceNames;
     for (cXMLElement* service_cfg : config->getChildrenByTagName("service")) {
         cModuleType* module_type = cModuleType::get(service_cfg->getAttribute("type"));
 
         cXMLElement* service_filters = service_cfg->getFirstChildWithTag("filters");
         bool service_applicable = true;
         if (service_filters) {
-            artery::FilterRules rules(getRNG(0), mIdentity);
+            artery::FilterRules rules(getRNG(0), mIdentity,&applicableServiceNames);
             service_applicable = rules.applyFilterConfig(*service_filters);
         }
 
         if (service_applicable) {
             const char* service_name = service_cfg->getAttribute("name") ?
                 service_cfg->getAttribute("name") : module_type->getName();
+            applicableServiceNames.emplace_back(service_name);
             cModule* module = module_type->create(service_name, this);
             module->finalizeParameters();
             module->buildInside();

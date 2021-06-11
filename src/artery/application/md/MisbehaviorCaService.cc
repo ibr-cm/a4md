@@ -207,7 +207,8 @@ namespace artery {
         mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
 
 
-        setMisbehaviorType(parameters.LOCAL_ATTACKER_PROBABILITY, parameters.GLOBAL_ATTACKER_PROBABILITY);
+//        setMisbehaviorType(parameters.LOCAL_ATTACKER_PROBABILITY, parameters.GLOBAL_ATTACKER_PROBABILITY);
+        mMisbehaviorType = misbehaviorTypes::LocalAttacker;
         if(parameters.StaticAttackType > 0){
             mAttackType = attackTypes::AttackTypes(parameters.StaticAttackType);
         } else {
@@ -216,12 +217,13 @@ namespace artery {
 
         par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
-        if (mMisbehaviorType == misbehaviorTypes::Benign) {
-            mAttackType = attackTypes::Benign;
-            traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(0, 255, 0, 255));
-        } else {
-            traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
-        }
+//        if (mMisbehaviorType == misbehaviorTypes::Benign) {
+//            mAttackType = attackTypes::Benign;
+//            traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(0, 255, 0, 255));
+//        } else {
+//            traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
+//        }
+        traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
         if (mAttackType == attackTypes::DoS) {
             mGenCamMin = {parameters.AttackDoSInterval, SIMTIME_MS};
