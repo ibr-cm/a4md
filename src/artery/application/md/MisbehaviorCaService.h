@@ -4,8 +4,8 @@
 * Licensed under GPLv2, see COPYING file for detailed license and warranty terms.
 */
 
-#ifndef ARTERY_CASERVICE_H_
-#define ARTERY_CASERVICE_H_
+#ifndef ARTERY_MISBEHAVIORCASERVICE_H_
+#define ARTERY_MISBEHAVIORCASERVICE_H_
 
 #include "artery/application/ItsG5BaseService.h"
 #include "artery/utility/Channel.h"
@@ -34,7 +34,7 @@ namespace artery {
     public:
         MisbehaviorCaService();
 
-        ~MisbehaviorCaService();
+        ~MisbehaviorCaService() override;
 
         void initialize() override;
 
@@ -42,7 +42,6 @@ namespace artery {
 
         void trigger() override;
 
-        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
 
     private:
         void checkTriggeringConditions(const omnetpp::SimTime &);
@@ -61,7 +60,6 @@ namespace artery {
 
         omnetpp::SimTime genCamDcc();
 
-        void setMisbehaviorType(double localAttacker, double globalAttacker);
 
         void visualizeCamPosition(vanetza::asn1::Cam cam);
 
@@ -112,14 +110,9 @@ namespace artery {
 
     };
 
-    static double totalGenuine = 0;
-    static double totalLocalAttacker = 0;
-    static double totalGlobalAttacker = 0;
     static bool staticInitializationComplete = false;
 
     void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
-
-    static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
 
     static TraCIAPI::VehicleScope *traciVehicleScope;
     static std::shared_ptr<const traci::API> traciAPI;
@@ -128,4 +121,4 @@ namespace artery {
 
 } // namespace artery
 
-#endif /* ARTERY_CASERVICE_H_ */
+#endif /* ARTERY_MISBEHAVIORCASERVICE_H_ */

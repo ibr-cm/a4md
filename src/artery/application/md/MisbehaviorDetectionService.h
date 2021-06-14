@@ -5,28 +5,47 @@
 #include "artery/application/ItsG5Service.h"
 #include <vanetza/asn1/asn1c_wrapper.hpp>
 #include <curl/curl.h>
+#include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/application/VehicleDataProvider.h"
+#include "MisbehaviorTypes.h"
 
-namespace artery
-{
-    class MisbehaviorDetectionService : public ItsG5Service
-    {
+namespace artery {
+    class MisbehaviorDetectionService : public ItsG5Service {
     public:
         MisbehaviorDetectionService();
-        ~MisbehaviorDetectionService();
+
+        ~MisbehaviorDetectionService() override;
+
         void initialize() override;
-        void indicate(const vanetza::btp::DataIndication&, omnetpp::cPacket*, const NetworkInterface&) override;
+
+        void indicate(const vanetza::btp::DataIndication &, omnetpp::cPacket *, const NetworkInterface &) override;
+
         void trigger() override;
-        void receiveSignal(omnetpp::cComponent*, omnetpp::simsignal_t, omnetpp::cObject*, omnetpp::cObject*) override;
-    protected: 
-        void handleMessage(omnetpp::cMessage*) override;
+
+        void
+        receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, omnetpp::cObject *, omnetpp::cObject *) override;
+
+
+        static void addStationIdToVehicleList(uint32_t stationId, misbehaviorTypes::MisbehaviorTypes misbehaviorType);
+
+        static void removeStationIdFromVehicleList(uint32_t stationId);
+
+    protected:
+        void handleMessage(omnetpp::cMessage *) override;
+
     private:
-        omnetpp::cMessage* m_self_msg;
+        omnetpp::cMessage *m_self_msg;
         CURL *curl;
-        std::string getCamJson(vanetza::asn1::Cam);
-		const VehicleDataProvider* mVehicleDataProvider = nullptr;
-		const Timer* mTimer = nullptr;
+        const VehicleDataProvider *mVehicleDataProvider = nullptr;
+        const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
+        const Timer *mTimer = nullptr;
+
+        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
+
     };
+
+    static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
+
 
 } // namespace artery
 

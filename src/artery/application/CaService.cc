@@ -20,6 +20,7 @@
 #include <vanetza/dcc/transmit_rate_control.hpp>
 #include <vanetza/facilities/cam_functions.hpp>
 #include <chrono>
+#include "artery/application/md/MisbehaviorDetectionService.h"
 
 namespace artery {
 
@@ -64,6 +65,10 @@ namespace artery {
             mGenCamLowDynamicsLimit(3) {
     }
 
+    CaService::~CaService() {
+        MisbehaviorDetectionService::removeStationIdFromVehicleList(mVehicleDataProvider->getStationId());
+    }
+
     void CaService::initialize() {
         ItsG5BaseService::initialize();
         mNetworkInterfaceTable = &getFacilities().get_const<NetworkInterfaceTable>();
@@ -97,6 +102,10 @@ namespace artery {
         getFacilities().get_const<traci::VehicleController>().getTraCI()->vehicle.setColor(
                 getFacilities().get_const<traci::VehicleController>().getVehicleId(),
                 libsumo::TraCIColor(0, 255, 0, 255));
+
+
+        MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(),
+                                                               misbehaviorTypes::Benign);
 
     }
 

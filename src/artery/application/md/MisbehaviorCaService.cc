@@ -20,15 +20,21 @@
 #include <chrono>
 #include <omnetpp/ccomponent.h>
 
+#include "artery/application/CaService.h"
+#include "artery/application/md/MisbehaviorDetectionService.h"
+
 
 using namespace omnetpp;
 namespace artery {
 
-    auto microDegree = vanetza::units::degree * boost::units::si::micro;
-    auto deciDegree = vanetza::units::degree * boost::units::si::deci;
+
+
+    auto microdegree2 = vanetza::units::degree * boost::units::si::micro;
+    auto decidegree2 = vanetza::units::degree * boost::units::si::deci;
     auto degree_per_second2 = vanetza::units::degree / vanetza::units::si::second;
     auto centimeter_per_second2 = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
+//    artery::mi
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
     static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     static const auto scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
@@ -62,10 +68,7 @@ namespace artery {
     }
 
     MisbehaviorCaService::~MisbehaviorCaService() {
-        auto it = mStationIdMisbehaviorTypeMap.find(mVehicleDataProvider->getStationId());
-        if (it != mStationIdMisbehaviorTypeMap.end()) {
-            mStationIdMisbehaviorTypeMap.erase(it);
-        }
+        MisbehaviorDetectionService::removeStationIdFromVehicleList(mVehicleDataProvider->getStationId());
 
         while (!activePoIs.empty()) {
             traciPoiScope->remove(activePoIs.front());
@@ -207,7 +210,6 @@ namespace artery {
         mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
 
 
-//        setMisbehaviorType(parameters.LOCAL_ATTACKER_PROBABILITY, parameters.GLOBAL_ATTACKER_PROBABILITY);
         mMisbehaviorType = misbehaviorTypes::LocalAttacker;
         if(parameters.StaticAttackType > 0){
             mAttackType = attackTypes::AttackTypes(parameters.StaticAttackType);
@@ -217,12 +219,6 @@ namespace artery {
 
         par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
-//        if (mMisbehaviorType == misbehaviorTypes::Benign) {
-//            mAttackType = attackTypes::Benign;
-//            traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(0, 255, 0, 255));
-//        } else {
-//            traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
-//        }
         traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
         if (mAttackType == attackTypes::DoS) {
@@ -230,46 +226,10 @@ namespace artery {
             mDccRestriction = !parameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
+        MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(), mMisbehaviorType);
 
-        mStationIdMisbehaviorTypeMap[mVehicleDataProvider->getStationId()] = mMisbehaviorType;
     }
 
-    misbehaviorTypes::MisbehaviorTypes MisbehaviorCaService::getMisbehaviorTypeOfStationId(uint32_t stationId) {
-        auto search = mStationIdMisbehaviorTypeMap.find(stationId);
-        if (search != mStationIdMisbehaviorTypeMap.end()) {
-            return search->second;
-        } else {
-            return misbehaviorTypes::SIZE_OF_ENUM;
-        }
-    }
-
-    void MisbehaviorCaService::setMisbehaviorType(double localAttacker, double globalAttacker) {
-        if (simTime().dbl() < parameters.ATTACK_START_TIME) {
-            mMisbehaviorType = misbehaviorTypes::Benign;
-            return;
-        }
-
-        if ((totalLocalAttacker + totalGenuine) == 0) {
-            totalGenuine++;
-            mMisbehaviorType = misbehaviorTypes::Benign;
-            return;
-        }
-
-        double realFactor = totalLocalAttacker / (totalGenuine + totalLocalAttacker);
-        if (localAttacker > realFactor) {
-            totalLocalAttacker++;
-            mMisbehaviorType = misbehaviorTypes::LocalAttacker;
-        } else {
-            double realGFactor = totalGlobalAttacker / (totalGenuine + totalGlobalAttacker);
-            if (globalAttacker > realGFactor) {
-                totalGlobalAttacker++;
-                mMisbehaviorType = misbehaviorTypes::GlobalAttacker;
-            } else {
-                totalGenuine++;
-                mMisbehaviorType = misbehaviorTypes::Benign;
-            }
-        }
-    }
 
     void MisbehaviorCaService::trigger() {
         Enter_Method("trigger");
@@ -446,9 +406,9 @@ namespace artery {
         basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
         basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
         basic.referencePosition.longitude =
-                round(mVehicleDataProvider->longitude(), microDegree) * Longitude_oneMicrodegreeEast;
+                round(mVehicleDataProvider->longitude(), microdegree2) * Longitude_oneMicrodegreeEast;
         basic.referencePosition.latitude =
-                round(mVehicleDataProvider->latitude(), microDegree) * Latitude_oneMicrodegreeNorth;
+                round(mVehicleDataProvider->latitude(), microdegree2) * Latitude_oneMicrodegreeNorth;
         basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
         basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
                 SemiAxisLength_unavailable;
@@ -457,7 +417,7 @@ namespace artery {
 
         hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
         BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
-        bvc.heading.headingValue = round(mVehicleDataProvider->heading(), deciDegree);
+        bvc.heading.headingValue = round(mVehicleDataProvider->heading(), decidegree2);
         bvc.heading.headingConfidence = HeadingConfidence_equalOrWithinOneDegree;
         bvc.speed.speedValue = buildSpeedValue2(mVehicleDataProvider->speed());
         bvc.speed.speedConfidence = SpeedConfidence_equalOrWithinOneCentimeterPerSec * 3;
@@ -511,11 +471,11 @@ namespace artery {
             }
             case attackTypes::ConstPosOffset: {
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
-                        (round(mVehicleDataProvider->latitude(), microDegree) +
+                        (round(mVehicleDataProvider->latitude(), microdegree2) +
                          AttackConstantPositionOffsetLatitudeMicrodegrees) *
                         Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
-                        (round(mVehicleDataProvider->longitude(), microDegree) +
+                        (round(mVehicleDataProvider->longitude(), microdegree2) +
                          AttackConstantPositionOffsetLongitudeMicrodegrees) *
                         Longitude_oneMicrodegreeEast;
                 break;
@@ -541,10 +501,10 @@ namespace artery {
                                                              parameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
                                                      1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
-                        (round(mVehicleDataProvider->latitude(), microDegree) + attackLatitudeOffset) *
+                        (round(mVehicleDataProvider->latitude(), microdegree2) + attackLatitudeOffset) *
                         Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
-                        (round(mVehicleDataProvider->longitude(), microDegree) + attackLongitudeOffset) *
+                        (round(mVehicleDataProvider->longitude(), microdegree2) + attackLongitudeOffset) *
                         Longitude_oneMicrodegreeEast;
                 break;
             }

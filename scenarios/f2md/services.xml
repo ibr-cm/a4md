@@ -20,5 +20,11 @@
             <type pattern="artery.inet.Person" match="inverse"/>
         </filters>
     </service>
+<!--    <service type="artery.envmod.service.EnvmodPrinter">-->
+<!--        <listener port="3001" />-->
+<!--        <filters operator="and">-->
+<!--            <type pattern="artery.inet.Person" match="inverse"/>-->
+<!--        </filters>-->
+<!--    </service>-->
 </services>
 
