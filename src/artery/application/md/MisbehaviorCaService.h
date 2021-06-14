@@ -16,7 +16,7 @@
 #include <vanetza/units/velocity.hpp>
 #include <omnetpp/simtime.h>
 #include "artery/application/md/MisbehaviorTypes.h"
-#include "artery/application/md/AttackTypes.h"
+#include "artery/application/md/checks/AttackTypes.h"
 #include <omnetpp/crng.h>
 #include <map>
 #include "artery/traci/VehicleController.h"

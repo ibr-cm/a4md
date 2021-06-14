@@ -1,7 +1,7 @@
 #ifndef ARTERY_LEGACYCHECK_H_
 #define ARTERY_LEGACYCHECK_H_
 
-#include "artery/application/md/CheckResult.h"
+#include "CheckResult.h"
 #include <vanetza/asn1/cam.hpp>
 #include <omnetpp.h>
 #include <artery/application/md/kalman/Kalman_SVI.h>
@@ -9,6 +9,7 @@
 #include <artery/application/md/kalman/Kalman_SI.h>
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/application/VehicleDataProvider.h>
+#include "artery/traci/VehicleController.h"
 #include "artery/utility/Geometry.h"
 
 namespace artery {
@@ -17,7 +18,7 @@ namespace artery {
     public:
         LegacyChecks(double maxPlausibleSpeed, double maxPlausibleAcceleration, double MaxPlausibleDeceleration);
 
-        CheckResult checkCAM(vanetza::asn1::Cam);
+        CheckResult checkCAM(const vanetza::asn1::Cam &);
 
     private:
         double maxPlausibleSpeed;
@@ -33,44 +34,56 @@ namespace artery {
         double maxMgtRngDown;
         double maxMgtRngUp;
         double maxSuddenAppearanceRange;
-        double maxCamFrequency;
+        long maxCamFrequency;
         double maxOffroadSpeed;
         double positionHeadingTime;
         double maxHeadingChange;
+
+
+        const traci::VehicleController *mVehicleController = nullptr;
         const VehicleDataProvider *mVehicleDataProvider;
         const LocalEnvironmentModel *mLocalEnvironmentModel;
         TrackedObjectsFilterRange envModObjects;
+
+
+        Position lastCamPosition;
+        double lastCamSpeed;
         vanetza::asn1::Cam lastCam;
-        vanetza::asn1::Cam currentCam;
-//        Position myPosition;
+        double camDeltaTime;
+        Position mPosition;
 
-        static double calculateHeadingAngle(const Position position);
+        static double calculateHeadingAngle(const Position &position);
 
-        double ProximityPlausibilityCheck(Position *testPosition, Position *myPosition, Position *myHeading);
+        double ProximityPlausibilityCheck(Position &testPosition, Position &myPosition);
 
-        double RangePlausibilityCheck(Position *senderPosition, Position *receiverPosition);
+        double RangePlausibilityCheck(Position &senderPosition, Position &receiverPosition) const;
 
-        double PositionConsistencyCheck(Position *senderPosition, Position *receiverPostion, double time);
+        double PositionConsistencyCheck(Position &senderPosition, Position &receiverPosition, double time) const;
 
-        double SpeedConsistencyCheck(double, double, double);
+        double SpeedConsistencyCheck(double currentSpeed, double oldSpeed, double time) const;
 
-        double PositionSpeedConsistencyCheck(Position *, Position *, double, double, double);
+        double PositionSpeedConsistencyCheck(Position &currentPosition, Position &oldPosition, double currentSpeed,
+                                             double oldSpeed, double deltaTime) const;
 
-        double PositionSpeedMaxConsistencyCheck(Position *, Position *, double, double, double);
+        double PositionSpeedMaxConsistencyCheck(Position &currentPosition, Position &oldPosition,
+                                                double currentSpeed, double oldSpeed, double deltaTime) const;
 
-        double SpeedPlausibilityCheck(double);
+        double SpeedPlausibilityCheck(double speed) const;
 
         double IntersectionCheck(Position nodePosition1, Position nodeSize1, Position head1, Position nodePosition2,
                                  Position nodeSize2, Position head2, double deltaTime);
 
-        double SuddenAppearenceCheck(Position *, Position *);
+        double SuddenAppearenceCheck(Position &senderPosition, Position &receiverPosition);
 
-        double FrequencyCheck(double, double);
+        double PositionPlausibilityCheck(Position &senderPosition, double senderSpeed);
 
-        double PositionPlausibilityCheck(Position *, double);
+        double FrequencyCheck(long newTime,long oldTime) const;
 
-        double PositionHeadingConsistencyCheck(Position *currentHeading, Position *currentPosition, Position *oldPosition,
-                                               double deltaTime, double currentSpeed);
+
+        double
+        PositionHeadingConsistencyCheck(const HeadingValue_t &currentHeading, Position &currentPosition,
+                                        Position &oldPosition,
+                                        double deltaTime, double currentSpeed) const;
 
         void
         KalmanPositionSpeedConsistencyCheck(Position *curPosition, Position *curPositionConfidence, Position *curSpeed,
