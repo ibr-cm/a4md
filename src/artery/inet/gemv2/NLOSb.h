@@ -148,7 +148,7 @@ protected:
     /**
      * Compute reflection coefficient (Gamma)
      * This method depends on polarization member attribute!
-     * \param theta incident angle (rad) between surface and ray
+     * \param theta incident angle (rad) between surface and rayobj_ptr.lock()
      * \param permittivity relative permittivity of surface
      * \return reflection coefficient
      */

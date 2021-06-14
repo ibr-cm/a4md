@@ -72,6 +72,16 @@ add_library(core SHARED
     application/md/MisbehaviorDetectionService.cc
     application/md/MisbehaviorCaService.cc
     application/md/base64.cc
+    application/md/checks/LegacyChecks.cc
+    application/md/kalman/Kalman_SC.cc
+    application/md/kalman/Kalman_SI.cc
+    application/md/kalman/Kalman_SVI.cc
+    application/md/kalman/KalmanFilterJ_SC.cc
+    application/md/kalman/KalmanFilterJ_SI.cc
+    application/md/kalman/KalmanFilterJ_SVI.cc
+    application/md/kalman/MatrixOp_SC.cc
+    application/md/kalman/MatrixOp_SI.cc
+    application/md/kalman/MatrixOp_SVI.cc
 )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)
