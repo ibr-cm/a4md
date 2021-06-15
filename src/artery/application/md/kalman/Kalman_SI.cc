@@ -14,7 +14,7 @@ using namespace std;
 
 Kalman_SI::Kalman_SI() {
 
-  float T = 1;
+  double T = 1;
 
   A[0][0] = 1;
   A[0][1] = 0;
@@ -25,7 +25,7 @@ Kalman_SI::Kalman_SI() {
   B[0][0] = T;
   B[1][0] = T;
 
-  float H[KLM_N_SI][KLM_N_SI];
+  double H[KLM_N_SI][KLM_N_SI];
 
   H[0][0] = 1;
   H[0][1] = 0;
@@ -33,7 +33,7 @@ Kalman_SI::Kalman_SI() {
   H[1][0] = 0;
   H[1][1] = 1;
 
-  float Q[KLM_N_SI][KLM_N_SI];
+  double Q[KLM_N_SI][KLM_N_SI];
   Q[0][0] = 10;
   Q[0][1] = 0;
 
@@ -52,12 +52,12 @@ Kalman_SI::Kalman_SI() {
 
 }
 
-bool Kalman_SI::isInit(){
+bool Kalman_SI::isInit() const{
   return init;
 }
 
 
-void Kalman_SI::setInitial(float _X, float _Y){
+void Kalman_SI::setInitial(double X, double Y){
 
   P0[0][0] = 10;
   P0[0][1] = 0;
@@ -65,15 +65,15 @@ void Kalman_SI::setInitial(float _X, float _Y){
   P0[1][0] = 0;
   P0[1][1] = 10;
 
-  X0[0] = _X;
-  X0[1] = _Y;
+  X0[0] = X;
+  X0[1] = Y;
 
   kalmanFilterJ_SI.setInitial(X0, P0);
 
   init = true;
 }
 
-void Kalman_SI::setT(float T){
+void Kalman_SI::setT(double T){
 
   A[0][0] = 1;
   A[0][1] = 0;
@@ -88,7 +88,7 @@ void Kalman_SI::setT(float T){
   kalmanFilterJ_SI.setB(B);
 }
 
-void Kalman_SI::setConfidence(float CX, float CY){
+void Kalman_SI::setConfidence(double CX, double CY){
 
   R[0][0] = CX;
   R[0][1] = 0;
@@ -100,13 +100,13 @@ void Kalman_SI::setConfidence(float CX, float CY){
   kalmanFilterJ_SI.setR(R);
 }
 
-void Kalman_SI::getDeltaPos(float T, float _X, float _Y, float CX, float CY, float * Delta){
+void Kalman_SI::getDeltaPos(double T, double X, double Y, double CX, double CY, double * Delta){
 
     setT(T);
     setConfidence(CX,CY);
 
-    X0[0] = _X;
-    X0[1] = _Y;
+    X0[0] = X;
+    X0[1] = Y;
 
     kalmanFilterJ_SI.predict();
     kalmanFilterJ_SI.correct(X0);
@@ -117,16 +117,16 @@ void Kalman_SI::getDeltaPos(float T, float _X, float _Y, float CX, float CY, flo
 }
 
 
-void Kalman_SI::getDeltaPos(float T, float _X, float _Y, float _AX, float _AY, float CX, float CY, float * Delta){
+void Kalman_SI::getDeltaPos(double T, double X, double Y, double AX, double AY, double CX, double CY, double * Delta){
 
     setT(T);
     setConfidence(CX,CY);
 
-    X0[0] = _X;
-    X0[1] = _Y;
+    X0[0] = X;
+    X0[1] = Y;
 
-    U[0] = _AX;
-    U[1] = _AY;
+    U[0] = AX;
+    U[1] = AY;
 
     kalmanFilterJ_SI.predict(U);
     kalmanFilterJ_SI.correct(X0);

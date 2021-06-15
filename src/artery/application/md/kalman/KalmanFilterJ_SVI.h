@@ -22,54 +22,54 @@ class KalmanFilterJ_SVI {
 		int n;
 		int m; 
 
-		float A[KLM_N_SVI][KLM_N_SVI];
-		float AT[KLM_N_SVI][KLM_N_SVI]; 
+		double A[KLM_N_SVI][KLM_N_SVI];
+		double AT[KLM_N_SVI][KLM_N_SVI]; 
 
-		float B[KLM_N_SVI][KLM_M_SVI]; 
+		double B[KLM_N_SVI][KLM_M_SVI]; 
 
-		float H[KLM_N_SVI][KLM_N_SVI]; 
-		float HT[KLM_N_SVI][KLM_N_SVI]; 
-		float Q[KLM_N_SVI][KLM_N_SVI];
-		float R[KLM_N_SVI][KLM_N_SVI];
-		float I[KLM_N_SVI][KLM_N_SVI]; 
+		double H[KLM_N_SVI][KLM_N_SVI]; 
+		double HT[KLM_N_SVI][KLM_N_SVI]; 
+		double Q[KLM_N_SVI][KLM_N_SVI];
+		double R[KLM_N_SVI][KLM_N_SVI];
+		double I[KLM_N_SVI][KLM_N_SVI]; 
 
-		float X[KLM_N_SVI]; 
-		float P[KLM_N_SVI][KLM_N_SVI]; 
-		float K[KLM_N_SVI][KLM_N_SVI]; 
+		double X[KLM_N_SVI]; 
+		double P[KLM_N_SVI][KLM_N_SVI]; 
+		double K[KLM_N_SVI][KLM_N_SVI]; 
 
-		float X0[KLM_N_SVI]; 
-		float P0[KLM_N_SVI][KLM_N_SVI]; 
+		double X0[KLM_N_SVI]; 
+		double P0[KLM_N_SVI][KLM_N_SVI]; 
 
-		float Temp_1[KLM_N_SVI];
-		float Temp_2[KLM_N_SVI]; 
-		float Temp_3[KLM_N_SVI]; 
+		double Temp_1[KLM_N_SVI];
+		double Temp_2[KLM_N_SVI]; 
+		double Temp_3[KLM_N_SVI]; 
 
-		float TempN_1[KLM_N_SVI][KLM_N_SVI]; 
-		float TempN_2[KLM_N_SVI][KLM_N_SVI]; 
-		float TempN_3[KLM_N_SVI][KLM_N_SVI]; 
-		float TempN_4[KLM_N_SVI][KLM_N_SVI]; 
+		double TempN_1[KLM_N_SVI][KLM_N_SVI]; 
+		double TempN_2[KLM_N_SVI][KLM_N_SVI]; 
+		double TempN_3[KLM_N_SVI][KLM_N_SVI]; 
+		double TempN_4[KLM_N_SVI][KLM_N_SVI]; 
 
 		MatrixOp_SVI matrixOp_SVI = MatrixOp_SVI();
 		
 
 		KalmanFilterJ_SVI();
 
-		void setFixed ( float _A [][KLM_N_SVI], float  _H [][KLM_N_SVI], float _Q [][KLM_N_SVI], float _R [][KLM_N_SVI]);
+		void setFixed ( double _A [][KLM_N_SVI], double  _H [][KLM_N_SVI], double _Q [][KLM_N_SVI], double _R [][KLM_N_SVI]);
 
-		void setFixed ( float _A [][KLM_N_SVI], float  _H [][KLM_N_SVI], float _Q [][KLM_N_SVI], float _R [][KLM_N_SVI] , float _B [][KLM_M_SVI]);
+		void setFixed ( double _A [][KLM_N_SVI], double  _H [][KLM_N_SVI], double _Q [][KLM_N_SVI], double _R [][KLM_N_SVI] , double _B [][KLM_M_SVI]);
 
-		void setA(float _A [][KLM_N_SVI]);
+		void setA(double _A [][KLM_N_SVI]);
 
-		void setB(float _B [][KLM_M_SVI]);
+		void setB(double _B [][KLM_M_SVI]);
 
-		void setR(float _R [][KLM_N_SVI]);
+		void setR(double _R [][KLM_N_SVI]);
 
-		void setInitial( float  _X0[], float _P0[][KLM_N_SVI] );
+		void setInitial( double  _X0[], double _P0[][KLM_N_SVI] );
 
 		void predict ( void );
 
-		void predict( float  U []);
-		void correct ( float Z []);
+		void predict( double  U []);
+		void correct ( double Z []);
 
 };
 

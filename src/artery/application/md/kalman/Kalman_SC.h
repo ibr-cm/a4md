@@ -10,7 +10,7 @@
  *******************************************************************************/
 #ifndef __VEINS_Kalman_SC_SC
 #define __VEINS_Kalman_SC_SC
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include "KalmanFilterJ_SC.h"
 using namespace std;
@@ -18,27 +18,27 @@ using namespace std;
 class Kalman_SC {
 
 private:	
-	void setT(float T);
-	void setConfidence(float CX, float CY);
+	void setT(double T);
+	void setConfidence(double CX, double CY);
 
-	float pos = 0;
-	float A[KLM_N_SC][KLM_N_SC];
-	float B[KLM_N_SC][KLM_M_SC];
-	float R[KLM_N_SC][KLM_N_SC];
-	float P0[KLM_N_SC][KLM_N_SC]; 
-	float X0[KLM_N_SC];
+	double pos = 0;
+	double A[KLM_N_SC][KLM_N_SC];
+	double B[KLM_N_SC][KLM_M_SC];
+	double R[KLM_N_SC][KLM_N_SC];
+	double P0[KLM_N_SC][KLM_N_SC]; 
+	double X0[KLM_N_SC];
 
-	float U[KLM_N_SC];
+	double U[KLM_N_SC];
 
 	bool init = false;
 	
 public:	
 	KalmanFilterJ_SC kalmanFilterJ_SC;
 	Kalman_SC();
-	bool isInit();
-	void setInitial(float _X, float _Y);
-	void getDeltaPos(float T, float _X, float _Y, float CX, float CY, float * Delta);
-	void getDeltaPos(float T, float _X, float _Y, float _AX, float _AY, float CX, float CY, float * Delta);
+	bool isInitialized() const;
+	void setInitial(double X, double Y);
+	void getDeltaPos(double T, double X, double Y, double CX, double CY, double * Delta);
+	void getDeltaPos(double T, double X, double Y, double AX, double AY, double CX, double CY, double * Delta);
 
 };
 #endif

@@ -14,7 +14,7 @@ using namespace std;
 MatrixOp_SVI::MatrixOp_SVI(){   
 }
 
-void MatrixOp_SVI::multiply(float  M1[][KLM_N_SVI], float M2[][KLM_N_SVI], float  Mret[][KLM_N_SVI], int r1,  int c2,  int c1){
+void MatrixOp_SVI::multiply(double  M1[][KLM_N_SVI], double M2[][KLM_N_SVI], double  Mret[][KLM_N_SVI], int r1,  int c2,  int c1){
         for(int i=0; i<r1; ++i)
          for(int j=0; j<c2; ++j){
             Mret[i][j]=0.0;
@@ -26,12 +26,12 @@ void MatrixOp_SVI::multiply(float  M1[][KLM_N_SVI], float M2[][KLM_N_SVI], float
             }
 }
 
-void MatrixOp_SVI::multiply1D(float M1[][KLM_M_SVI], float M2[], float Mret[], int r){
+void MatrixOp_SVI::multiply1D(double M1[][KLM_M_SVI], double M2[], double Mret[], int r){
       for(int i=0; i<r; ++i)
         Mret[i]=M1[i][0]*M2[i];
 }
 
-void MatrixOp_SVI::multiply21D(float  M1[][KLM_N_SVI], float * M2, float * Mret, int r1,  int c1){
+void MatrixOp_SVI::multiply21D(double  M1[][KLM_N_SVI], double * M2, double * Mret, int r1,  int c1){
         for(int k=0; k<r1; ++k) {
             Mret[k]=0;
         }
@@ -42,48 +42,48 @@ void MatrixOp_SVI::multiply21D(float  M1[][KLM_N_SVI], float * M2, float * Mret,
         }
 }
 
-void MatrixOp_SVI::copy(float M[][KLM_N_SVI], float Mret[][KLM_N_SVI], int r,  int c){
+void MatrixOp_SVI::copy(double M[][KLM_N_SVI], double Mret[][KLM_N_SVI], int r,  int c){
       for(int i=0; i<r; ++i){
-            memcpy(M[i], Mret[i], c*sizeof(float));
+            memcpy(M[i], Mret[i], c*sizeof(double));
       }
 }
 
-void MatrixOp_SVI::copyM(float M[][KLM_M_SVI], float Mret[][KLM_M_SVI], int r,  int c){
+void MatrixOp_SVI::copyM(double M[][KLM_M_SVI], double Mret[][KLM_M_SVI], int r,  int c){
       for(int i=0; i<r; ++i){
-            memcpy(M[i], Mret[i], c*sizeof(float));
+            memcpy(M[i], Mret[i], c*sizeof(double));
       }
 }
 
-void MatrixOp_SVI::copy(float * M, float * Mret, int r){
-    memcpy(M, Mret, r*sizeof(float));
+void MatrixOp_SVI::copy(double * M, double * Mret, int r){
+    memcpy(M, Mret, r*sizeof(double));
 }
 
-void MatrixOp_SVI::add(float  M1[][KLM_N_SVI], float  M2[][KLM_N_SVI], float  Mret[][KLM_N_SVI], int r,  int c){
+void MatrixOp_SVI::add(double  M1[][KLM_N_SVI], double  M2[][KLM_N_SVI], double  Mret[][KLM_N_SVI], int r,  int c){
       for(int i=0; i<r; ++i)
          for(int j=0; j<c; ++j){
                Mret[i][j]=M1[i][j]+M2[i][j];
             }
 }
-void MatrixOp_SVI::add1D(float * M1, float * M2, float * Mret, int r){
+void MatrixOp_SVI::add1D(double * M1, double * M2, double * Mret, int r){
       for(int i=0; i<r; ++i){
             Mret[i]=M1[i]+M2[i];
         }
 }
 
-void MatrixOp_SVI::substract(float M1[][KLM_N_SVI], float M2[][KLM_N_SVI], float  Mret[][KLM_N_SVI], int r,  int c){
+void MatrixOp_SVI::substract(double M1[][KLM_N_SVI], double M2[][KLM_N_SVI], double  Mret[][KLM_N_SVI], int r,  int c){
       for(int i=0; i<r; ++i)
          for(int j=0; j<c; ++j){
                Mret[i][j]=M1[i][j]-M2[i][j];
             }
 }
 
-void MatrixOp_SVI::substract1D(float * M1, float * M2, float * Mret, int r){
+void MatrixOp_SVI::substract1D(double * M1, double * M2, double * Mret, int r){
       for(int i=0; i<r; ++i){
            Mret[i]=M1[i]-M2[i];
         }
 }
 
-void MatrixOp_SVI::transpose(float M[][KLM_N_SVI], float Mret[][KLM_N_SVI],  int r,  int c) {
+void MatrixOp_SVI::transpose(double M[][KLM_N_SVI], double Mret[][KLM_N_SVI],  int r,  int c) {
     for(int i = 0; i < r; ++i)
         for(int j = 0; j < c; ++j)
         {
@@ -91,7 +91,7 @@ void MatrixOp_SVI::transpose(float M[][KLM_N_SVI], float Mret[][KLM_N_SVI],  int
         }
 }
 
-void MatrixOp_SVI::cofactor(float ** A, float ** temp, int p, int q, int n) 
+void MatrixOp_SVI::cofactor(double ** A, double ** temp, int p, int q, int n) 
 { 
     int i = 0, j = 0; 
   
@@ -118,19 +118,19 @@ void MatrixOp_SVI::cofactor(float ** A, float ** temp, int p, int q, int n)
     } 
 } 
   
-float MatrixOp_SVI::determinant(float ** A, int n) 
+double MatrixOp_SVI::determinant(double ** A, int n) 
 { 
-    float D = 0; // Initialize result 
-    float D_temp = 0;
+    double D = 0; // Initialize result 
+    double D_temp = 0;
   
     //  Base case : if matrix contains single element 
     if (n == 1) 
         return A[0][0]; 
 
-    float ** temp;
-    temp = new float*[n]; //Kalman Gain matrix 
+    double ** temp;
+    temp = new double*[n]; //Kalman Gain matrix 
         for(int i = 0; i < n; ++i)
-            temp[i] = new float[n];
+            temp[i] = new double[n];
 
     int sign = 1;  // To store sign multiplier 
   
@@ -159,21 +159,21 @@ float MatrixOp_SVI::determinant(float ** A, int n)
 }
   
 // Function to get adjoint of A[N][N] in adj[N][N]. 
-void MatrixOp_SVI::adjoint(float ** A, float ** adj, int N) 
+void MatrixOp_SVI::adjoint(double ** A, double ** adj, int N) 
 { 
     if (N == 1) 
     { 
         adj[0][0] = 1; 
         return; 
     } 
-    float ADJ_temp = 0;
+    double ADJ_temp = 0;
   
     // temp is used to store cofactors of A[][] 
     int sign = 1;
-    float ** temp;
-    temp = new float*[N]; //Kalman Gain matrix 
+    double ** temp;
+    temp = new double*[N]; //Kalman Gain matrix 
         for(int i = 0; i < N; ++i)
-            temp[i] = new float[N];
+            temp[i] = new double[N];
 
   
     for (int i=0; i<N; i++) 
@@ -206,19 +206,19 @@ void MatrixOp_SVI::adjoint(float ** A, float ** adj, int N)
   
 // Function to calculate and store inverse, returns false if 
 // matrix is singular 
-void MatrixOp_SVI::inverse(float A[][KLM_N_SVI], float inverse[][KLM_N_SVI], int N) 
+void MatrixOp_SVI::inverse(double A[][KLM_N_SVI], double inverse[][KLM_N_SVI], int N) 
 { 
     // Find determinant of A[][] 
-    float ** A_det;
-    A_det = new float*[N]; //Kalman Gain matrix 
+    double ** A_det;
+    A_det = new double*[N]; //Kalman Gain matrix 
         for(int i = 0; i < N; ++i){
-            A_det[i] = new float[N];
+            A_det[i] = new double[N];
             for(int j = 0; j < N; ++j){
                 A_det[i][j] = A[i][j];
             }   
         }
 
-    float det = determinant(A_det, N);
+    double det = determinant(A_det, N);
     if (det == 0) 
     { 
         cout << "Singular matrix, can't find its inverse"; 
@@ -226,10 +226,10 @@ void MatrixOp_SVI::inverse(float A[][KLM_N_SVI], float inverse[][KLM_N_SVI], int
     } 
   
     // Find adjoint 
-    float ** adj;
-    adj = new float*[N]; //Kalman Gain matrix 
+    double ** adj;
+    adj = new double*[N]; //Kalman Gain matrix 
         for(int i = 0; i < N; ++i)
-            adj[i] = new float[N];
+            adj[i] = new double[N];
 
     adjoint(A_det, adj, N); 
   
@@ -247,7 +247,7 @@ void MatrixOp_SVI::inverse(float A[][KLM_N_SVI], float inverse[][KLM_N_SVI], int
     delete[] adj;
 } 
 
-void MatrixOp_SVI::printMat(std::string Sym, float A[][KLM_N_SVI], int r, int c){
+void MatrixOp_SVI::printMat(std::string Sym, double A[][KLM_N_SVI], int r, int c){
     cout << "----------"<<Sym<< endl;
     for(int i = 0; i<r;i++){
         for(int j = 0; j<c;j++){
@@ -256,7 +256,7 @@ void MatrixOp_SVI::printMat(std::string Sym, float A[][KLM_N_SVI], int r, int c)
         cout << endl;
     }
 }
-void MatrixOp_SVI::printVec(std::string Sym, float A[], int r){
+void MatrixOp_SVI::printVec(std::string Sym, double A[], int r){
     cout << "----------"<<Sym<< endl;
     for(int i = 0; i<r;i++){
       cout << A[i] << " ";

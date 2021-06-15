@@ -19,7 +19,7 @@ KalmanFilterJ_SVI::KalmanFilterJ_SVI() {
 }
 
 
-void KalmanFilterJ_SVI::setFixed( float _A  [][KLM_N_SVI], float _H  [][KLM_N_SVI], float _Q [][KLM_N_SVI], float _R [][KLM_N_SVI] ){
+void KalmanFilterJ_SVI::setFixed( double _A  [][KLM_N_SVI], double _H  [][KLM_N_SVI], double _Q [][KLM_N_SVI], double _R [][KLM_N_SVI] ){
   matrixOp_SVI.copy(A,_A,n,n);
   matrixOp_SVI.copy(H,_H,n,n);
   matrixOp_SVI.copy(Q,_Q,n,n);
@@ -37,7 +37,7 @@ void KalmanFilterJ_SVI::setFixed( float _A  [][KLM_N_SVI], float _H  [][KLM_N_SV
 }
 
 
-void KalmanFilterJ_SVI::setFixed( float _A  [][KLM_N_SVI], float _H  [][KLM_N_SVI], float _Q [][KLM_N_SVI], float _R [][KLM_N_SVI], float _B [][KLM_M_SVI] ){
+void KalmanFilterJ_SVI::setFixed( double _A  [][KLM_N_SVI], double _H  [][KLM_N_SVI], double _Q [][KLM_N_SVI], double _R [][KLM_N_SVI], double _B [][KLM_M_SVI] ){
   matrixOp_SVI.copy(A,_A,n,n);
   matrixOp_SVI.copy(H,_H,n,n);
   matrixOp_SVI.copy(Q,_Q,n,n);
@@ -56,21 +56,21 @@ void KalmanFilterJ_SVI::setFixed( float _A  [][KLM_N_SVI], float _H  [][KLM_N_SV
 }
 
 
-void KalmanFilterJ_SVI::setA(float _A [][KLM_N_SVI]){
+void KalmanFilterJ_SVI::setA(double _A [][KLM_N_SVI]){
   matrixOp_SVI.copy(A,_A,n,n);
 }
 
-void KalmanFilterJ_SVI::setB(float _B [][KLM_M_SVI]){
+void KalmanFilterJ_SVI::setB(double _B [][KLM_M_SVI]){
   matrixOp_SVI.copyM(B,_B,n,m);
 }
 
 
-void KalmanFilterJ_SVI::setR(float _R [][KLM_N_SVI]){
+void KalmanFilterJ_SVI::setR(double _R [][KLM_N_SVI]){
   matrixOp_SVI.copy(R,_R,n,n);
 } 
 
 
-void KalmanFilterJ_SVI::setInitial( float _X0[], float _P0 [][KLM_N_SVI]){
+void KalmanFilterJ_SVI::setInitial( double _X0[], double _P0 [][KLM_N_SVI]){
   matrixOp_SVI.copy(X0,_X0,n);
   matrixOp_SVI.copy(P0,_P0,n,n);
 }
@@ -102,7 +102,7 @@ void KalmanFilterJ_SVI::predict(void){
   
 }
 
-void KalmanFilterJ_SVI::predict( float  U[] ){
+void KalmanFilterJ_SVI::predict( double  U[] ){
 
   matrixOp_SVI.multiply21D(A,X0,Temp_1,n,n);
 
@@ -121,7 +121,7 @@ void KalmanFilterJ_SVI::predict( float  U[] ){
 
 }
 
-void KalmanFilterJ_SVI::correct ( float Z[] ) {
+void KalmanFilterJ_SVI::correct ( double Z[] ) {
 
   matrixOp_SVI.transpose(H,HT,n,n);
   matrixOp_SVI.multiply(P,HT,TempN_1,n,n,n);

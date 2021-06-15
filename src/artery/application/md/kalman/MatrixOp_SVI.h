@@ -21,33 +21,33 @@
 class MatrixOp_SVI {
 
 private:
-	float determinant(float ** A, int n);
-	void adjoint(float ** A, float ** adj, int N);
+	double determinant(double ** A, int n);
+	void adjoint(double ** A, double ** adj, int N);
 public:
 	MatrixOp_SVI();
-	void multiply(float M1[][KLM_N_SVI], float M2[][KLM_N_SVI], float Mret[][KLM_N_SVI], int r1,  int c2,  int c1);
+	void multiply(double M1[][KLM_N_SVI], double M2[][KLM_N_SVI], double Mret[][KLM_N_SVI], int r1,  int c2,  int c1);
 
-	void multiply1D(float M1[][KLM_M_SVI], float M2[], float Mret[], int r);
+	void multiply1D(double M1[][KLM_M_SVI], double M2[], double Mret[], int r);
 
-	void multiply21D(float M1[][KLM_N_SVI], float * M2, float * Mret, int r1,  int c1);
+	void multiply21D(double M1[][KLM_N_SVI], double * M2, double * Mret, int r1,  int c1);
 	
-	void add(float M1[][KLM_N_SVI], float M2[][KLM_N_SVI], float Mret[][KLM_N_SVI], int r,  int c);
-	void add1D(float * M1, float * M2, float * Mret, int r);
+	void add(double M1[][KLM_N_SVI], double M2[][KLM_N_SVI], double Mret[][KLM_N_SVI], int r,  int c);
+	void add1D(double * M1, double * M2, double * Mret, int r);
 	
-	void substract(float M1[][KLM_N_SVI], float M2[][KLM_N_SVI], float Mret[][KLM_N_SVI], int r,  int c);
-	void substract1D(float * M1, float * M2, float * Mret, int r);
+	void substract(double M1[][KLM_N_SVI], double M2[][KLM_N_SVI], double Mret[][KLM_N_SVI], int r,  int c);
+	void substract1D(double * M1, double * M2, double * Mret, int r);
 
-	void transpose(float M[][KLM_N_SVI], float  Mret[][KLM_N_SVI],  int r,  int c);
-	void cofactor(float ** A, float ** temp, int p, int q, int n);
-	void inverse(float  A[][KLM_N_SVI], float inverse[][KLM_N_SVI], int N);
+	void transpose(double M[][KLM_N_SVI], double  Mret[][KLM_N_SVI],  int r,  int c);
+	void cofactor(double ** A, double ** temp, int p, int q, int n);
+	void inverse(double  A[][KLM_N_SVI], double inverse[][KLM_N_SVI], int N);
 
-	void copy(float  M[][KLM_N_SVI], float  Mret[][KLM_N_SVI], int r,  int c);
-	void copyM(float M[][KLM_M_SVI], float  Mret[][KLM_M_SVI], int r,  int c);
+	void copy(double  M[][KLM_N_SVI], double  Mret[][KLM_N_SVI], int r,  int c);
+	void copyM(double M[][KLM_M_SVI], double  Mret[][KLM_M_SVI], int r,  int c);
 
-	void copy(float * M, float * Mret, int r);
+	void copy(double * M, double * Mret, int r);
 
-	void printMat(std::string Sym, float A [][KLM_N_SVI], int r, int c);
-	void printVec(std::string Sym, float * A, int r);
+	void printMat(std::string Sym, double A [][KLM_N_SVI], int r, int c);
+	void printVec(std::string Sym, double * A, int r);
 };
 #endif
 

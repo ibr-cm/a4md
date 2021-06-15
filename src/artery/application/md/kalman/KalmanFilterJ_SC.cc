@@ -19,7 +19,7 @@ KalmanFilterJ_SC::KalmanFilterJ_SC() {
 }
 
 
-void KalmanFilterJ_SC::setFixed( float _A  [][KLM_N_SC], float _H  [][KLM_N_SC], float _Q [][KLM_N_SC], float _R [][KLM_N_SC] ){
+void KalmanFilterJ_SC::setFixed( double _A  [][KLM_N_SC], double _H  [][KLM_N_SC], double _Q [][KLM_N_SC], double _R [][KLM_N_SC] ){
   matrixOp_SC.copy(A,_A,n,n);
   matrixOp_SC.copy(H,_H,n,n);
   matrixOp_SC.copy(Q,_Q,n,n);
@@ -37,7 +37,7 @@ void KalmanFilterJ_SC::setFixed( float _A  [][KLM_N_SC], float _H  [][KLM_N_SC],
 }
 
 
-void KalmanFilterJ_SC::setFixed( float _A  [][KLM_N_SC], float _H  [][KLM_N_SC], float _Q [][KLM_N_SC], float _R [][KLM_N_SC], float _B [][KLM_M_SC] ){
+void KalmanFilterJ_SC::setFixed( double _A  [][KLM_N_SC], double _H  [][KLM_N_SC], double _Q [][KLM_N_SC], double _R [][KLM_N_SC], double _B [][KLM_M_SC] ){
   matrixOp_SC.copy(A,_A,n,n);
   matrixOp_SC.copy(H,_H,n,n);
   matrixOp_SC.copy(Q,_Q,n,n);
@@ -57,21 +57,21 @@ void KalmanFilterJ_SC::setFixed( float _A  [][KLM_N_SC], float _H  [][KLM_N_SC],
 }
 
 
-void KalmanFilterJ_SC::setA(float _A [][KLM_N_SC]){
+void KalmanFilterJ_SC::setA(double _A [][KLM_N_SC]){
   matrixOp_SC.copy(A,_A,n,n);
 }
 
-void KalmanFilterJ_SC::setB(float _B [][KLM_M_SC]){
+void KalmanFilterJ_SC::setB(double _B [][KLM_M_SC]){
   matrixOp_SC.copyM(B,_B,n,m);
 }
 
 
-void KalmanFilterJ_SC::setR(float _R [][KLM_N_SC]){
+void KalmanFilterJ_SC::setR(double _R [][KLM_N_SC]){
   matrixOp_SC.copy(R,_R,n,n);
 } 
 
 
-void KalmanFilterJ_SC::setInitial( float _X0[], float _P0 [][KLM_N_SC]){
+void KalmanFilterJ_SC::setInitial( double _X0[], double _P0 [][KLM_N_SC]){
   matrixOp_SC.copy(X0,_X0,n);
   matrixOp_SC.copy(P0,_P0,n,n);
 }
@@ -105,7 +105,7 @@ void KalmanFilterJ_SC::predict(void){
   
 }
 
-void KalmanFilterJ_SC::predict( float  U[] ){
+void KalmanFilterJ_SC::predict( double  U[] ){
 
   matrixOp_SC.multiply21D(A,X0,Temp_1,n,n);
   matrixOp_SC.multiply1D(B,U,Temp_2,n);
@@ -123,7 +123,7 @@ void KalmanFilterJ_SC::predict( float  U[] ){
 
 }
 
-void KalmanFilterJ_SC::correct ( float Z[] ) {
+void KalmanFilterJ_SC::correct ( double Z[] ) {
 
   matrixOp_SC.transpose(H,HT,n,n);
   matrixOp_SC.multiply(P,HT,TempN_1,n,n,n);

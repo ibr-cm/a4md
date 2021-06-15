@@ -19,7 +19,7 @@ KalmanFilterJ_SI::KalmanFilterJ_SI() {
 }
 
 
-void KalmanFilterJ_SI::setFixed( float _A  [][KLM_N_SI], float _H  [][KLM_N_SI], float _Q [][KLM_N_SI], float _R [][KLM_N_SI] ){
+void KalmanFilterJ_SI::setFixed( double _A  [][KLM_N_SI], double _H  [][KLM_N_SI], double _Q [][KLM_N_SI], double _R [][KLM_N_SI] ){
   matrixOp_SI.copy(A,_A,n,n);
   matrixOp_SI.copy(H,_H,n,n);
   matrixOp_SI.copy(Q,_Q,n,n);
@@ -37,7 +37,7 @@ void KalmanFilterJ_SI::setFixed( float _A  [][KLM_N_SI], float _H  [][KLM_N_SI],
 }
 
 
-void KalmanFilterJ_SI::setFixed( float _A  [][KLM_N_SI], float _H  [][KLM_N_SI], float _Q [][KLM_N_SI], float _R [][KLM_N_SI], float _B [][KLM_M_SI] ){
+void KalmanFilterJ_SI::setFixed( double _A  [][KLM_N_SI], double _H  [][KLM_N_SI], double _Q [][KLM_N_SI], double _R [][KLM_N_SI], double _B [][KLM_M_SI] ){
   matrixOp_SI.copy(A,_A,n,n);
   matrixOp_SI.copy(H,_H,n,n);
   matrixOp_SI.copy(Q,_Q,n,n);
@@ -57,21 +57,21 @@ void KalmanFilterJ_SI::setFixed( float _A  [][KLM_N_SI], float _H  [][KLM_N_SI],
 }
 
 
-void KalmanFilterJ_SI::setA(float _A [][KLM_N_SI]){
+void KalmanFilterJ_SI::setA(double _A [][KLM_N_SI]){
   matrixOp_SI.copy(A,_A,n,n);
 }
 
-void KalmanFilterJ_SI::setB(float _B [][KLM_M_SI]){
+void KalmanFilterJ_SI::setB(double _B [][KLM_M_SI]){
   matrixOp_SI.copyM(B,_B,n,m);
 }
 
 
-void KalmanFilterJ_SI::setR(float _R [][KLM_N_SI]){
+void KalmanFilterJ_SI::setR(double _R [][KLM_N_SI]){
   matrixOp_SI.copy(R,_R,n,n);
 } 
 
 
-void KalmanFilterJ_SI::setInitial( float _X0[], float _P0 [][KLM_N_SI]){
+void KalmanFilterJ_SI::setInitial( double _X0[], double _P0 [][KLM_N_SI]){
   matrixOp_SI.copy(X0,_X0,n);
   matrixOp_SI.copy(P0,_P0,n,n);
 }
@@ -105,7 +105,7 @@ void KalmanFilterJ_SI::predict(void){
   
 }
 
-void KalmanFilterJ_SI::predict( float  U[] ){
+void KalmanFilterJ_SI::predict( double  U[] ){
 
   matrixOp_SI.multiply21D(A,X0,Temp_1,n,n);
   matrixOp_SI.multiply1D(B,U,Temp_2,n);
@@ -123,7 +123,7 @@ void KalmanFilterJ_SI::predict( float  U[] ){
 
 }
 
-void KalmanFilterJ_SI::correct ( float Z[] ) {
+void KalmanFilterJ_SI::correct ( double Z[] ) {
 
   matrixOp_SI.transpose(H,HT,n,n);
   matrixOp_SI.multiply(P,HT,TempN_1,n,n,n);

@@ -14,7 +14,7 @@ using namespace std;
 
 Kalman_SC::Kalman_SC() {
 
-  float T = 1;
+  double T = 1;
 
   A[0][0] = 1;
   A[0][1] = T;
@@ -25,7 +25,7 @@ Kalman_SC::Kalman_SC() {
   B[0][0] = 0.5*T*T;
   B[1][0] = T;
 
-  float H[KLM_N_SC][KLM_N_SC];
+  double H[KLM_N_SC][KLM_N_SC];
 
   H[0][0] = 1;
   H[0][1] = 0;
@@ -33,7 +33,7 @@ Kalman_SC::Kalman_SC() {
   H[1][0] = 0;
   H[1][1] = 1;
 
-  float Q[KLM_N_SC][KLM_N_SC];
+  double Q[KLM_N_SC][KLM_N_SC];
   Q[0][0] = 10;
   Q[0][1] = 0;
 
@@ -54,12 +54,12 @@ Kalman_SC::Kalman_SC() {
 
 }
 
-bool Kalman_SC::isInit(){
+bool Kalman_SC::isInitialized() const{
   return init;
 }
 
 
-void Kalman_SC::setInitial(float _X, float _Y){
+void Kalman_SC::setInitial(double X, double Y){
 
   P0[0][0] = 10;
   P0[0][1] = 0;
@@ -67,17 +67,17 @@ void Kalman_SC::setInitial(float _X, float _Y){
   P0[1][0] = 0;
   P0[1][1] = 10;
 
-  X0[0] = _X;
-  X0[1] = _Y;
+  X0[0] = X;
+  X0[1] = Y;
 
-  pos = _X;
+  pos = X;
 
   kalmanFilterJ_SC.setInitial(X0, P0);
 
   init = true;
 }
 
-void Kalman_SC::setT(float T){
+void Kalman_SC::setT(double T){
 
   A[0][0] = 1;
   A[0][1] = T;
@@ -93,7 +93,7 @@ void Kalman_SC::setT(float T){
   kalmanFilterJ_SC.setB(B);
 }
 
-void Kalman_SC::setConfidence(float CX, float CY){
+void Kalman_SC::setConfidence(double CX, double CY){
 
   R[0][0] = CX;
   R[0][1] = 0;
@@ -104,13 +104,13 @@ void Kalman_SC::setConfidence(float CX, float CY){
   kalmanFilterJ_SC.setR(R);
 }
 
-void Kalman_SC::getDeltaPos(float T, float _X, float _Y, float CX, float CY, float * Delta){
+void Kalman_SC::getDeltaPos(double T, double X, double Y, double CX, double CY, double * Delta){
 
     setT(T);
     setConfidence(CX,CY);
 
-    X0[0] = _X;
-    X0[1] = _Y;
+    X0[0] = X;
+    X0[1] = Y;
 
     kalmanFilterJ_SC.predict();
     kalmanFilterJ_SC.correct(X0);
@@ -121,18 +121,18 @@ void Kalman_SC::getDeltaPos(float T, float _X, float _Y, float CX, float CY, flo
 }
 
 
-void Kalman_SC::getDeltaPos(float T, float _X, float _Y, float _AX, float _AY, float CX, float CY, float * Delta){
+void Kalman_SC::getDeltaPos(double T, double X, double Y, double AX, double AY, double CX, double CY, double * Delta){
 
     setT(T);
     setConfidence(CX,CY);
 
-    pos = pos + _X;
+    pos = pos + X;
 
     X0[0] = pos;
-    X0[1] = _Y;
+    X0[1] = Y;
 
-    U[0] = _AX;
-    U[1] = _AY;
+    U[0] = AX;
+    U[1] = AY;
 
     kalmanFilterJ_SC.predict(U);
     kalmanFilterJ_SC.correct(X0);
