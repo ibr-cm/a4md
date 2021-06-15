@@ -34,7 +34,6 @@ namespace artery {
     auto degree_per_second2 = vanetza::units::degree / vanetza::units::si::second;
     auto centimeter_per_second2 = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
-//    artery::mi
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
     static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     static const auto scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
@@ -72,7 +71,7 @@ namespace artery {
 
         while (!activePoIs.empty()) {
             traciPoiScope->remove(activePoIs.front());
-            activePoIs.pop();
+            activePoIs.pop_front();
         }
     }
 
@@ -314,10 +313,16 @@ namespace artery {
         traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, libsumo::TraCIColor(255, 0, 255, 255),
                            poiId, 5, "", 0,
                            0, 0);
-        activePoIs.push(poiId);
+        activePoIs.push_back(poiId);
         if (activePoIs.size() > parameters.CamLocationVisualizerMaxLength) {
             traciPoiScope->remove(activePoIs.front());
-            activePoIs.pop();
+            activePoIs.pop_front();
+        }
+        int alphaStep = 185 / parameters.CamLocationVisualizerMaxLength;
+        int currentAlpha = 80;
+        for(const auto& poi : activePoIs){
+            traciPoiScope->setColor(poi,libsumo::TraCIColor(255,0,255,currentAlpha));
+            currentAlpha += alphaStep;
         }
     }
 

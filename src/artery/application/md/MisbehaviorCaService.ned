@@ -94,7 +94,7 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         double AttackEventualStopProbabilityThreshold = default(0.2);
 
 		// Disruptive Attack
-		int AttackDisruptiveBufferSize = default(500);
+		int AttackDisruptiveBufferSize = default(50);
 		int AttackDisruptiveMinimumReceived = default(50);
 
         // Denial of Service Attack

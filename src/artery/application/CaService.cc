@@ -30,7 +30,6 @@ namespace artery {
     auto decidegree = vanetza::units::degree * boost::units::si::deci;
     auto degree_per_second = vanetza::units::degree / vanetza::units::si::second;
     auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
-
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
     static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     static const auto scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
