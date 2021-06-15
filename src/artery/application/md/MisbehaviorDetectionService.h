@@ -8,6 +8,7 @@
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/application/VehicleDataProvider.h"
 #include "MisbehaviorTypes.h"
+#include "DetectedSender.h"
 
 namespace artery {
     class MisbehaviorDetectionService : public ItsG5Service {
@@ -39,7 +40,7 @@ namespace artery {
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
         const Timer *mTimer = nullptr;
-
+        std::map<uint32_t, DetectedSender> detectedVehicles;
         static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
 
     };

@@ -82,6 +82,7 @@ add_library(core SHARED
     application/md/kalman/MatrixOp_SC.cc
     application/md/kalman/MatrixOp_SI.cc
     application/md/kalman/MatrixOp_SVI.cc
+        application/md/DetectedSender.cc
 )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)
