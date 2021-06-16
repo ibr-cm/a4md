@@ -33,12 +33,18 @@ public:
 
     artery::Position getPosition() const;
     artery::GeoPosition getGeoPosition() const;
+
     artery::Angle getHeading() const;
+
     Velocity getSpeed() const;
     Velocity getMaxSpeed() const;
     void setMaxSpeed(Velocity);
     void setSpeed(Velocity);
     void setSpeedFactor(double);
+
+    Acceleration getAcceleration() const;
+    Acceleration getMaxAcceleration() const;
+    Acceleration getMaxDeceleration() const;
 
     Length getLength() const;
     Length getWidth() const;

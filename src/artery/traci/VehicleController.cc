@@ -89,7 +89,22 @@ void VehicleController::setSpeedFactor(double f)
     m_traci->vehicle.setSpeedFactor(m_cache->getId(), f);
 }
 
-auto VehicleController::getLength() const -> Length
+auto VehicleController::getAcceleration() const -> Acceleration
+{
+    return m_cache->get<libsumo::VAR_ACCELERATION>() * si::meter_per_second_squared;
+}
+
+auto VehicleController::getMaxAcceleration() const -> Acceleration
+{
+    return m_cache->get<libsumo::VAR_ACCEL>() * si::meter_per_second_squared;
+}
+
+auto VehicleController::getMaxDeceleration() const -> Acceleration
+{
+    return m_cache->get<libsumo::VAR_DECEL>() * si::meter_per_second_squared;
+}
+
+    auto VehicleController::getLength() const -> Length
 {
     return m_cache->get<libsumo::VAR_LENGTH>() * si::meter;
 }
