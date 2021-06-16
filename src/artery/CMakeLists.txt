@@ -71,6 +71,7 @@ add_library(core SHARED
     utility/Geometry.cc
     application/md/MisbehaviorDetectionService.cc
     application/md/MisbehaviorCaService.cc
+    application/md/F2MDParameters.cc
     application/md/base64.cc
     application/md/checks/LegacyChecks.cc
     application/md/kalman/Kalman_SC.cc
@@ -82,7 +83,7 @@ add_library(core SHARED
     application/md/kalman/MatrixOp_SC.cc
     application/md/kalman/MatrixOp_SI.cc
     application/md/kalman/MatrixOp_SVI.cc
-        application/md/DetectedSender.cc
+    application/md/DetectedSender.cc
 )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)

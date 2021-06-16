@@ -20,7 +20,6 @@
 #include <chrono>
 #include <omnetpp/ccomponent.h>
 
-#include "artery/application/CaService.h"
 #include "artery/application/md/MisbehaviorDetectionService.h"
 
 
@@ -37,6 +36,7 @@ namespace artery {
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
     static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     static const auto scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
+    bool MisbehaviorCaService::staticInitializationComplete = false;
 
     template<typename T, typename U>
     long round(const boost::units::quantity<T> &q, const U &u) {
@@ -89,96 +89,33 @@ namespace artery {
             traciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
             traciPoiScope = &traciAPI->poi;
             traciVehicleScope = (TraCIAPI::VehicleScope *) &traciAPI->vehicle;
-
-            parameters.LOCAL_ATTACKER_PROBABILITY = par("LOCAL_ATTACKER_PROB");
-            parameters.GLOBAL_ATTACKER_PROBABILITY = par("GLOBAL_ATTACKER_PROB");
-            parameters.ATTACK_START_TIME = par("START_ATTACK");
-
-            parameters.StaticAttackType = par("StaticAttackType");
-
-            // Constant Position Attack
-            parameters.AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
-            parameters.AttackConstantPositionMaxLatitude = par("AttackConstantPositionMaxLatitude");
-            parameters.AttackConstantPositionMinLongitude = par("AttackConstantPositionMinLongitude");
-            parameters.AttackConstantPositionMaxLongitude = par("AttackConstantPositionMaxLongitude");
-
-            // Constant Position Offset Attack
-            parameters.AttackConstantPositionOffsetMaxLatitudeOffset = par(
-                    "AttackConstantPositionOffsetMaxLatitudeOffset");
-            parameters.AttackConstantPositionOffsetMaxLongitudeOffset = par(
-                    "AttackConstantPositionOffsetMaxLongitudeOffset");
-
-            // Random Position Attack
-            parameters.AttackRandomPositionMinLatitude = par("AttackRandomPositionMinLatitude");
-            parameters.AttackRandomPositionMaxLatitude = par("AttackRandomPositionMaxLatitude");
-            parameters.AttackRandomPositionMinLongitude = par("AttackRandomPositionMinLongitude");
-            parameters.AttackRandomPositionMaxLongitude = par("AttackRandomPositionMaxLongitude");
-
-            // Random Position Offset Attack
-            parameters.AttackRandomPositionOffsetMaxLatitudeOffset = par("AttackRandomPositionOffsetMaxLatitudeOffset");
-            parameters.AttackRandomPositionOffsetMaxLongitudeOffset = par(
-                    "AttackRandomPositionOffsetMaxLongitudeOffset");
-
-            // Constant Speed Attack
-            // Meters per Second
-            parameters.AttackConstantSpeedMin = par("AttackConstantSpeedMin");
-            parameters.AttackConstantSpeedMax = par("AttackConstantSpeedMax");
-
-            // Constant Speed Offset Attack
-            parameters.AttackConstantSpeedOffsetMax = par("AttackConstantSpeedOffsetMax");
-
-            // Random Speed Attack
-            // Meters per Second
-            parameters.AttackRandomSpeedMin = par("AttackRandomSpeedMin");
-            parameters.AttackRandomSpeedMax = par("AttackRandomSpeedMax");
-
-            // Random Speed Offset Attack
-            parameters.AttackRandomSpeedOffsetMax = par("AttackRandomSpeedOffsetMax");
-
-            // Eventual Stop Attack
-            parameters.AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
-
-            // Disruptive Attack
-            parameters.AttackDisruptiveBufferSize = par("AttackDisruptiveBufferSize");
-            parameters.AttackDisruptiveMinimumReceived = par("AttackDisruptiveMinimumReceived");
-
-            // Denial of Service Attack
-            parameters.AttackDoSInterval = par("AttackDoSInterval");
-            parameters.AttackDoSIgnoreDCC = par("AttackDoSIgnoreDCC");
-
-            // Stale Messages Attack
-            parameters.AttackStaleDelayCount = par("AttackStaleDelayCount");
-
-
-            // CAM Location Visualizer (PoI)
-            parameters.CamLocationVisualizer = par("CamLocationVisualizer");
-            parameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
+            initializeParameters();
         }
 
         //Constant Position Attack
         AttackConstantPositionLatitudeMicrodegrees =
-                (long) (uniform(parameters.AttackConstantPositionMinLatitude,
-                                parameters.AttackConstantPositionMaxLatitude) * 1000000);
+                (long) (uniform(F2MDParameters::attackParameters.AttackConstantPositionMinLatitude,
+                                F2MDParameters::attackParameters.AttackConstantPositionMaxLatitude) * 1000000);
         AttackConstantPositionLongitudeMicrodegrees =
-                (long) (uniform(parameters.AttackConstantPositionMinLongitude,
-                                parameters.AttackConstantPositionMaxLongitude) * 1000000);
+                (long) (uniform(F2MDParameters::attackParameters.AttackConstantPositionMinLongitude,
+                                F2MDParameters::attackParameters.AttackConstantPositionMaxLongitude) * 1000000);
 
         //Constant Position Offset Attack
         AttackConstantPositionOffsetLatitudeMicrodegrees = (long) (uniform(
-                -parameters.AttackConstantPositionOffsetMaxLatitudeOffset,
-                parameters.AttackConstantPositionOffsetMaxLatitudeOffset) * 1000000);
+                -F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLatitudeOffset,
+                F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLatitudeOffset) * 1000000);
         AttackConstantPositionOffsetLongitudeMicrodegrees = (long) (uniform(
-                -parameters.AttackConstantPositionOffsetMaxLongitudeOffset,
-                parameters.AttackConstantPositionOffsetMaxLongitudeOffset) * 1000000);
+                -F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLongitudeOffset,
+                F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLongitudeOffset) * 1000000);
 
         // Constant Speed Attack
         AttackConstantSpeedValue = buildSpeedValue2(
-                uniform(parameters.AttackConstantSpeedMin, parameters.AttackConstantSpeedMax) *
+                uniform(F2MDParameters::attackParameters.AttackConstantSpeedMin, F2MDParameters::attackParameters.AttackConstantSpeedMax) *
                 boost::units::si::meter_per_second);
 
         //Constant Speed Offset Attack
         AttackConstantSpeedOffsetValue =
-                ((long) uniform(0, parameters.AttackConstantSpeedOffsetMax)) * boost::units::si::meter_per_second;
+                ((long) uniform(0, F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax)) * boost::units::si::meter_per_second;
 
 
         attackEventualStopHasStopped = false;
@@ -210,8 +147,8 @@ namespace artery {
 
 
         mMisbehaviorType = misbehaviorTypes::LocalAttacker;
-        if(parameters.StaticAttackType > 0){
-            mAttackType = attackTypes::AttackTypes(parameters.StaticAttackType);
+        if(F2MDParameters::attackParameters.StaticAttackType > 0){
+            mAttackType = attackTypes::AttackTypes(F2MDParameters::attackParameters.StaticAttackType);
         } else {
             mAttackType = attackTypes::EventualStop;
         }
@@ -221,14 +158,75 @@ namespace artery {
         traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
         if (mAttackType == attackTypes::DoS) {
-            mGenCamMin = {parameters.AttackDoSInterval, SIMTIME_MS};
-            mDccRestriction = !parameters.AttackDoSIgnoreDCC;
+            mGenCamMin = {F2MDParameters::attackParameters.AttackDoSInterval, SIMTIME_MS};
+            mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
         MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(), mMisbehaviorType);
 
     }
 
+    void MisbehaviorCaService::initializeParameters(){
+        F2MDParameters::attackParameters.StaticAttackType = par("StaticAttackType");
+
+        // Constant Position Attack
+        F2MDParameters::attackParameters.AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
+        F2MDParameters::attackParameters.AttackConstantPositionMaxLatitude = par("AttackConstantPositionMaxLatitude");
+        F2MDParameters::attackParameters.AttackConstantPositionMinLongitude = par("AttackConstantPositionMinLongitude");
+        F2MDParameters::attackParameters.AttackConstantPositionMaxLongitude = par("AttackConstantPositionMaxLongitude");
+
+        // Constant Position Offset Attack
+        F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLatitudeOffset = par(
+                "AttackConstantPositionOffsetMaxLatitudeOffset");
+        F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLongitudeOffset = par(
+                "AttackConstantPositionOffsetMaxLongitudeOffset");
+
+        // Random Position Attack
+        F2MDParameters::attackParameters.AttackRandomPositionMinLatitude = par("AttackRandomPositionMinLatitude");
+        F2MDParameters::attackParameters.AttackRandomPositionMaxLatitude = par("AttackRandomPositionMaxLatitude");
+        F2MDParameters::attackParameters.AttackRandomPositionMinLongitude = par("AttackRandomPositionMinLongitude");
+        F2MDParameters::attackParameters.AttackRandomPositionMaxLongitude = par("AttackRandomPositionMaxLongitude");
+
+        // Random Position Offset Attack
+        F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset = par("AttackRandomPositionOffsetMaxLatitudeOffset");
+        F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset = par(
+                "AttackRandomPositionOffsetMaxLongitudeOffset");
+
+        // Constant Speed Attack
+        // Meters per Second
+        F2MDParameters::attackParameters.AttackConstantSpeedMin = par("AttackConstantSpeedMin");
+        F2MDParameters::attackParameters.AttackConstantSpeedMax = par("AttackConstantSpeedMax");
+
+        // Constant Speed Offset Attack
+        F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax = par("AttackConstantSpeedOffsetMax");
+
+        // Random Speed Attack
+        // Meters per Second
+        F2MDParameters::attackParameters.AttackRandomSpeedMin = par("AttackRandomSpeedMin");
+        F2MDParameters::attackParameters.AttackRandomSpeedMax = par("AttackRandomSpeedMax");
+
+        // Random Speed Offset Attack
+        F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax = par("AttackRandomSpeedOffsetMax");
+
+        // Eventual Stop Attack
+        F2MDParameters::attackParameters.AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
+
+        // Disruptive Attack
+        F2MDParameters::attackParameters.AttackDisruptiveBufferSize = par("AttackDisruptiveBufferSize");
+        F2MDParameters::attackParameters.AttackDisruptiveMinimumReceived = par("AttackDisruptiveMinimumReceived");
+
+        // Denial of Service Attack
+        F2MDParameters::attackParameters.AttackDoSInterval = par("AttackDoSInterval");
+        F2MDParameters::attackParameters.AttackDoSIgnoreDCC = par("AttackDoSIgnoreDCC");
+
+        // Stale Messages Attack
+        F2MDParameters::attackParameters.AttackStaleDelayCount = par("AttackStaleDelayCount");
+
+
+        // CAM Location Visualizer (PoI)
+        F2MDParameters::miscParameters.CamLocationVisualizer = par("CamLocationVisualizer");
+        F2MDParameters::miscParameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
+    }
 
     void MisbehaviorCaService::trigger() {
         Enter_Method("trigger");
@@ -249,7 +247,7 @@ namespace artery {
             switch (mAttackType) {
                 case attackTypes::Disruptive: {
                     disruptiveMessageQueue.emplace_back(message);
-                    if (disruptiveMessageQueue.size() > parameters.AttackDisruptiveBufferSize) {
+                    if (disruptiveMessageQueue.size() > F2MDParameters::attackParameters.AttackDisruptiveBufferSize) {
                         disruptiveMessageQueue.pop_front();
                     }
                     break;
@@ -314,11 +312,11 @@ namespace artery {
                            poiId, 5, "", 0,
                            0, 0);
         activePoIs.push_back(poiId);
-        if (activePoIs.size() > parameters.CamLocationVisualizerMaxLength) {
+        if (activePoIs.size() > F2MDParameters::miscParameters.CamLocationVisualizerMaxLength) {
             traciPoiScope->remove(activePoIs.front());
             activePoIs.pop_front();
         }
-        int alphaStep = 185 / parameters.CamLocationVisualizerMaxLength;
+        int alphaStep = 185 / F2MDParameters::miscParameters.CamLocationVisualizerMaxLength;
         int currentAlpha = 80;
         for(const auto& poi : activePoIs){
             traciPoiScope->setColor(poi,libsumo::TraCIColor(255,0,255,currentAlpha));
@@ -346,7 +344,7 @@ namespace artery {
         if (cam->header.messageID != 2) {
             return;
         }
-        if (parameters.CamLocationVisualizer && mMisbehaviorType != misbehaviorTypes::Benign) {
+        if (F2MDParameters::miscParameters.CamLocationVisualizer && mMisbehaviorType != misbehaviorTypes::Benign) {
             visualizeCamPosition(cam);
         }
 
@@ -487,11 +485,11 @@ namespace artery {
             }
             case attackTypes::RandomPos: {
                 long attackLatitude =
-                        (long) (uniform(-parameters.AttackRandomPositionMinLatitude,
-                                        parameters.AttackRandomPositionMaxLatitude) * 1000000);
+                        (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLatitude,
+                                        F2MDParameters::attackParameters.AttackRandomPositionMaxLatitude) * 1000000);
                 long attackLongitude =
-                        (long) (uniform(-parameters.AttackRandomPositionMinLongitude,
-                                        parameters.AttackRandomPositionMaxLongitude) * 1000000);
+                        (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLongitude,
+                                        F2MDParameters::attackParameters.AttackRandomPositionMaxLongitude) * 1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
                         attackLatitude * Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
@@ -499,11 +497,11 @@ namespace artery {
                 break;
             }
             case attackTypes::RandomPosOffset: {
-                long attackLatitudeOffset = (long) (uniform(-parameters.AttackRandomPositionOffsetMaxLatitudeOffset,
-                                                            parameters.AttackRandomPositionOffsetMaxLatitudeOffset) *
+                long attackLatitudeOffset = (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset,
+                                                            F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset) *
                                                     1000000);
-                long attackLongitudeOffset = (long) (uniform(-parameters.AttackRandomPositionOffsetMaxLongitudeOffset,
-                                                             parameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
+                long attackLongitudeOffset = (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset,
+                                                             F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
                                                      1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
                         (round(mVehicleDataProvider->latitude(), microdegree2) + attackLatitudeOffset) *
@@ -523,7 +521,7 @@ namespace artery {
                 break;
             }
             case attackTypes::RandomSpeed: {
-                double randomSpeed = uniform(parameters.AttackRandomSpeedMin, parameters.AttackRandomSpeedMax);
+                double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin, F2MDParameters::attackParameters.AttackRandomSpeedMax);
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
                         randomSpeed * boost::units::si::meter_per_second);
                 break;
@@ -531,7 +529,7 @@ namespace artery {
             case attackTypes::RandomSpeedOffset: {
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
                         mVehicleDataProvider->speed() +
-                        (uniform(0, parameters.AttackRandomSpeedOffsetMax) * boost::units::si::meter_per_second));
+                        (uniform(0, F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax) * boost::units::si::meter_per_second));
                 break;
             }
             case attackTypes::EventualStop: {
@@ -540,7 +538,7 @@ namespace artery {
                     message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
                     message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue = 0;
                 } else {
-                    if (parameters.AttackEventualStopProbabilityThreshold > uniform(0, 1)) {
+                    if (F2MDParameters::attackParameters.AttackEventualStopProbabilityThreshold > uniform(0, 1)) {
                         attackEventualStopHasStopped = true;
                         attackEventualStopPosition = message->cam.camParameters.basicContainer.referencePosition;
                         message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = 0;
@@ -551,7 +549,7 @@ namespace artery {
                 break;
             }
             case attackTypes::Disruptive: {
-                if (disruptiveMessageQueue.size() >= parameters.AttackDisruptiveMinimumReceived) {
+                if (disruptiveMessageQueue.size() >= F2MDParameters::attackParameters.AttackDisruptiveMinimumReceived) {
                     int index = (int) uniform(0, (double) disruptiveMessageQueue.size());
                     auto it = disruptiveMessageQueue.begin();
                     std::advance(it, index);
@@ -602,7 +600,7 @@ namespace artery {
             }
             case attackTypes::StaleMessages: {
                 staleMessageQueue.push(message);
-                if (staleMessageQueue.size() >= parameters.AttackStaleDelayCount) {
+                if (staleMessageQueue.size() >= F2MDParameters::attackParameters.AttackStaleDelayCount) {
 
                     message = staleMessageQueue.front();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(

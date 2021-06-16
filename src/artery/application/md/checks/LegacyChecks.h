@@ -9,6 +9,7 @@
 #include <artery/application/md/kalman/Kalman_SI.h>
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/application/VehicleDataProvider.h>
+#include <artery/application/md/F2MDParameters.h>
 #include "artery/traci/VehicleController.h"
 #include "artery/utility/Geometry.h"
 
@@ -21,37 +22,13 @@ namespace artery {
         CheckResult checkCAM(const vanetza::asn1::Cam &);
 
     private:
-        double maxPlausibleSpeed;
-        double maxPlausibleAcceleration;
-        double maxPlausibleDeceleration;
 
-        double maxProximityRangeL;
-        double maxProximityRangeW;
-        double maxProximityDistance;
-        double maxPlausibleRange;
-        double maxTimeDelta;
-        double maxMgtRng;
-        double maxMgtRngDown;
-        double maxMgtRngUp;
-        double maxSuddenAppearanceRange;
-        long maxCamFrequency;
-        double maxOffroadSpeed;
-        double positionHeadingTime;
-        double maxHeadingChange;
-
-        double maxKalmanTime;
-        double kalmanMinPosRange;
-        double kalmanMinSpeedRange;
-        double kalmanMinHeadingRange;
-        double kalmanPosRange;
-        double kalmanSpeedRange;
+        DetectionParameters *detectionParameters;
 
         Kalman_SVI *kalmanSVI;
         Kalman_SC *kalmanSVSI;
         Kalman_SI *kalmanSI;
         Kalman_SI *kalmanVI;
-        Kalman_SI *kalmanSAI;
-
 
         const traci::VehicleController *mVehicleController = nullptr;
         const VehicleDataProvider *mVehicleDataProvider;

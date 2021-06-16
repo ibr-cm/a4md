@@ -19,6 +19,8 @@ namespace artery {
 
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
 
+    bool MisbehaviorDetectionService::staticInitializationComplete = false;
+    std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> MisbehaviorDetectionService::mStationIdMisbehaviorTypeMap;
     MisbehaviorDetectionService::MisbehaviorDetectionService() {
         curl = curl_easy_init();
     }
@@ -35,6 +37,39 @@ namespace artery {
         scheduleAt(simTime() + 3.0, m_self_msg);
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
         mLocalEnvironmentModel = getFacilities().get_mutable_ptr<LocalEnvironmentModel>();
+
+        if(!staticInitializationComplete){
+            staticInitializationComplete = true;
+            initializeParameters();
+        }
+    }
+
+    void MisbehaviorDetectionService::initializeParameters() {
+        F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
+        F2MDParameters::detectionParameters.maxPlausibleAcceleration = par("maxPlausibleAcceleration");
+        F2MDParameters::detectionParameters.maxPlausibleDeceleration = par("maxPlausibleDeceleration");
+        F2MDParameters::detectionParameters.maxPlausibleRange = par("maxPlausibleRange");
+
+        F2MDParameters::detectionParameters.maxProximityRangeL = par("maxProximityRangeL");
+        F2MDParameters::detectionParameters.maxProximityRangeW = par("maxProximityRangeW");
+        F2MDParameters::detectionParameters.maxProximityDistance = par("maxProximityDistance");
+        F2MDParameters::detectionParameters.maxTimeDelta = par("maxTimeDelta");
+        F2MDParameters::detectionParameters.maxMgtRng = par("maxMgtRng");
+        F2MDParameters::detectionParameters.maxMgtRngDown = par("maxMgtRngDown");
+        F2MDParameters::detectionParameters.maxMgtRngUp = par("maxMgtRngUp");
+        F2MDParameters::detectionParameters.maxSuddenAppearanceRange = par("maxSuddenAppearanceRange");
+        F2MDParameters::detectionParameters.maxSuddenAppearanceTime = par("maxSuddenAppearanceTime");
+        F2MDParameters::detectionParameters.maxCamFrequency = par("maxCamFrequency");
+        F2MDParameters::detectionParameters.maxOffroadSpeed = par("maxOffroadSpeed");
+        F2MDParameters::detectionParameters.positionHeadingTime = par("positionHeadingTime");
+        F2MDParameters::detectionParameters.maxHeadingChange = par("maxHeadingChange");
+
+        F2MDParameters::detectionParameters.maxKalmanTime = par("maxKalmanTime");
+        F2MDParameters::detectionParameters.kalmanMinPosRange = par("kalmanMinPosRange");
+        F2MDParameters::detectionParameters.kalmanMinSpeedRange = par("kalmanMinSpeedRange");
+        F2MDParameters::detectionParameters.kalmanMinHeadingRange = par("kalmanMinHeadingRange");
+        F2MDParameters::detectionParameters.kalmanPosRange = par("kalmanPosRange");
+        F2MDParameters::detectionParameters.kalmanSpeedRange = par("kalmanSpeedRange");
     }
 
     void MisbehaviorDetectionService::trigger() {

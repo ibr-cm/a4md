@@ -9,6 +9,7 @@
 #include "artery/application/VehicleDataProvider.h"
 #include "MisbehaviorTypes.h"
 #include "DetectedSender.h"
+#include "F2MDParameters.h"
 
 namespace artery {
     class MisbehaviorDetectionService : public ItsG5Service {
@@ -26,7 +27,6 @@ namespace artery {
         void
         receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, omnetpp::cObject *, omnetpp::cObject *) override;
 
-
         static void addStationIdToVehicleList(uint32_t stationId, misbehaviorTypes::MisbehaviorTypes misbehaviorType);
 
         static void removeStationIdFromVehicleList(uint32_t stationId);
@@ -35,19 +35,21 @@ namespace artery {
         void handleMessage(omnetpp::cMessage *) override;
 
     private:
+        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
+
+        void initializeParameters();
+
         omnetpp::cMessage *m_self_msg;
         CURL *curl;
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
         const Timer *mTimer = nullptr;
+
         std::map<uint32_t, DetectedSender> detectedVehicles;
-        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
+        static bool staticInitializationComplete;
+        static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
 
     };
-
-    static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
-
-
 } // namespace artery
 
 #endif /* ARTERY_MDSERVICE_H_ */

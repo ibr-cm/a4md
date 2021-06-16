@@ -7,6 +7,7 @@
 #ifndef ARTERY_MISBEHAVIORCASERVICE_H_
 #define ARTERY_MISBEHAVIORCASERVICE_H_
 
+#include "F2MDParameters.h"
 #include "artery/application/ItsG5BaseService.h"
 #include "artery/utility/Channel.h"
 #include "artery/utility/Geometry.h"
@@ -20,7 +21,6 @@
 #include <omnetpp/crng.h>
 #include <map>
 #include "artery/traci/VehicleController.h"
-#include "MisbehaviorCaParameters.h"
 
 namespace artery {
 
@@ -60,6 +60,7 @@ namespace artery {
 
         omnetpp::SimTime genCamDcc();
 
+        void initializeParameters();
 
         void visualizeCamPosition(vanetza::asn1::Cam cam);
 
@@ -106,18 +107,15 @@ namespace artery {
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
         std::map<uint32_t,std::queue<vanetza::asn1::Cam>> receivedMessages;
         std::list<std::string> activePoIs;
-
-
+        static bool staticInitializationComplete;
     };
 
-    static bool staticInitializationComplete = false;
 
     void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
     static TraCIAPI::VehicleScope *traciVehicleScope;
     static std::shared_ptr<const traci::API> traciAPI;
     static const TraCIAPI::POIScope *traciPoiScope;
-    static MisbehaviorCaParameters_t parameters;
 
 } // namespace artery
 

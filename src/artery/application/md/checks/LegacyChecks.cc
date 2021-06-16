@@ -15,9 +15,9 @@ namespace artery {
         double deltaAngle = calculateHeadingAngle(
                 Position(testPosition.x - myPosition.x, testPosition.y - myPosition.y));
 
-        if (deltaDistance.value() < maxProximityRangeL) {
-            if (deltaDistance.value() < maxProximityRangeW * 2 ||
-                (deltaAngle < 90 && deltaDistance.value() < (maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
+        if (deltaDistance.value() < detectionParameters->maxProximityRangeL) {
+            if (deltaDistance.value() < detectionParameters->maxProximityRangeW * 2 ||
+                (deltaAngle < 90 && deltaDistance.value() < (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
                 for (const auto &object: envModObjects) {
@@ -29,7 +29,7 @@ namespace artery {
                         minimumDistance = currentDistance;
                     }
                 }
-                if (minimumDistance.value() < maxProximityDistance) {
+                if (minimumDistance.value() < detectionParameters->maxProximityDistance) {
                     return 1;
                 } else {
                     return 0;
@@ -40,7 +40,7 @@ namespace artery {
     }
 
     double LegacyChecks::RangePlausibilityCheck(Position &senderPosition, Position &receiverPosition) const {
-        if (distance(senderPosition, receiverPosition).value() < maxPlausibleRange) {
+        if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleRange) {
             return 1;
         } else {
             return 0;
@@ -49,7 +49,7 @@ namespace artery {
 
     double
     LegacyChecks::PositionConsistencyCheck(Position &senderPosition, Position &receiverPosition, double time) const {
-        if (distance(senderPosition, receiverPosition).value() < maxPlausibleSpeed * time) {
+        if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleSpeed * time) {
             return 1;
         } else {
             return 0;
@@ -59,13 +59,13 @@ namespace artery {
     double LegacyChecks::SpeedConsistencyCheck(double currentSpeed, double oldSpeed, double time) const {
         double deltaSpeed = currentSpeed - oldSpeed;
         if (deltaSpeed > 0) {
-            if (deltaSpeed < maxPlausibleAcceleration * time) {
+            if (deltaSpeed < detectionParameters->maxPlausibleAcceleration * time) {
                 return 1;
             } else {
                 return 0;
             }
         } else {
-            if (fabs(deltaSpeed) < maxPlausibleDeceleration * time) {
+            if (fabs(deltaSpeed) < detectionParameters->maxPlausibleDeceleration * time) {
                 return 1;
             } else {
                 return 0;
@@ -77,15 +77,15 @@ namespace artery {
     double
     LegacyChecks::PositionSpeedConsistencyCheck(Position &currentPosition, Position &oldPosition, double currentSpeed,
                                                 double oldSpeed, double deltaTime) const {
-        if (deltaTime < maxTimeDelta) {
+        if (deltaTime < detectionParameters->maxTimeDelta) {
             Position::value_type deltaDistance = distance(currentPosition, oldPosition);
             double theoreticalSpeed = deltaDistance.value() / (double) deltaTime;
             if (std::max(currentSpeed, oldSpeed) - theoreticalSpeed >
-                (maxPlausibleDeceleration + maxMgtRng) * (double) deltaTime) {
+                (detectionParameters->maxPlausibleDeceleration + detectionParameters->maxMgtRng) * (double) deltaTime) {
                 return 0;
             } else {
                 if (theoreticalSpeed - std::min(currentSpeed, oldSpeed) >
-                    (maxPlausibleAcceleration + maxMgtRng) * (double) deltaTime) {
+                    (detectionParameters->maxPlausibleAcceleration + detectionParameters->maxMgtRng) * (double) deltaTime) {
                     return 0;
                 }
             }
@@ -96,16 +96,16 @@ namespace artery {
     double LegacyChecks::PositionSpeedMaxConsistencyCheck(Position &currentPosition, Position &oldPosition,
                                                           double currentSpeed, double oldSpeed,
                                                           double deltaTime) const {
-        if (deltaTime < maxTimeDelta) {
+        if (deltaTime < detectionParameters->maxTimeDelta) {
             double deltaDistance = distance(currentPosition, oldPosition).value();
             double currentMinimumSpeed = std::min(currentSpeed, oldSpeed);
-            double minimumDistance = oldSpeed * deltaTime - 0.5 * maxPlausibleDeceleration * pow(deltaTime, 2);
-            double maximumDistance = oldSpeed * deltaTime + 0.5 * maxPlausibleAcceleration * pow(deltaTime, 2);
-            double addonMgtRange = maxMgtRngDown + 0.3571 * currentMinimumSpeed - 0.01694 * pow(currentMinimumSpeed, 2);
+            double minimumDistance = oldSpeed * deltaTime - 0.5 * detectionParameters->maxPlausibleDeceleration * pow(deltaTime, 2);
+            double maximumDistance = oldSpeed * deltaTime + 0.5 * detectionParameters->maxPlausibleAcceleration * pow(deltaTime, 2);
+            double addonMgtRange = detectionParameters->maxMgtRngDown + 0.3571 * currentMinimumSpeed - 0.01694 * pow(currentMinimumSpeed, 2);
             addonMgtRange = (addonMgtRange < 0) ? 0 : addonMgtRange;
 
             if ((deltaDistance - minimumDistance + addonMgtRange) < 0 ||
-                (maximumDistance - deltaDistance + maxMgtRngUp) < 0) {
+                (maximumDistance - deltaDistance + detectionParameters->maxMgtRngUp) < 0) {
                 return 0;
             }
         }
@@ -113,7 +113,7 @@ namespace artery {
     }
 
     double LegacyChecks::SpeedPlausibilityCheck(double speed) const {
-        if (fabs(speed) < maxPlausibleSpeed) {
+        if (fabs(speed) < detectionParameters->maxPlausibleSpeed) {
             return 1;
         } else {
             return 0;
@@ -128,7 +128,7 @@ namespace artery {
     }
 
     double LegacyChecks::SuddenAppearanceCheck(Position &senderPosition, Position &receiverPosition) const {
-        if (distance(senderPosition, receiverPosition).value() > maxSuddenAppearanceRange) {
+        if (distance(senderPosition, receiverPosition).value() > detectionParameters->maxSuddenAppearanceRange) {
             return 1;
         } else {
             return 0;
@@ -136,7 +136,7 @@ namespace artery {
     }
 
     double LegacyChecks::PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const {
-        if (senderSpeed < maxOffroadSpeed) {
+        if (senderSpeed < detectionParameters->maxOffroadSpeed) {
             return 1;
         } else {
             //TODO check distance from road
@@ -145,7 +145,7 @@ namespace artery {
     }
 
     double LegacyChecks::FrequencyCheck(long newTime, long oldTime) const {
-        if (newTime - oldTime < maxCamFrequency) {
+        if (newTime - oldTime < detectionParameters->maxCamFrequency) {
             return 0;
         } else {
             return 1;
@@ -157,7 +157,7 @@ namespace artery {
     LegacyChecks::PositionHeadingConsistencyCheck(const HeadingValue_t &currentHeading, Position &currentPosition,
                                                   Position &oldPosition,
                                                   double deltaTime, double currentSpeed) const {
-        if (deltaTime < positionHeadingTime) {
+        if (deltaTime < detectionParameters->positionHeadingTime) {
             if (distance(currentPosition, oldPosition).value() < 1 || currentSpeed < 1) {
                 return 1;
             }
@@ -169,7 +169,7 @@ namespace artery {
             if (angleDelta > 180) {
                 angleDelta = 360 - angleDelta;
             }
-            if (angleDelta > maxHeadingChange) {
+            if (angleDelta > detectionParameters->maxHeadingChange) {
                 return 0;
             }
         }
@@ -187,15 +187,15 @@ namespace artery {
             returnValue[0] = 1;
             returnValue[1] = 1;
         } else {
-            if (deltaTime < maxKalmanTime) {
+            if (deltaTime < detectionParameters->maxKalmanTime) {
                 double deltaPosition[4];
 
                 double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              kalmanMinPosRange);
+                                              detectionParameters->kalmanMinPosRange);
                 double curPosConfY = std::max((double) currentPositionConfidence.semiMinorConfidence,
-                                              kalmanMinPosRange);
-                double curSpdConf = std::max(currentSpeedConfidence, kalmanMinSpeedRange);
-                double curHdConf = std::max(currentHeadingConfidence, kalmanMinHeadingRange);
+                                              detectionParameters->kalmanMinPosRange);
+                double curSpdConf = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
+                double curHdConf = std::max(currentHeadingConfidence, detectionParameters->kalmanMinHeadingRange);
 
                 kalmanSVI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
                                        currentSpeed, currentHeading, currentAcceleration, currentHeading, curPosConfX,
@@ -203,7 +203,7 @@ namespace artery {
                                        curSpdConf, curHdConf, deltaPosition);
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[2], 2.0)) /
-                                   (kalmanPosRange * curPosConfX * deltaTime);
+                                   (detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
                 if (isnan(ret_1)) {
                     ret_1 = 0;
                 }
@@ -215,7 +215,7 @@ namespace artery {
                 }
 
                 double ret_2 = 1 - sqrt(pow(deltaPosition[1], 2.0) + pow(deltaPosition[3], 2.0)) /
-                                   (kalmanSpeedRange * curSpdConf * deltaTime);
+                                   (detectionParameters->kalmanSpeedRange * curSpdConf * deltaTime);
                 if (isnan(ret_2)) {
                     ret_2 = 0;
                 }
@@ -247,19 +247,19 @@ namespace artery {
             returnValue[0] = 1;
             returnValue[1] = 1;
         } else {
-            if (deltaTime < maxKalmanTime) {
+            if (deltaTime < detectionParameters->maxKalmanTime) {
                 double deltaPosition[2];
 
                 double deltaDistance = distance(currentPosition, oldPosition).value();
                 double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              kalmanMinPosRange);
-                double curSpdConfX = std::max(currentSpeedConfidence, kalmanSpeedRange);
+                                              detectionParameters->kalmanMinPosRange);
+                double curSpdConfX = std::max(currentSpeedConfidence, detectionParameters->kalmanSpeedRange);
 
                 kalmanSVSI->getDeltaPos(deltaTime, deltaDistance, currentSpeed, currentAcceleration,
                                         currentAcceleration,
                                         curPosConfX, curSpdConfX, deltaPosition);
 
-                double ret_1 = 1 - (deltaPosition[0] / (kalmanPosRange * curPosConfX * deltaTime));
+                double ret_1 = 1 - (deltaPosition[0] / (detectionParameters->kalmanPosRange * curPosConfX * deltaTime));
                 if (isnan(ret_1)) {
                     ret_1 = 0;
                 }
@@ -269,7 +269,7 @@ namespace artery {
                 } else {
                     ret_1 = 1;
                 }
-                double ret_2 = 1 - (deltaPosition[1] / (kalmanSpeedRange * curSpdConfX * deltaTime));
+                double ret_2 = 1 - (deltaPosition[1] / (detectionParameters->kalmanSpeedRange * curSpdConfX * deltaTime));
                 if (isnan(ret_2)) {
                     ret_2 = 0;
                 }
@@ -294,18 +294,18 @@ namespace artery {
         if (!kalmanSI->isInit()) {
             return 1;
         } else {
-            if (deltaTime < maxKalmanTime) {
+            if (deltaTime < detectionParameters->maxKalmanTime) {
                 double deltaPosition[2];
                 double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              kalmanMinPosRange);
+                                              detectionParameters->kalmanMinPosRange);
                 double curPosConfY = std::max((double) currentPositionConfidence.semiMinorConfidence,
-                                              kalmanMinPosRange);
+                                              detectionParameters->kalmanMinPosRange);
 
                 kalmanSI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
                                       curPosConfX, curPosConfY, deltaPosition);
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
-                                   (4 * kalmanPosRange * curPosConfX * deltaTime);
+                                   (4 * detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
 
                 if (isnan(ret_1)) {
                     ret_1 = 0;
@@ -331,19 +331,19 @@ namespace artery {
         if (!kalmanSI->isInit()) {
             return 1;
         } else {
-            if (deltaTime < maxKalmanTime) {
+            if (deltaTime < detectionParameters->maxKalmanTime) {
                 double deltaPosition[2];
                 double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              kalmanMinPosRange);
+                                              detectionParameters->kalmanMinPosRange);
                 double curPosConfY = std::max((double) currentPositionConfidence.semiMinorConfidence,
-                                              kalmanMinPosRange);
+                                              detectionParameters->kalmanMinPosRange);
 
                 kalmanSI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(), currentSpeed,
                                       currentHeading,
                                       curPosConfX, curPosConfY, deltaPosition);
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
-                                   (4 * kalmanPosRange * curPosConfX * deltaTime);
+                                   (4 * detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
                 if (isnan(ret_1)) {
                     ret_1 = 0;
                 }
@@ -370,17 +370,17 @@ namespace artery {
         if (!kalmanVI->isInit()) {
             return 1;
         } else {
-            if (deltaTime < maxKalmanTime) {
+            if (deltaTime < detectionParameters->maxKalmanTime) {
                 double deltaPosition[2];
 
-                double curSpdConf = std::max(currentSpeedConfidence, kalmanMinSpeedRange);
-                double curHdConf = std::max(currentHeadingConfidence, kalmanMinHeadingRange);
+                double curSpdConf = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
+                double curHdConf = std::max(currentHeadingConfidence, detectionParameters->kalmanMinHeadingRange);
 
                 kalmanVI->getDeltaPos(deltaTime, currentSpeed, currentHeading, currentAcceleration,
                                       currentAccelerationConfidence, curSpdConf, curHdConf, deltaPosition);
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
-                                   (kalmanSpeedRange * curSpdConf * deltaTime);
+                                   (detectionParameters->kalmanSpeedRange * curSpdConf * deltaTime);
                 if (isnan(ret_1)) {
                     ret_1 = 0;
                 }
@@ -479,5 +479,8 @@ namespace artery {
         lastCam = newCam;
         lastCamSpeed = currentCamSpeed;
         return result;
+    }
+
+    LegacyChecks::LegacyChecks() {
     }
 }
