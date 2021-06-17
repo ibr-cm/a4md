@@ -8,7 +8,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double maxPlausibleSpeed = default(60);
         double maxPlausibleAcceleration = default(10);
         double maxPlausibleDeceleration = default(10);
-        double maxPlausibleRange = default(400);
+        double maxPlausibleRange = default(1500);
 
         double maxProximityRangeL = default(30);
         double maxProximityRangeW = default(3);

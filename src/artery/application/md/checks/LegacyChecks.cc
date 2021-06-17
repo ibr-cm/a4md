@@ -1,4 +1,6 @@
 #include "LegacyChecks.h"
+
+#include <utility>
 #include "artery/envmod/sensor/Sensor.h"
 
 namespace artery {
@@ -10,14 +12,16 @@ namespace artery {
         return angle;
     }
 
-    double LegacyChecks::ProximityPlausibilityCheck(Position &testPosition, Position &myPosition) {
+    double LegacyChecks::ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
+                                                    TrackedObjectsFilterRange &envModObjects) {
         Position::value_type deltaDistance = distance(testPosition, myPosition);
         double deltaAngle = calculateHeadingAngle(
                 Position(testPosition.x - myPosition.x, testPosition.y - myPosition.y));
 
         if (deltaDistance.value() < detectionParameters->maxProximityRangeL) {
             if (deltaDistance.value() < detectionParameters->maxProximityRangeW * 2 ||
-                (deltaAngle < 90 && deltaDistance.value() < (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
+                (deltaAngle < 90 && deltaDistance.value() <
+                                    (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
                 for (const auto &object: envModObjects) {
@@ -39,7 +43,8 @@ namespace artery {
         return 1;
     }
 
-    double LegacyChecks::RangePlausibilityCheck(Position &senderPosition, Position &receiverPosition) const {
+    double
+    LegacyChecks::RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const {
         if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleRange) {
             return 1;
         } else {
@@ -48,7 +53,8 @@ namespace artery {
     }
 
     double
-    LegacyChecks::PositionConsistencyCheck(Position &senderPosition, Position &receiverPosition, double time) const {
+    LegacyChecks::PositionConsistencyCheck(Position &senderPosition, const Position &receiverPosition,
+                                           double time) const {
         if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleSpeed * time) {
             return 1;
         } else {
@@ -85,7 +91,8 @@ namespace artery {
                 return 0;
             } else {
                 if (theoreticalSpeed - std::min(currentSpeed, oldSpeed) >
-                    (detectionParameters->maxPlausibleAcceleration + detectionParameters->maxMgtRng) * (double) deltaTime) {
+                    (detectionParameters->maxPlausibleAcceleration + detectionParameters->maxMgtRng) *
+                    (double) deltaTime) {
                     return 0;
                 }
             }
@@ -99,9 +106,12 @@ namespace artery {
         if (deltaTime < detectionParameters->maxTimeDelta) {
             double deltaDistance = distance(currentPosition, oldPosition).value();
             double currentMinimumSpeed = std::min(currentSpeed, oldSpeed);
-            double minimumDistance = oldSpeed * deltaTime - 0.5 * detectionParameters->maxPlausibleDeceleration * pow(deltaTime, 2);
-            double maximumDistance = oldSpeed * deltaTime + 0.5 * detectionParameters->maxPlausibleAcceleration * pow(deltaTime, 2);
-            double addonMgtRange = detectionParameters->maxMgtRngDown + 0.3571 * currentMinimumSpeed - 0.01694 * pow(currentMinimumSpeed, 2);
+            double minimumDistance =
+                    oldSpeed * deltaTime - 0.5 * detectionParameters->maxPlausibleDeceleration * pow(deltaTime, 2);
+            double maximumDistance =
+                    oldSpeed * deltaTime + 0.5 * detectionParameters->maxPlausibleAcceleration * pow(deltaTime, 2);
+            double addonMgtRange = detectionParameters->maxMgtRngDown + 0.3571 * currentMinimumSpeed -
+                                   0.01694 * pow(currentMinimumSpeed, 2);
             addonMgtRange = (addonMgtRange < 0) ? 0 : addonMgtRange;
 
             if ((deltaDistance - minimumDistance + addonMgtRange) < 0 ||
@@ -127,7 +137,7 @@ namespace artery {
         return 0;
     }
 
-    double LegacyChecks::SuddenAppearanceCheck(Position &senderPosition, Position &receiverPosition) const {
+    double LegacyChecks::SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const {
         if (distance(senderPosition, receiverPosition).value() > detectionParameters->maxSuddenAppearanceRange) {
             return 1;
         } else {
@@ -178,10 +188,9 @@ namespace artery {
 
     void LegacyChecks::KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
                                                            const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                           double &currentSpeed, double &currentAcceleration,
-                                                           double &currentHeading,
-                                                           double &currentSpeedConfidence,
-                                                           double &currentHeadingConfidence,
+                                                           const Position &currentSpeed,
+                                                           const Position &currentAcceleration,
+                                                           double currentSpeedConfidence,
                                                            double &deltaTime, double *returnValue) const {
         if (!kalmanSVI->isInitialized()) {
             returnValue[0] = 1;
@@ -190,20 +199,20 @@ namespace artery {
             if (deltaTime < detectionParameters->maxKalmanTime) {
                 double deltaPosition[4];
 
-                double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-                double curPosConfY = std::max((double) currentPositionConfidence.semiMinorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-                double curSpdConf = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
-                double curHdConf = std::max(currentHeadingConfidence, detectionParameters->kalmanMinHeadingRange);
+                double currentSemiMajorConfidence = std::max((double) currentPositionConfidence.semiMajorConfidence / 100.0,
+                                                             detectionParameters->kalmanMinPosRange);
+                double currentSemiMinorConfidence = std::max((double) currentPositionConfidence.semiMinorConfidence / 100.0,
+                                                             detectionParameters->kalmanMinPosRange);
+                currentSpeedConfidence = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
 
                 kalmanSVI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
-                                       currentSpeed, currentHeading, currentAcceleration, currentHeading, curPosConfX,
-                                       curPosConfY,
-                                       curSpdConf, curHdConf, deltaPosition);
+                                       currentSpeed.x.value(), currentSpeed.y.value(), currentAcceleration.x.value(),
+                                       currentAcceleration.y.value(), currentSemiMajorConfidence,
+                                       currentSemiMinorConfidence,
+                                       currentSpeedConfidence, currentSpeedConfidence, deltaPosition);
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[2], 2.0)) /
-                                   (detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
+                                   (detectionParameters->kalmanPosRange * currentSemiMajorConfidence * deltaTime);
                 if (isnan(ret_1)) {
                     ret_1 = 0;
                 }
@@ -215,7 +224,7 @@ namespace artery {
                 }
 
                 double ret_2 = 1 - sqrt(pow(deltaPosition[1], 2.0) + pow(deltaPosition[3], 2.0)) /
-                                   (detectionParameters->kalmanSpeedRange * curSpdConf * deltaTime);
+                                   (detectionParameters->kalmanSpeedRange * currentSpeedConfidence * deltaTime);
                 if (isnan(ret_2)) {
                     ret_2 = 0;
                 }
@@ -231,8 +240,8 @@ namespace artery {
             } else {
                 returnValue[0] = 1;
                 returnValue[1] = 1;
-                kalmanSVI->setInitial(currentPosition.x.value(), currentPosition.y.value(), currentSpeed,
-                                      currentHeading);
+                kalmanSVI->setInitial(currentPosition.x.value(), currentPosition.y.value(), currentSpeed.x.value(),
+                                      currentSpeed.y.value());
             }
         }
     }
@@ -269,7 +278,8 @@ namespace artery {
                 } else {
                     ret_1 = 1;
                 }
-                double ret_2 = 1 - (deltaPosition[1] / (detectionParameters->kalmanSpeedRange * curSpdConfX * deltaTime));
+                double ret_2 =
+                        1 - (deltaPosition[1] / (detectionParameters->kalmanSpeedRange * curSpdConfX * deltaTime));
                 if (isnan(ret_2)) {
                     ret_2 = 0;
                 }
@@ -398,15 +408,31 @@ namespace artery {
         }
     }
 
-    CheckResult LegacyChecks::checkCAM(const vanetza::asn1::Cam &newCam) {
-
-        BasicVehicleContainerHighFrequency_t highFrequencyContainer = newCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+    Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition) {
         traci::TraCIGeoPosition traciGeoPosition = {
-                (double) newCam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
-                (double) newCam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
-        traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
+                (double) referencePosition.longitude / 10000000.0,
+                (double) referencePosition.latitude / 10000000.0};
+        traci::TraCIPosition traciPosition = traciAPI->convert2D(traciGeoPosition);
+        return Position(traciPosition.x, traciPosition.y);
+    }
 
-        Position currentCamPosition = Position(traciPosition.x, traciPosition.y);
+    Position LegacyChecks::getVector(const double &value, const double &angle) {
+        double x = value * sin(angle * PI / 180);
+        double y = sqrt(pow(value, 2) - pow(x, 2));
+        if (angle > 90 && angle < 270) {
+            y *= -1;
+        }
+        return Position(x, y);
+    }
+
+    CheckResult *LegacyChecks::checkCAM(const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects,
+                                        const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr) {
+
+        BasicVehicleContainerHighFrequency_t highFrequencyContainer = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+
+        Position currentCamPosition = convertCamPosition(
+                currentCam->cam.camParameters.basicContainer.referencePosition);
+
         double currentCamSpeed = (double) highFrequencyContainer.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
@@ -415,72 +441,86 @@ namespace artery {
                 (double) highFrequencyContainer.longitudinalAcceleration.longitudinalAccelerationConfidence / 10.0;
         double currentCamHeading = (double) highFrequencyContainer.heading.headingValue / 10.0;
         double currentCamHeadingConfidence = (double) highFrequencyContainer.heading.headingConfidence / 10.0;
-        mPosition = mVehicleDataProvider->position();
-        if (lastCam->header.messageID != 0) {
-            camDeltaTime = (double) (newCam->cam.generationDeltaTime - lastCam->cam.generationDeltaTime);
-            if (lastCam->cam.generationDeltaTime > newCam->cam.generationDeltaTime) {
+
+        auto *result = new CheckResult;
+        result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
+        result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
+        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition, envModObjects);
+        result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
+
+        if (lastCamPtr != nullptr) {
+            std::cout << "consistency checks" << std::endl;
+            vanetza::asn1::Cam lastCam = *lastCamPtr;
+            Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition);
+            double lastCamSpeed =
+                    (double) lastCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
+                    100.0;
+            auto camDeltaTime = (double) (currentCam->cam.generationDeltaTime - lastCam->cam.generationDeltaTime);
+            if (lastCam->cam.generationDeltaTime > currentCam->cam.generationDeltaTime) {
                 camDeltaTime += 65536;
             }
             camDeltaTime /= 1000;
+            result->consistencyIsChecked = true;
+            result->positionConsistency = PositionConsistencyCheck(currentCamPosition, lastCamPosition, camDeltaTime);
+            result->speedConsistency = SpeedConsistencyCheck(currentCamSpeed, lastCamSpeed, camDeltaTime);
+            result->positionSpeedConsistency = PositionSpeedConsistencyCheck(currentCamPosition, lastCamPosition,
+                                                                             currentCamSpeed, lastCamSpeed,
+                                                                             camDeltaTime);
+            result->positionSpeedMaxConsistency = PositionSpeedMaxConsistencyCheck(currentCamPosition, lastCamPosition,
+                                                                                   currentCamSpeed, lastCamSpeed,
+                                                                                   camDeltaTime);
+            result->positionHeadingConsistency = PositionHeadingConsistencyCheck(
+                    highFrequencyContainer.heading.headingValue,
+                    currentCamPosition, lastCamPosition, camDeltaTime, currentCamSpeed);
+
+            double returnValue[2];
+            KalmanPositionSpeedConsistencyCheck(currentCamPosition,
+                                                currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
+                                                getVector(currentCamSpeed, currentCamHeading),
+                                                getVector(currentCamAcceleration, currentCamHeading),
+                                                currentCamSpeedConfidence, camDeltaTime, returnValue);
+            result->kalmanPositionSpeedConsistencyPosition = returnValue[0];
+            result->kalmanPositionSpeedConsistencySpeed = returnValue[1];
+            KalmanPositionSpeedScalarConsistencyCheck(currentCamPosition, lastCamPosition,
+                                                      currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
+                                                      currentCamSpeed, currentCamAcceleration,
+                                                      currentCamSpeedConfidence,
+                                                      camDeltaTime, returnValue);
+            result->kalmanPositionSpeedScalarConsistencyPosition = returnValue[0];
+            result->kalmanPositionSpeedScalarConsistencySpeed = returnValue[1];
+            result->kalmanPositionConsistencyConfidence = KalmanPositionConsistencyCheck(currentCamPosition,
+                                                                                         lastCamPosition,
+                                                                                         currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
+                                                                                         camDeltaTime);
+            result->kalmanPositionAccelerationConsistencySpeed = KalmanPositionAccConsistencyCheck(currentCamPosition,
+                                                                                                   currentCamSpeed,
+                                                                                                   currentCamHeading,
+                                                                                                   currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
+                                                                                                   camDeltaTime);
+            result->kalmanSpeedConsistencyConfidence = KalmanSpeedConsistencyCheck(currentCamSpeed, lastCamSpeed,
+                                                                                   currentCamSpeedConfidence,
+                                                                                   currentCamHeading,
+                                                                                   currentCamHeadingConfidence,
+                                                                                   currentCamAcceleration,
+                                                                                   currentCamAccelerationConfidence,
+                                                                                   camDeltaTime);
+            //TODO IntersectionCheck
+            result->frequency = FrequencyCheck(currentCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
+        } else {
+            result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
         }
-
-        CheckResult result;
-        result.positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
-        result.speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
-        result.proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, mPosition);
-        result.rangePlausibility = RangePlausibilityCheck(currentCamPosition, mPosition);
-
-        result.positionConsistency = PositionConsistencyCheck(currentCamPosition, mPosition, camDeltaTime);
-        result.speedConsistency = SpeedConsistencyCheck(currentCamSpeed, lastCamSpeed, camDeltaTime);
-        result.positionSpeedConsistency = PositionSpeedConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                                        currentCamSpeed, lastCamSpeed, camDeltaTime);
-        result.positionSpeedMaxConsistency = PositionSpeedMaxConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                                              currentCamSpeed, lastCamSpeed,
-                                                                              camDeltaTime);
-        result.positionHeadingConsistency = PositionHeadingConsistencyCheck(
-                highFrequencyContainer.heading.headingValue,
-                currentCamPosition, lastCamPosition, camDeltaTime, currentCamSpeed);
-
-        double returnValue[2];
-        KalmanPositionSpeedConsistencyCheck(currentCamPosition,
-                                            newCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                            currentCamSpeed, currentCamAcceleration, currentCamHeading,
-                                            currentCamAccelerationConfidence, currentCamHeadingConfidence, camDeltaTime,
-                                            returnValue);
-        result.kalmanPositionSpeedConsistencyPosition = returnValue[0];
-        result.kalmanPositionSpeedConsistencySpeed = returnValue[1];
-        KalmanPositionSpeedScalarConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                  newCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                  currentCamSpeed, currentCamAcceleration, currentCamSpeedConfidence,
-                                                  camDeltaTime, returnValue);
-        result.kalmanPositionSpeedScalarConsistencyPosition = returnValue[0];
-        result.kalmanPositionSpeedScalarConsistencySpeed = returnValue[1];
-        result.kalmanPositionConsistencyConfidence = KalmanPositionConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                                                    newCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                                                    camDeltaTime);
-        result.kalmanPositionAccelerationConsistencySpeed = KalmanPositionAccConsistencyCheck(currentCamPosition,
-                                                                                              currentCamSpeed,
-                                                                                              currentCamHeading,
-                                                                                              newCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                                                              camDeltaTime);
-        result.kalmanSpeedConsistencyConfidence = KalmanSpeedConsistencyCheck(currentCamSpeed, lastCamSpeed,
-                                                                              currentCamSpeedConfidence,
-                                                                              currentCamHeading,
-                                                                              currentCamHeadingConfidence,
-                                                                              currentCamAcceleration,
-                                                                              currentCamAccelerationConfidence,
-                                                                              camDeltaTime);
-        //TODO IntersectionCheck
-        result.suddenAppearance = SuddenAppearanceCheck(currentCamPosition, mPosition);
-        result.frequency = FrequencyCheck(newCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
-
-
-        lastCamPosition = currentCamPosition;
-        lastCam = newCam;
-        lastCamSpeed = currentCamSpeed;
         return result;
     }
 
-    LegacyChecks::LegacyChecks() {
+    LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI,
+                               DetectionParameters *detectionParameters,
+                               Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
+                               Kalman_SI *kalmanSI, Kalman_SI *kalmanVI) :
+            traciAPI(std::move(traciAPI)),
+            detectionParameters(detectionParameters),
+            kalmanSVI(kalmanSVI), kalmanSVSI(kalmanSVSI),
+            kalmanSI(kalmanSI), kalmanVI(kalmanVI) {
+
+
     }
 }

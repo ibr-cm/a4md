@@ -17,12 +17,21 @@ namespace artery {
 
     class LegacyChecks {
     public:
-        LegacyChecks();
+        LegacyChecks() = delete;
 
-        CheckResult checkCAM(const vanetza::asn1::Cam &);
+        LegacyChecks(std::shared_ptr<const traci::API> traciAPI, DetectionParameters *detectionParameters,
+                     Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
+                     Kalman_SI *kalmanSI, Kalman_SI *kalmanVI);
+
+        CheckResult *checkCAM(const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects,
+                              const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr);
+
+        Position convertCamPosition(const ReferencePosition_t &referencePosition);
+
+        static Position getVector(const double &value, const double &angle);
 
     private:
-
+        std::shared_ptr<const traci::API> traciAPI;
         DetectionParameters *detectionParameters;
 
         Kalman_SVI *kalmanSVI;
@@ -30,25 +39,15 @@ namespace artery {
         Kalman_SI *kalmanSI;
         Kalman_SI *kalmanVI;
 
-        const traci::VehicleController *mVehicleController = nullptr;
-        const VehicleDataProvider *mVehicleDataProvider;
-        const LocalEnvironmentModel *mLocalEnvironmentModel;
-        TrackedObjectsFilterRange envModObjects;
-
-
-        Position lastCamPosition;
-        double lastCamSpeed;
-        vanetza::asn1::Cam lastCam;
-        double camDeltaTime;
-        Position mPosition;
 
         static double calculateHeadingAngle(const Position &position);
 
-        double ProximityPlausibilityCheck(Position &testPosition, Position &myPosition);
+        double ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
+                                          TrackedObjectsFilterRange &envModObjects);
 
-        double RangePlausibilityCheck(Position &senderPosition, Position &receiverPosition) const;
+        double RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const;
 
-        double PositionConsistencyCheck(Position &senderPosition, Position &receiverPosition, double time) const;
+        double PositionConsistencyCheck(Position &senderPosition, const Position &receiverPosition, double time) const;
 
         double SpeedConsistencyCheck(double currentSpeed, double oldSpeed, double time) const;
 
@@ -63,7 +62,7 @@ namespace artery {
         double IntersectionCheck(Position nodePosition1, Position nodeSize1, Position head1, Position nodePosition2,
                                  Position nodeSize2, Position head2, double deltaTime);
 
-        double SuddenAppearanceCheck(Position &senderPosition, Position &receiverPosition) const;
+        double SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const;
 
         double PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const;
 
@@ -77,11 +76,9 @@ namespace artery {
 
         void KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
                                                  const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                 double &currentSpeed, double &currentAcceleration,
-                                                 double &currentHeading,
-                                                 double &currentSpeedConfidence, double &currentHeadingConfidence,
-                                                 double &deltaTime,
-                                                 double *returnValue) const;
+                                                 const Position &currentSpeed, const Position  &currentAcceleration,
+                                                 double currentSpeedConfidence,
+                                                 double &deltaTime, double *returnValue) const;
 
         void KalmanPositionSpeedScalarConsistencyCheck(Position &currentPosition, Position &oldPosition,
                                                        const PosConfidenceEllipse_t &currentPositionConfidence,

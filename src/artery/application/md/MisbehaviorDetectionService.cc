@@ -21,6 +21,8 @@ namespace artery {
 
     bool MisbehaviorDetectionService::staticInitializationComplete = false;
     std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> MisbehaviorDetectionService::mStationIdMisbehaviorTypeMap;
+    std::shared_ptr<const traci::API> MisbehaviorDetectionService::traciAPI;
+
     MisbehaviorDetectionService::MisbehaviorDetectionService() {
         curl = curl_easy_init();
     }
@@ -38,8 +40,9 @@ namespace artery {
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
         mLocalEnvironmentModel = getFacilities().get_mutable_ptr<LocalEnvironmentModel>();
 
-        if(!staticInitializationComplete){
+        if (!staticInitializationComplete) {
             staticInitializationComplete = true;
+            traciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
             initializeParameters();
         }
     }
@@ -100,6 +103,28 @@ namespace artery {
             CaObject *ca = dynamic_cast<CaObject *>(c_obj);
             vanetza::asn1::Cam message = ca->asn1();
             uint32_t senderStationId = message->header.stationID;
+            std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << std::endl;
+            traci::TraCIGeoPosition traciGeoPosition = {
+                    mVehicleDataProvider->longitude().value(),
+                    mVehicleDataProvider->latitude().value()};
+            traci::TraCIPosition traciPosition = traciAPI->convert2D(traciGeoPosition);
+            Position ownPosition = Position(traciPosition.x, traciPosition.y);
+
+            auto &allObjects = mLocalEnvironmentModel->allObjects();
+            TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
+            CheckResult *result;
+            if (detectedSenders.find(senderStationId) != detectedSenders.end()) {
+                result = detectedSenders[senderStationId]->addAndCheckCam(message, ownPosition,
+                                                                          envModObjects);
+            } else {
+                detectedSenders[senderStationId] = new DetectedSender(traciAPI, &F2MDParameters::detectionParameters,
+                                                                      message);
+                result = detectedSenders[senderStationId]->addAndCheckCam(message, ownPosition,
+                                                                          envModObjects);
+            }
+            std::cout << result->toString(0.5) << std::endl;
+
+
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
                 EV_INFO << "Received manipulated CAM!";
@@ -122,25 +147,6 @@ namespace artery {
                 EV_INFO << "Received benign CAM!";
             } else {
                 EV_INFO << "Received weird misbehaviorType";
-            }
-
-            auto &allObjects = mLocalEnvironmentModel->allObjects();
-            TrackedObjectsFilterRange objects = filterBySensorCategory(allObjects, "CA");
-            std::cout << mVehicleDataProvider->getStationId() << "--- By name ---" << std::endl;
-            for (const auto &object: objects) {
-                std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
-                if (obj_ptr.expired()) continue; /*< objects remain in tracking briefly after leaving simulation */
-                const auto &vd = obj_ptr.lock()->getVehicleData();
-                std::cout
-                        << "station ID: " << vd.station_id()
-                        << " lon: " << vd.longitude()
-                        << " lat: " << vd.latitude()
-                        << " center point: x: " << obj_ptr.lock()->getCentrePoint().x
-                        << "y: " <<obj_ptr.lock()->getCentrePoint().y
-                        << "radius: " << obj_ptr.lock()->getRadius()
-                        << " speed: " << vd.speed()
-                        << " when: " << vd.updated()
-                        << std::endl;
             }
         }
     }

@@ -45,7 +45,8 @@ namespace artery {
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
         const Timer *mTimer = nullptr;
 
-        std::map<uint32_t, DetectedSender> detectedVehicles;
+        std::map<uint32_t, DetectedSender*> detectedSenders;
+        static std::shared_ptr<const traci::API> traciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
 

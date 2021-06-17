@@ -13,27 +13,31 @@
 #include <artery/application/md/kalman/Kalman_SI.h>
 #include <artery/application/md/checks/CheckResult.h>
 #include <artery/traci/VehicleController.h>
+#include <artery/application/md/F2MDParameters.h>
+#include <artery/application/md/checks/LegacyChecks.h>
 
-class DetectedSender {
-public:
-    DetectedSender(const vanetza::asn1::Cam& message, traci::VehicleController *vehicleController);
-    CheckResult addAndCheckCam(const vanetza::asn1::Cam& message);
+namespace artery {
 
-private:
-    const traci::VehicleController *mVehicleController = nullptr;
+    class DetectedSender {
+    public:
+        DetectedSender(const std::shared_ptr<const traci::API> &traciAPI, DetectionParameters *detectionParameters,
+                       const vanetza::asn1::Cam &message);
 
+        CheckResult * addAndCheckCam(const vanetza::asn1::Cam &message, const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects);
 
-    std::list<vanetza::asn1::Cam> receivedCams;
-//    std::list<CheckResult> checkResults;
-    unsigned long stationId;
+    private:
+        LegacyChecks legacyChecks;
 
-    Kalman_SVI kalmanSVI;
-    Kalman_SC kalmanSVSI;
-    Kalman_SI kalmanSI;
-    Kalman_SI kalmanVI;
-    Kalman_SI kalmanSAI;
+        std::list<CheckResult *> checkResults;
+        Position mPosition;
 
-};
+        Kalman_SVI kalmanSVI;
+        Kalman_SC kalmanSVSI;
+        Kalman_SI kalmanSI;
+        Kalman_SI kalmanVI;
 
+    };
+
+} //namespace artery
 
 #endif //ARTERY_DETECTEDSENDER_H
