@@ -59,8 +59,8 @@ namespace artery {
 
         double SpeedPlausibilityCheck(double speed) const;
 
-        double IntersectionCheck(Position nodePosition1, Position nodeSize1, Position head1, Position nodePosition2,
-                                 Position nodeSize2, Position head2, double deltaTime);
+//        double IntersectionCheck(Position nodePosition1, Position nodeSize1, Position head1, Position nodePosition2,
+//                                 Position nodeSize2, Position head2, double deltaTime);
 
         double SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const;
 
@@ -91,13 +91,12 @@ namespace artery {
                                               double &deltaTime);
 
         double
-        KalmanPositionAccConsistencyCheck(Position &currentPosition, double &currentSpeed, double &currentHeading,
+        KalmanPositionAccConsistencyCheck(const Position &currentPosition, const Position &currentSpeed,
                                           const PosConfidenceEllipse_t &currentPositionConfidence,
                                           double &deltaTime);
 
-        double KalmanSpeedConsistencyCheck(double &currentSpeed, double &oldSpeed, double &currentSpeedConfidence,
-                                           double &currentHeading, double &currentHeadingConfidence,
-                                           double &currentAcceleration, double &currentAccelerationConfidence,
+        double KalmanSpeedConsistencyCheck(const Position &currentSpeed, const Position &oldSpeed,
+                                           double &currentSpeedConfidence, const Position &currentAcceleration,
                                            double &deltaTime);
 
 //        InterTest MultipleIntersectionCheck(NodeTable * detectedNodes,

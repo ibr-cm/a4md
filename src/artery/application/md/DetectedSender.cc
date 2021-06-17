@@ -21,7 +21,7 @@ namespace artery {
         kalmanSVI.setInitial(position.x.value(), position.y.value(), speedVector.x.value(), speedVector.y.value());
         kalmanSVSI.setInitial(0, speed);
         kalmanSI.setInitial(position.x.value(), position.y.value());
-        kalmanVI.setInitial(speed, heading);
+        kalmanVI.setInitial(speedVector.x.value(), speedVector.y.value());
     }
 
 
