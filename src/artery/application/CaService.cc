@@ -75,6 +75,9 @@ namespace artery {
         mTimer = &getFacilities().get_const<Timer>();
         mLocalDynamicMap = &getFacilities().get_mutable<artery::LocalDynamicMap>();
 
+        mStationId = mVehicleDataProvider->station_id();
+        WATCH(mStationId);
+
         // avoid unreasonable high elapsed time values for newly inserted vehicles
         mLastCamTimestamp = simTime();
 

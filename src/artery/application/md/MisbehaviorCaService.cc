@@ -83,6 +83,8 @@ namespace artery {
         mTimer = &getFacilities().get_const<Timer>();
         mLocalDynamicMap = &getFacilities().get_mutable<artery::LocalDynamicMap>();
         mVehicleController = &getFacilities().get_const<traci::VehicleController>();
+        mStationId = mVehicleDataProvider->station_id();
+        WATCH(mStationId);
 
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;

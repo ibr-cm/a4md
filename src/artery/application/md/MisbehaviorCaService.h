@@ -86,6 +86,7 @@ namespace artery {
         vanetza::units::Velocity mSpeedDelta;
         bool mDccRestriction;
         bool mFixedRate;
+        long mStationId;
 
 
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;

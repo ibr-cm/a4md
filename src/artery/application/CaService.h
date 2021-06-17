@@ -70,6 +70,7 @@ namespace artery {
         vanetza::units::Velocity mSpeedDelta;
         bool mDccRestriction;
         bool mFixedRate;
+        long mStationId;
     };
 
     vanetza::asn1::Cam createCooperativeAwarenessMessage(const VehicleDataProvider &, uint16_t genDeltaTime);
