@@ -30,4 +30,6 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double kalmanMinHeadingRange = default(4.0);
         double kalmanPosRange = default(1.0);
         double kalmanSpeedRange = default(4.0);
+
+        int objectAccessHelperGridSize = default(10);
 }

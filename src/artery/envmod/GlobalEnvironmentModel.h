@@ -77,6 +77,14 @@ public:
      */
     SensorDetection detectObjects(std::function<SensorDetection(ObstacleRtree&, PreselectionMethod&)> detect);
 
+    ObstacleRtree* getObstacleRTree(){
+        return &mObstacleRtree;
+    }
+
+    ObstacleDB * getObstacleDB(){
+        return &mObstacles;
+    }
+
 private:
     /**
      * Refresh all dynamic objects in the database.

@@ -97,6 +97,8 @@ namespace artery {
         // CAM Location Visualizer (PoI)
         bool CamLocationVisualizer;
         int CamLocationVisualizerMaxLength;
+        int objectAccessHelperGridSize;
+
 
     };
 

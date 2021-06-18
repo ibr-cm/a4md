@@ -109,6 +109,10 @@ public:
      */
     const std::vector<Sensor*>& getSensors() const { return mSensors; }
 
+    GlobalEnvironmentModel* getGlobalEnvMod() const {
+        return mGlobalEnvironmentModel;
+    }
+
 private:
     void initializeSensors();
 

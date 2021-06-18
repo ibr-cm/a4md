@@ -10,6 +10,7 @@
 #include "MisbehaviorTypes.h"
 #include "DetectedSender.h"
 #include "F2MDParameters.h"
+#include "artery/envmod/GlobalEnvironmentModel.h"
 
 namespace artery {
     class MisbehaviorDetectionService : public ItsG5Service {
@@ -43,12 +44,15 @@ namespace artery {
         CURL *curl;
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
+        GlobalEnvironmentModel *mGlobalEnvironmentModel = nullptr;
         const Timer *mTimer = nullptr;
 
-        std::map<uint32_t, DetectedSender*> detectedSenders;
+        std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> traciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
+        static std::vector<std::vector<traci::Boundary>> gridCellBoundaries;
+        static std::vector<std::vector<std::vector<std::tuple<std::string, geometry::Box *, std::shared_ptr<EnvironmentModelObstacle>>>>> gridCellObstacles;
 
     };
 } // namespace artery
