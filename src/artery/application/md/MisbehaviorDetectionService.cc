@@ -11,9 +11,9 @@
 #include "artery/application/md/MisbehaviorTypes.h"
 #include "artery/envmod/sensor/Sensor.h"
 #include <boost/units/io.hpp>
-#include <artery/application/md/util/CustomRing.h>
 #include <inet/common/ModuleAccess.h>
 #include "artery/traci/Cast.h"
+#include "artery/application/md/MisbehaviorCaService.h"
 
 namespace artery {
     using namespace omnetpp;
@@ -25,8 +25,11 @@ namespace artery {
     bool MisbehaviorDetectionService::staticInitializationComplete = false;
     std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> MisbehaviorDetectionService::mStationIdMisbehaviorTypeMap;
     std::shared_ptr<const traci::API> MisbehaviorDetectionService::traciAPI;
-    std::vector<std::vector<traci::Boundary>> MisbehaviorDetectionService::gridCellBoundaries;
-    std::vector<std::vector<std::vector<std::tuple<std::string, geometry::Box *, std::shared_ptr<EnvironmentModelObstacle>>>>> MisbehaviorDetectionService::gridCellObstacles;
+    std::vector<std::vector<geometry::Box>> MisbehaviorDetectionService::gridCellBoundaries;
+    std::vector<std::vector<std::vector<ObstacleStruct>>> MisbehaviorDetectionService::gridCellObstacles;
+    std::vector<std::vector<std::vector<LaneStruct>>> MisbehaviorDetectionService::gridCellLanes;
+
+    traci::Boundary MisbehaviorDetectionService::simulationBoundary;
 
     MisbehaviorDetectionService::MisbehaviorDetectionService() {
         curl = curl_easy_init();
@@ -35,6 +38,11 @@ namespace artery {
     MisbehaviorDetectionService::~MisbehaviorDetectionService() {
         cancelAndDelete(m_self_msg);
         curl_easy_cleanup(curl);
+
+//        while (!activePoIs.empty()) {
+//            traciPoiScope->remove(activePoIs.front());
+//            activePoIs.pop_front();
+//        }
     }
 
     void MisbehaviorDetectionService::initialize() {
@@ -45,77 +53,21 @@ namespace artery {
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
         mLocalEnvironmentModel = getFacilities().get_mutable_ptr<LocalEnvironmentModel>();
         mGlobalEnvironmentModel = mLocalEnvironmentModel->getGlobalEnvMod();
+        mVehicleController = &getFacilities().get_const<traci::VehicleController>();
+
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
             traciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
-            initializeParameters();
+            traciPoiScope = &traciAPI->poi;
             TraCIAPI::PolygonScope polygon = traciAPI->polygon;
-            traci::Boundary outerBoundary{traciAPI->simulation.getNetBoundary()};
-            int splitGridSize = F2MDParameters::miscParameters.objectAccessHelperGridSize;
-            double gridLengthX =
-                    (outerBoundary.upperRightPosition().x - outerBoundary.lowerLeftPosition().x) / splitGridSize;
-            double gridLengthY =
-                    (outerBoundary.upperRightPosition().y - outerBoundary.lowerLeftPosition().y) / splitGridSize;
-            std::cout << "size: x: " << gridLengthX << " y: " << gridLengthY << std::endl;
-            for (int i = 0; i < splitGridSize; i++) {
-                std::vector<traci::Boundary> row;
-                std::vector<std::vector<std::tuple<std::string, geometry::Box *, std::shared_ptr<EnvironmentModelObstacle>>>> rowObstacle;
-                for (int j = 0; j < splitGridSize; j++) {
-                    libsumo::TraCIPositionVector v;
-                    v.value.emplace_back(Position(i * gridLengthX + outerBoundary.lowerLeftPosition().x,
-                                                  j * gridLengthY +
-                                                  outerBoundary.lowerLeftPosition().y).toTraCIPosition());
-                    v.value.emplace_back(Position((i + 1) * gridLengthX + outerBoundary.lowerLeftPosition().x,
-                                                  (j + 1) * gridLengthY +
-                                                  outerBoundary.lowerLeftPosition().y).toTraCIPosition());
-                    traci::Boundary currentBoundary{v};
-                    row.emplace_back(currentBoundary);
-                    std::vector<std::tuple<std::string, geometry::Box *, std::shared_ptr<EnvironmentModelObstacle>>> cellObstacle;
-                    rowObstacle.emplace_back(cellObstacle);
-                    std::string id = "outlinePoly-";
-                    id += std::to_string(i);
-                    id += " ";
-                    id += std::to_string(j);
-                    polygon.add(id, CustomRing(currentBoundary).toTraCiPositionVector(),
-                                libsumo::TraCIColor(255, 0, 255, 255), false, "helper", 5);
-                }
-                gridCellBoundaries.emplace_back(row);
-                gridCellObstacles.emplace_back(rowObstacle);
-            }
-            std::cout << "created grid" << std::endl;
-            ObstacleRtree *obstacleRtree = mGlobalEnvironmentModel->getObstacleRTree();
-            ObstacleDB *obstacles = mGlobalEnvironmentModel->getObstacleDB();
-            for (auto treeObject : *obstacleRtree) {
-
-                Position obstacleLowerLeft = Position(position_cast(outerBoundary,
-                                                                    Position(treeObject.first.min_corner().get<0>(),
-                                                                             treeObject.first.max_corner().get<1>())));
-                Position obstacleUpperRight = Position(position_cast(outerBoundary,
-                                                                     Position(treeObject.first.max_corner().get<0>(),
-                                                                              treeObject.first.min_corner().get<1>())));
-                for (int i = 0; i < splitGridSize; i++) {
-                    if (obstacleLowerLeft.x.value() >= gridCellBoundaries[i][0].lowerLeftPosition().x &&
-                        obstacleLowerLeft.x.value() <= gridCellBoundaries[i][0].upperRightPosition().x ||
-                        obstacleUpperRight.x.value() >= gridCellBoundaries[i][0].lowerLeftPosition().x &&
-                        obstacleUpperRight.x.value() <= gridCellBoundaries[i][0].upperRightPosition().x) {
-                        for (int j = 0; j < splitGridSize; j++) {
-                            if (obstacleLowerLeft.y.value() >= gridCellBoundaries[0][j].lowerLeftPosition().y &&
-                                obstacleLowerLeft.y.value() <= gridCellBoundaries[0][j].upperRightPosition().y ||
-                                obstacleUpperRight.y.value() >= gridCellBoundaries[0][j].lowerLeftPosition().y &&
-                                obstacleUpperRight.y.value() <= gridCellBoundaries[0][j].upperRightPosition().y) {
-                                if (i == 3 && j == 3) {
-                                    std::cout << "NEW obstacle in box: " << treeObject.second << std::endl;
-                                }
-                                std::tuple<std::string, geometry::Box *, std::shared_ptr<EnvironmentModelObstacle>> tuple = std::make_tuple(
-                                        treeObject.second, &treeObject.first, (*obstacles)[treeObject.second]);
-                                gridCellObstacles[i][j].emplace_back(tuple);
-                            }
-                        }
-                    }
-                }
-            }
+            simulationBoundary = traci::Boundary{traciAPI->simulation.getNetBoundary()};
+            initializeParameters();
+            initializeGridCells();
+            initializeObstacles();
+            initializeLanes();
         }
     }
+
 
     void MisbehaviorDetectionService::initializeParameters() {
         F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
@@ -147,6 +99,130 @@ namespace artery {
         F2MDParameters::miscParameters.objectAccessHelperGridSize = par("objectAccessHelperGridSize");
     }
 
+    void MisbehaviorDetectionService::initializeGridCells() {
+        geometry::Box bbox(geometry::Point(0, 0), geometry::Point(
+                position_cast(simulationBoundary, simulationBoundary.upperRightPosition()).x.value(),
+                position_cast(simulationBoundary, simulationBoundary.lowerLeftPosition()).y.value()));
+
+        int splitGridSize = F2MDParameters::miscParameters.objectAccessHelperGridSize;
+        double gridLengthX = bbox.max_corner().get<0>() / splitGridSize;
+        double gridLengthY = bbox.max_corner().get<1>() / splitGridSize;
+        std::cout << "size: x: " << gridLengthX << " y: " << gridLengthY << std::endl;
+        for (int i = 0; i < splitGridSize; i++) {
+            std::vector<geometry::Box> row;
+            std::vector<std::vector<ObstacleStruct>> rowObstacle;
+            std::vector<std::vector<LaneStruct>> rowLane;
+            for (int j = 0; j < splitGridSize; j++) {
+                libsumo::TraCIPositionVector v;
+                geometry::Box currentBox(geometry::Point(i * gridLengthX, j * gridLengthY),
+                                         geometry::Point((i + 1) * gridLengthX, (j + 1) * gridLengthY));
+                boost::geometry::model::ring<geometry::Point, true, true> ring;
+                boost::geometry::convert(currentBox, ring);
+                row.emplace_back(currentBox);
+                std::vector<ObstacleStruct> cellObstacle;
+                std::vector<LaneStruct> cellLane;
+                rowObstacle.emplace_back(cellObstacle);
+                rowLane.emplace_back(cellLane);
+
+                libsumo::TraCIPositionVector outline;
+                for (const geometry::Point &p : ring) {
+                    outline.value.emplace_back(position_cast(simulationBoundary, Position(p.get<0>(), p.get<1>())));
+                }
+                std::string id{"outlinePoly_" + std::to_string(i) + "_" + std::to_string(j)};
+                traciAPI->polygon.add(id, outline, libsumo::TraCIColor(255, 0, 255, 255), false, "helper", 5);
+            }
+            gridCellBoundaries.emplace_back(row);
+            gridCellObstacles.emplace_back(rowObstacle);
+            gridCellLanes.emplace_back(rowLane);
+        }
+    }
+
+    void MisbehaviorDetectionService::initializeObstacles() {
+        int splitGridSize = F2MDParameters::miscParameters.objectAccessHelperGridSize;
+        ObstacleRtree *obstacleRtree = mGlobalEnvironmentModel->getObstacleRTree();
+        ObstacleDB *obstacles = mGlobalEnvironmentModel->getObstacleDB();
+        for (const auto &treeObject : *obstacleRtree) {
+            geometry::Box obstacle = treeObject.first;
+            for (int i = 0; i < splitGridSize; i++) {
+                if (obstacle.min_corner().get<0>() >= gridCellBoundaries[i][0].min_corner().get<0>() &&
+                    obstacle.min_corner().get<0>() <= gridCellBoundaries[i][0].max_corner().get<0>() ||
+                    obstacle.max_corner().get<0>() >= gridCellBoundaries[i][0].min_corner().get<0>() &&
+                    obstacle.max_corner().get<0>() <= gridCellBoundaries[i][0].max_corner().get<0>()) {
+                    for (int j = 0; j < splitGridSize; j++) {
+                        if (obstacle.min_corner().get<1>() >= gridCellBoundaries[i][j].min_corner().get<1>() &&
+                            obstacle.min_corner().get<1>() <= gridCellBoundaries[i][j].max_corner().get<1>() ||
+                            obstacle.max_corner().get<1>() >= gridCellBoundaries[i][j].min_corner().get<1>() &&
+                            obstacle.max_corner().get<1>() <= gridCellBoundaries[i][j].max_corner().get<1>()) {
+
+                            geometry::Ring outline;
+                            for (const auto &p : (*obstacles)[treeObject.second]->getOutline()) {
+                                boost::geometry::append(outline, geometry::Point(p.x.value(), p.y.value()));
+                            }
+                            boost::geometry::correct(outline);
+                            ObstacleStruct obstacleStruct = {treeObject.second,
+                                                             std::make_shared<geometry::Box>(treeObject.first),
+                                                             std::make_shared<geometry::Ring>(outline)};
+                            gridCellObstacles[i][j].emplace_back(obstacleStruct);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    void MisbehaviorDetectionService::initializeLanes() {
+        int splitGridSize = F2MDParameters::miscParameters.objectAccessHelperGridSize;
+        TraCIAPI::LaneScope lane = traciAPI->lane;
+        std::vector<std::string> laneIDs = lane.getIDList();
+        std::vector<std::string> junctionIDs = traciAPI->junction.getIDList();
+//        std::vector<std::string> sanitizedJunctionIDs;
+//        sanitizedJunctionIDs.reserve(junctionIDs.size());
+//        for (const auto& junctionID : junctionIDs) {
+//            sanitizedJunctionIDs.emplace_back(junctionID.substr(0, junctionID.find('_')));
+//            if(junctionID == ":-13430_0_0"){
+//                std::cout << junctionID.substr(0, junctionID.find('_'));
+//            }
+//        }
+//        std::cout << sanitizedJunctionIDs[0] << std::endl;
+        for (const auto &laneID : laneIDs) {
+            if (std::find(junctionIDs.begin(), junctionIDs.end(), laneID.substr(1, laneID.find('_') - 1)) !=
+                junctionIDs.end()) {
+                continue;
+            }
+            libsumo::TraCIPositionVector shapeTraci = lane.getShape(laneID);
+            geometry::LineString laneShape;
+            for (const auto &v : shapeTraci.value) {
+//                Position p = position_cast(simulationBoundary,v);
+//                boost::geometry::append(laneShape, geometry::Point(p.x.value(),p.y.value()));
+                boost::geometry::append(laneShape, position_cast(simulationBoundary, v));
+            }
+            geometry::Box bbox = boost::geometry::return_envelope<geometry::Box>(laneShape);
+            for (int i = 0; i < splitGridSize; i++) {
+                if (bbox.min_corner().get<0>() >= gridCellBoundaries[i][0].min_corner().get<0>() &&
+                    bbox.min_corner().get<0>() <= gridCellBoundaries[i][0].max_corner().get<0>() ||
+                    bbox.max_corner().get<0>() >= gridCellBoundaries[i][0].min_corner().get<0>() &&
+                    bbox.max_corner().get<0>() <= gridCellBoundaries[i][0].max_corner().get<0>()) {
+                    for (int j = 0; j < splitGridSize; j++) {
+                        if (bbox.min_corner().get<1>() >= gridCellBoundaries[i][j].min_corner().get<1>() &&
+                            bbox.min_corner().get<1>() <= gridCellBoundaries[i][j].max_corner().get<1>() ||
+                            bbox.max_corner().get<1>() >= gridCellBoundaries[i][j].min_corner().get<1>() &&
+                            bbox.max_corner().get<1>() <= gridCellBoundaries[i][j].max_corner().get<1>()) {
+                            LaneStruct laneStruct = {laneID,
+                                                     std::make_shared<geometry::Box>(bbox),
+                                                     std::make_shared<geometry::LineString>(laneShape),
+                                                     lane.getWidth(laneID)};
+                            gridCellLanes[i][j].emplace_back(laneStruct);
+                            if (i == 3 && j == 3) {
+                                std::cout << laneID << " " << boost::geometry::dsv(bbox) << std::endl;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     void MisbehaviorDetectionService::trigger() {
         Enter_Method("trigger");
     }
@@ -167,6 +243,32 @@ namespace artery {
         if (msg == m_self_msg) {
             EV_INFO << "self message\n";
         }
+    }
+
+    void MisbehaviorDetectionService::visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color,
+                                                           const std::string &idPrefix) {
+        traci::TraCIGeoPosition traciGeoPosition = {
+                (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
+                (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
+        traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
+        std::string poiId = mVehicleController->getVehicleId();
+        poiId += idPrefix;
+        poiId += "_CAM_";
+        poiId += std::to_string(cam->cam.generationDeltaTime);
+        traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, color,
+                           poiId, 5, "", 0,
+                           0, 0);
+        activePoIs.push_back(poiId);
+        if (activePoIs.size() > F2MDParameters::miscParameters.CamLocationVisualizerMaxLength) {
+            traciPoiScope->remove(activePoIs.front());
+            activePoIs.pop_front();
+        }
+        int alphaStep = 185 / F2MDParameters::miscParameters.CamLocationVisualizerMaxLength;
+        int currentAlpha = 80;
+//        for(const auto& poi : activePoIs){
+//            traciPoiScope->setColor(poi,color);
+//            currentAlpha += alphaStep;
+//        }
     }
 
     void MisbehaviorDetectionService::receiveSignal(cComponent *source, simsignal_t signal, cObject *c_obj, cObject *) {
@@ -195,35 +297,6 @@ namespace artery {
                                                                           envModObjects);
             }
             std::cout << result->toString(0.5) << std::endl;
-            ReferencePosition_t referencePosition = message->cam.camParameters.basicContainer.referencePosition;
-            traci::TraCIGeoPosition traciGeoPositionSender = {
-                    (double) referencePosition.longitude / 10000000.0,
-                    (double) referencePosition.latitude / 10000000.0};
-            traci::TraCIPosition traciPositionSender = traciAPI->convert2D(traciGeoPositionSender);
-            Position senderPosition = Position(traciPositionSender.x, traciPositionSender.y);
-
-
-            int splitGridSize = F2MDParameters::miscParameters.objectAccessHelperGridSize;
-            for (int i = 0; i < splitGridSize; i++) {
-                if (senderPosition.x.value() >= gridCellBoundaries[i][0].lowerLeftPosition().x &&
-                    senderPosition.x.value() <= gridCellBoundaries[i][0].upperRightPosition().x)
-                    for (int j = 0; j < splitGridSize; j++) {
-                        if (senderPosition.y.value() >= gridCellBoundaries[0][j].lowerLeftPosition().y &&
-                            senderPosition.y.value() <= gridCellBoundaries[0][j].upperRightPosition().y) {
-                            std::string id = "outlinePoly-";
-                            id += std::to_string(i);
-                            id += " ";
-                            id += std::to_string(j);
-                            traciAPI->polygon.setColor(id, libsumo::TraCIColor(0, 255, 255, 255));
-                            std::cout << "sender in " << id << std::endl;
-                            for (auto obstacleTuple : gridCellObstacles[i][j]) {
-                                std::cout << std::get<0>(obstacleTuple) << ", ";
-                            }
-                            std::cout << std::endl;
-                        }
-                    }
-            }
-
 
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
@@ -247,6 +320,58 @@ namespace artery {
                 EV_INFO << "Received benign CAM!";
             } else {
                 EV_INFO << "Received weird misbehaviorType";
+            }
+
+
+            ReferencePosition_t referencePosition = message->cam.camParameters.basicContainer.referencePosition;
+            traci::TraCIGeoPosition traciGeoPositionSender = {
+                    (double) referencePosition.longitude / 10000000.0,
+                    (double) referencePosition.latitude / 10000000.0};
+            Position senderPosition = position_cast(simulationBoundary, traciAPI->convert2D(traciGeoPositionSender));
+
+            bool messageHasPoi = false;
+
+            int splitGridSize = F2MDParameters::miscParameters.objectAccessHelperGridSize;
+            for (int i = 0; i < splitGridSize; i++) {
+                if (senderPosition.x.value() >= gridCellBoundaries[i][0].min_corner().get<0>() &&
+                    senderPosition.x.value() <= gridCellBoundaries[i][0].max_corner().get<0>())
+                    for (int j = 0; j < splitGridSize; j++) {
+                        if (senderPosition.y.value() >= gridCellBoundaries[i][j].min_corner().get<1>() &&
+                            senderPosition.y.value() <= gridCellBoundaries[i][j].max_corner().get<1>()) {
+                            for (const auto &obstacleStruct : gridCellObstacles[i][j]) {
+                                geometry::Box *obstacleBox = obstacleStruct.boundingBox.get();
+                                geometry::Point senderPoint(senderPosition.x.value(), senderPosition.y.value());
+                                if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
+                                    if (boost::geometry::within(senderPoint, obstacleBox)) {
+                                        if (boost::geometry::within(senderPoint, *obstacleStruct.outline)) {
+                                            std::string prefix = "inside";
+                                            prefix += obstacleStruct.id;
+//                                            std::cout << "exactly inside object " << obstacleStruct.id
+//                                                      << " position: "
+//                                                      << boost::geometry::dsv(obstacleBox) << std::endl;
+                                            visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 255, 255),
+                                                                 prefix);
+                                        } else {
+                                            std::string prefix = "bbox";
+                                            prefix += obstacleStruct.id;
+//                                            std::cout << "inside bbox " << obstacleStruct.id << " position: "
+//                                                      << boost::geometry::dsv(obstacleBox) << std::endl;
+                                            visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
+                                                                 prefix);
+                                        }
+                                        messageHasPoi = true;
+                                    } else {
+
+                                    }
+                                }
+                            }
+                        } else {
+                        }
+                    }
+            }
+            if (!messageHasPoi && senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
+                visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 0, 255),
+                                     "outside");
             }
         }
     }
@@ -272,5 +397,4 @@ namespace artery {
             mStationIdMisbehaviorTypeMap.erase(it);
         }
     }
-
 }

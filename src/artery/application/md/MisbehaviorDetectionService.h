@@ -11,8 +11,23 @@
 #include "DetectedSender.h"
 #include "F2MDParameters.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
+#include <artery/application/md/util/CustomRing.h>
 
 namespace artery {
+
+    struct ObstacleStruct{
+        std::string id;
+        std::shared_ptr<geometry::Box> boundingBox;
+        std::shared_ptr<geometry::Ring> outline;
+    };
+
+    struct LaneStruct{
+        std::string id;
+        std::shared_ptr<geometry::Box> boundingBox;
+        std::shared_ptr<geometry::LineString> shape;
+        double width;
+    };
+
     class MisbehaviorDetectionService : public ItsG5Service {
     public:
         MisbehaviorDetectionService();
@@ -38,7 +53,18 @@ namespace artery {
     private:
         static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
 
+        void visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color, const std::string& idPrefix);
+
         void initializeParameters();
+
+        static void initializeGridCells();
+
+        void initializeObstacles();
+
+        void initializeLanes();
+
+        std::list<std::string> activePoIs;
+        const traci::VehicleController *mVehicleController = nullptr;
 
         omnetpp::cMessage *m_self_msg;
         CURL *curl;
@@ -47,14 +73,18 @@ namespace artery {
         GlobalEnvironmentModel *mGlobalEnvironmentModel = nullptr;
         const Timer *mTimer = nullptr;
 
+        static traci::Boundary simulationBoundary;
         std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> traciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
-        static std::vector<std::vector<traci::Boundary>> gridCellBoundaries;
-        static std::vector<std::vector<std::vector<std::tuple<std::string, geometry::Box *, std::shared_ptr<EnvironmentModelObstacle>>>>> gridCellObstacles;
+        static std::vector<std::vector<geometry::Box>> gridCellBoundaries;
+        static std::vector<std::vector<std::vector<ObstacleStruct>>> gridCellObstacles;
+        static std::vector<std::vector<std::vector<LaneStruct>>> gridCellLanes;
 
     };
+
+//    static const TraCIAPI::POIScope *traciPoiScope;
 } // namespace artery
 
 #endif /* ARTERY_MDSERVICE_H_ */
