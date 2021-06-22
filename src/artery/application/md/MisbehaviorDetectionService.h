@@ -15,7 +15,7 @@
 
 namespace artery {
 
-    struct ObstacleStruct{
+    struct PolygonStruct{
         std::string id;
         std::shared_ptr<geometry::Box> boundingBox;
         std::shared_ptr<geometry::Ring> outline;
@@ -27,6 +27,15 @@ namespace artery {
         std::shared_ptr<geometry::LineString> shape;
         double width;
     };
+
+
+    struct GridCell{
+        geometry::Box boundingBox;
+        std::vector<std::shared_ptr<PolygonStruct>> obstacles;
+        std::vector<std::shared_ptr<PolygonStruct>> junctions;
+        std::vector<std::shared_ptr<LaneStruct>> lanes;
+    };
+
 
     class MisbehaviorDetectionService : public ItsG5Service {
     public:
@@ -61,7 +70,11 @@ namespace artery {
 
         void initializeObstacles();
 
-        void initializeLanes();
+        static void initializeLanes();
+
+        static void initializeJunctions();
+
+        static std::vector<std::pair<int, int>> getApplicableGridCells(geometry::Box boundingBox);
 
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;
@@ -78,13 +91,11 @@ namespace artery {
         static std::shared_ptr<const traci::API> traciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
-        static std::vector<std::vector<geometry::Box>> gridCellBoundaries;
-        static std::vector<std::vector<std::vector<ObstacleStruct>>> gridCellObstacles;
-        static std::vector<std::vector<std::vector<LaneStruct>>> gridCellLanes;
+        static std::vector<std::vector<GridCell>> gridCells;
+
 
     };
 
-//    static const TraCIAPI::POIScope *traciPoiScope;
 } // namespace artery
 
 #endif /* ARTERY_MDSERVICE_H_ */
