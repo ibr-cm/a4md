@@ -5,6 +5,7 @@ add_artery_feature(envmod
     LocalEnvironmentModel.cc
     PreselectionPolygon.cc
     PreselectionRtree.cc
+    GridCellMatrix.cc
     sensor/BaseSensor.cc
     sensor/CamSensor.cc
     sensor/FovSensor.cc

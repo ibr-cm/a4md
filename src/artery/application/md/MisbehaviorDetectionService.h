@@ -15,28 +15,6 @@
 
 namespace artery {
 
-    struct PolygonStruct{
-        std::string id;
-        std::shared_ptr<geometry::Box> boundingBox;
-        std::shared_ptr<geometry::Ring> outline;
-    };
-
-    struct LaneStruct{
-        std::string id;
-        std::shared_ptr<geometry::Box> boundingBox;
-        std::shared_ptr<geometry::LineString> shape;
-        double width;
-    };
-
-
-    struct GridCell{
-        geometry::Box boundingBox;
-        std::vector<std::shared_ptr<PolygonStruct>> obstacles;
-        std::vector<std::shared_ptr<PolygonStruct>> junctions;
-        std::vector<std::shared_ptr<LaneStruct>> lanes;
-    };
-
-
     class MisbehaviorDetectionService : public ItsG5Service {
     public:
         MisbehaviorDetectionService();
@@ -62,19 +40,11 @@ namespace artery {
     private:
         static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
 
-        void visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color, const std::string& idPrefix);
+        void
+        visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color, const std::string &idPrefix);
 
         void initializeParameters();
 
-        static void initializeGridCells();
-
-        void initializeObstacles();
-
-        static void initializeLanes();
-
-        static void initializeJunctions();
-
-        static std::vector<std::pair<int, int>> getApplicableGridCells(geometry::Box boundingBox);
 
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;
@@ -91,9 +61,6 @@ namespace artery {
         static std::shared_ptr<const traci::API> traciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
-        static std::vector<std::vector<GridCell>> gridCells;
-
-
     };
 
 } // namespace artery

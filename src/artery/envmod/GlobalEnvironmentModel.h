@@ -24,134 +24,146 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <artery/envmod/GridCellMatrix.h>
 
 
 namespace traci {
     class API;
+
     class VehicleController;
 }
 
-namespace artery
-{
+namespace artery {
 
-class EnvironmentModelObstacle;
-class IdentityRegistry;
-class PreselectionMethod;
+    class EnvironmentModelObstacle;
+
+    class IdentityRegistry;
+
+    class PreselectionMethod;
 
 /**
  * Implementation of the environment model.
  */
-class GlobalEnvironmentModel : public omnetpp::cSimpleModule, public omnetpp::cListener
-{
-public:
-    GlobalEnvironmentModel();
-    virtual ~GlobalEnvironmentModel();
+    class GlobalEnvironmentModel : public omnetpp::cSimpleModule, public omnetpp::cListener {
+    public:
+        GlobalEnvironmentModel();
 
-    // cSimpleModule life-cycle
-    void initialize() override;
-    void finish() override;
+        virtual ~GlobalEnvironmentModel();
 
-    // cListener handlers
-    void receiveSignal(omnetpp::cComponent*, omnetpp::simsignal_t, const omnetpp::SimTime&, omnetpp::cObject*) override;
-    void receiveSignal(omnetpp::cComponent*, omnetpp::simsignal_t, const char*, omnetpp::cObject*) override;
-    void receiveSignal(omnetpp::cComponent*, omnetpp::simsignal_t, unsigned long, omnetpp::cObject*) override;
+        // cSimpleModule life-cycle
+        void initialize() override;
 
-    /**
-     * Fetch an object by its external id.
-     * @param externalID
-     * @return model object matching external id
-     */
-    std::shared_ptr<EnvironmentModelObject> getObject(const std::string& objId);
+        void finish() override;
 
-    /**
-     * Get an obstacle by its id
-     * @param obsId obstacle id
-     * @return obstacle model matching the id or nullptr
-     */
-    std::shared_ptr<EnvironmentModelObstacle> getObstacle(const std::string& obsId);
+        // cListener handlers
+        void receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, const omnetpp::SimTime &,
+                           omnetpp::cObject *) override;
 
-    /**
-     * Returns GSDE of all objects in based on the detection logic of the sensor
-     * @param detect
-     * @return
-     */
-    SensorDetection detectObjects(std::function<SensorDetection(ObstacleRtree&, PreselectionMethod&)> detect);
+        void receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, const char *, omnetpp::cObject *) override;
 
-    ObstacleRtree* getObstacleRTree(){
-        return &mObstacleRtree;
-    }
+        void receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, unsigned long, omnetpp::cObject *) override;
 
-    ObstacleDB * getObstacleDB(){
-        return &mObstacles;
-    }
+        /**
+         * Fetch an object by its external id.
+         * @param externalID
+         * @return model object matching external id
+         */
+        std::shared_ptr<EnvironmentModelObject> getObject(const std::string &objId);
 
-private:
-    /**
-     * Refresh all dynamic objects in the database.
-     */
-    void refresh();
+        /**
+         * Get an obstacle by its id
+         * @param obsId obstacle id
+         * @return obstacle model matching the id or nullptr
+         */
+        std::shared_ptr<EnvironmentModelObstacle> getObstacle(const std::string &obsId);
 
-    /**
-     * Add vehicle to the environment database
-     * @param vehicle TraCI mobility corresponding to vehicle
-     * @return true if successful
-     */
-    bool addVehicle(traci::VehicleController* vehicle);
+        /**
+         * Returns GSDE of all objects in based on the detection logic of the sensor
+         * @param detect
+         * @return
+         */
+        SensorDetection detectObjects(std::function<SensorDetection(ObstacleRtree &, PreselectionMethod &)> detect);
 
-    /**
-     * Remove vehicle from the database
-     * @param nodeId TraCI id of vehicle to be removed
-     * @return true if the vehicle is successfully removed
-     */
-    bool removeVehicle(std::string nodeId);
+//    ObstacleRtree* getObstacleRTree(){
+//        return &mObstacleRtree;
+//    }
+//
+//    ObstacleDB * getObstacleDB(){
+//        return &mObstacles;
+//    }
 
-    /**
-     * Remove all known vehicles from internal database
-     */
-    void removeVehicles();
+        GridCell getGridCellFromPosition(const Position &position) {
+            return mGridCellMatrix.getGridCellFromPosition(position);
+        };
 
-    /**
-     * Add (static) obstacles to the obstacle database
-     * @param id Obstacle's id
-     * @param outline Obstacle's outline
-     * @return true if it could be added
-     */
-    bool addObstacle(std::string id, std::vector<Position> outline);
+    private:
+        /**
+         * Refresh all dynamic objects in the database.
+         */
+        void refresh();
 
-    /**
-     * Create the obstacle rtree.
-     * This method should be called after all static obstacles have been added.
-     */
-    void buildObstacleRtree();
+        /**
+         * Add vehicle to the environment database
+         * @param vehicle TraCI mobility corresponding to vehicle
+         * @return true if successful
+         */
+        bool addVehicle(traci::VehicleController *vehicle);
 
-    /**
-     * Clears the internal database completely
-     */
-    void clear();
+        /**
+         * Remove vehicle from the database
+         * @param nodeId TraCI id of vehicle to be removed
+         * @return true if the vehicle is successfully removed
+         */
+        bool removeVehicle(std::string nodeId);
 
-    /**
-     * Fetch static obstacles (polygons) from TraCI
-     * @param api TraCI API object
-     */
-    void fetchObstacles(const traci::API& api);
+        /**
+         * Remove all known vehicles from internal database
+         */
+        void removeVehicles();
 
-    /**
-     * Try to get vehicle controller corresponding to given module
-     * @param mod vehicle host module
-     * @return nullptr if no vehicle controller is available
-     */
-    virtual traci::VehicleController* getVehicleController(omnetpp::cModule* mod);
+        /**
+         * Add (static) obstacles to the obstacle database
+         * @param id Obstacle's id
+         * @param outline Obstacle's outline
+         * @return true if it could be added
+         */
+        bool addObstacle(std::string id, std::vector<Position> outline);
 
-    ObjectDB mObjects;
-    ObstacleDB mObstacles;
-    ObstacleRtree mObstacleRtree;
-    std::unique_ptr<PreselectionMethod> mPreselector;
-    IdentityRegistry* mIdentityRegistry;
-    bool mTainted;
-    omnetpp::cGroupFigure* mDrawObstacles = nullptr;
-    omnetpp::cGroupFigure* mDrawVehicles = nullptr;
-    std::set<std::string> mObstacleTypes;
-};
+        /**
+         * Create the obstacle rtree.
+         * This method should be called after all static obstacles have been added.
+         */
+        void buildObstacleRtree();
+
+        /**
+         * Clears the internal database completely
+         */
+        void clear();
+
+        /**
+         * Fetch static obstacles (polygons) from TraCI
+         * @param api TraCI API object
+         */
+        void fetchObstacles(const traci::API &api);
+
+        /**
+         * Try to get vehicle controller corresponding to given module
+         * @param mod vehicle host module
+         * @return nullptr if no vehicle controller is available
+         */
+        virtual traci::VehicleController *getVehicleController(omnetpp::cModule *mod);
+
+        ObjectDB mObjects;
+        ObstacleDB mObstacles;
+        ObstacleRtree mObstacleRtree;
+        std::unique_ptr<PreselectionMethod> mPreselector;
+        IdentityRegistry *mIdentityRegistry;
+        bool mTainted;
+        omnetpp::cGroupFigure *mDrawObstacles = nullptr;
+        omnetpp::cGroupFigure *mDrawVehicles = nullptr;
+        std::set<std::string> mObstacleTypes;
+        GridCellMatrix mGridCellMatrix;
+    };
 
 } // namespace artery
 

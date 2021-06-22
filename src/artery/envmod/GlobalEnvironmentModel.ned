@@ -23,4 +23,5 @@ simple GlobalEnvironmentModel
         bool drawObstacles = default(false);
         bool drawVehicles = default(false);
         string obstacleTypes = default("");
+        int gridSize = default(10);
 }
