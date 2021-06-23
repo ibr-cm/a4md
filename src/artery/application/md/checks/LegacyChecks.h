@@ -20,7 +20,8 @@ namespace artery {
     public:
         LegacyChecks() = delete;
 
-        LegacyChecks(std::shared_ptr<const traci::API> traciAPI,GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
+        LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                     DetectionParameters *detectionParameters,
                      Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
                      Kalman_SI *kalmanSI, Kalman_SI *kalmanVI);
 
@@ -31,11 +32,14 @@ namespace artery {
 
         static Position getVector(const double &value, const double &angle);
 
+        static std::vector<Position> getVehicleOutline(const vanetza::asn1::Cam &message);
+
     private:
 
         static bool staticInitializationComplete;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
-        std::shared_ptr<const traci::API> traciAPI;
+        static traci::Boundary mSimulationBoundary;
+        static std::shared_ptr<const traci::API> mTraciAPI;
         DetectionParameters *detectionParameters;
 
         Kalman_SVI *kalmanSVI;
@@ -80,7 +84,7 @@ namespace artery {
 
         void KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
                                                  const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                 const Position &currentSpeed, const Position  &currentAcceleration,
+                                                 const Position &currentSpeed, const Position &currentAcceleration,
                                                  double currentSpeedConfidence,
                                                  double &deltaTime, double *returnValue) const;
 

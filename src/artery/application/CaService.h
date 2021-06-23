@@ -15,6 +15,7 @@
 #include <vanetza/units/angle.hpp>
 #include <vanetza/units/velocity.hpp>
 #include <omnetpp/simtime.h>
+#include <artery/traci/VehicleController.h>
 
 namespace artery {
 
@@ -54,6 +55,7 @@ namespace artery {
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const Timer *mTimer = nullptr;
         LocalDynamicMap *mLocalDynamicMap = nullptr;
+        const traci::VehicleController *mVehicleController = nullptr;
 
         omnetpp::SimTime mGenCamMin;
         omnetpp::SimTime mGenCamMax;
@@ -73,7 +75,7 @@ namespace artery {
         long mStationId;
     };
 
-    vanetza::asn1::Cam createCooperativeAwarenessMessage(const VehicleDataProvider &, uint16_t genDeltaTime);
+    vanetza::asn1::Cam createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, const traci::VehicleController &vdc, uint16_t genDeltaTime);
 
     void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 

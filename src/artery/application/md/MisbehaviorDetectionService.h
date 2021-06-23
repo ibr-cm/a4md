@@ -79,11 +79,12 @@ namespace artery {
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         const Timer *mTimer = nullptr;
 
-        static traci::Boundary simulationBoundary;
+        static traci::Boundary mSimulationBoundary;
         std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> mTraciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
+        std::string lastPolyId;
     };
 
 } // namespace artery

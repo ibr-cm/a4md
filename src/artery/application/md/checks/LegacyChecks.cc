@@ -1,11 +1,15 @@
 #include "LegacyChecks.h"
 
 #include <utility>
+#include <artery/traci/Cast.h>
 #include "artery/envmod/sensor/Sensor.h"
 
 namespace artery {
     bool LegacyChecks::staticInitializationComplete = false;
     GlobalEnvironmentModel *LegacyChecks::mGlobalEnvironmentModel;
+    std::shared_ptr<const traci::API> LegacyChecks::mTraciAPI;
+    traci::Boundary LegacyChecks::mSimulationBoundary;
+
     using namespace omnetpp;
 
     double LegacyChecks::calculateHeadingAngle(const Position &position) {
@@ -46,6 +50,7 @@ namespace artery {
 
     double
     LegacyChecks::RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const {
+        std::cout << distance(senderPosition, receiverPosition).value() << std::endl;
         if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleRange) {
             return 1;
         } else {
@@ -150,23 +155,28 @@ namespace artery {
         if (senderSpeed < detectionParameters->maxOffroadSpeed) {
             return 1;
         } else {
-            double minDistance = 9999;
             std::vector<GeometryRtreeValue> laneResults;
             mGlobalEnvironmentModel->getLaneRTree()->query(boost::geometry::index::nearest(senderPosition, 10),
                                                            std::back_inserter(laneResults));
-
             for (const auto &lResult : laneResults) {
                 const auto &lane = mGlobalEnvironmentModel->getLane(lResult.second);
-                double distance = boost::geometry::distance(senderPosition, lane->getShape()) - lane->getWidth() / 2;
-                if(distance < minDistance){
-                    minDistance = distance;
+                if (boost::geometry::distance(senderPosition, lane->getShape()) - lane->getWidth() / 2 <
+                    detectionParameters->maxDistanceFromRoad) {
+                    return 1;
                 }
             }
-            if (minDistance < detectionParameters->maxDistanceFromRoad) {
-                return 1;
+            std::vector<GeometryRtreeValue> junctionResults;
+            mGlobalEnvironmentModel->getJunctionRTree()->query(boost::geometry::index::nearest(senderPosition, 3),
+                                                               std::back_inserter(junctionResults));
+            for (const auto &jResult : junctionResults) {
+                if (boost::geometry::distance(senderPosition,
+                                              mGlobalEnvironmentModel->getJunction(jResult.second)->getOutline()) <
+                    detectionParameters->maxDistanceFromRoad) {
+                    return 1;
+                }
             }
+            return 0;
         }
-        return 1;
     }
 
     double LegacyChecks::FrequencyCheck(long newTime, long oldTime) const {
@@ -426,11 +436,10 @@ namespace artery {
     }
 
     Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition) {
-        traci::TraCIGeoPosition traciGeoPosition = {
+        traci::TraCIGeoPosition traciGeoPositionSender = {
                 (double) referencePosition.longitude / 10000000.0,
                 (double) referencePosition.latitude / 10000000.0};
-        traci::TraCIPosition traciPosition = traciAPI->convert2D(traciGeoPosition);
-        return Position(traciPosition.x, traciPosition.y);
+        return position_cast(mSimulationBoundary, mTraciAPI->convert2D(traciGeoPositionSender));
     }
 
     Position LegacyChecks::getVector(const double &value, const double &angle) {
@@ -440,6 +449,45 @@ namespace artery {
             y *= -1;
         }
         return Position(x, y);
+    }
+
+    std::vector<Position> LegacyChecks::getVehicleOutline(const vanetza::asn1::Cam &message){
+        traci::TraCIGeoPosition traciGeoPositionSender = {
+                (double) message->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
+                (double) message->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
+        Position position = position_cast(mSimulationBoundary, mTraciAPI->convert2D(traciGeoPositionSender));
+        Angle heading = Angle::from_degree((double)
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
+                10);
+        double vehicleWidth = (double)
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleWidth /
+                10;
+        double vehicleLength = (double)
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleLength.vehicleLengthValue /
+                10;
+        geometry::Ring vehicle;
+        double widthOffsetY = vehicleWidth / 2 * sin(heading.radian());
+        double widthOffsetX = sqrt(pow(vehicleWidth / 2, 2) - pow(widthOffsetY, 2));
+
+        double lengthOffsetX = vehicleLength * sin(heading.radian());
+        double lengthOffsetY = sqrt(pow(vehicleLength, 2) - pow(lengthOffsetX, 2));
+
+        if (heading.degree() < 90 || heading.degree() > 270) {
+            widthOffsetX *= -1;
+            lengthOffsetY *= -1;
+        }
+
+        Position frontLeft = Position(position.x.value() + widthOffsetX,
+                                      position.y.value() - widthOffsetY);
+        Position frontRight = Position(position.x.value() - widthOffsetX,
+                                       position.y.value() + widthOffsetY);
+        Position rearCenter = Position(position.x.value() - lengthOffsetX,
+                                       position.y.value() - lengthOffsetY);
+        Position rearLeft = Position(rearCenter.x.value() + widthOffsetX,
+                                     rearCenter.y.value() - widthOffsetY);
+        Position rearRight = Position(rearCenter.x.value() - widthOffsetX,
+                                      rearCenter.y.value() + widthOffsetY);
+        return std::vector<Position>{frontLeft, frontRight, rearRight, rearLeft, frontLeft};
     }
 
     CheckResult *LegacyChecks::checkCAM(const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects,
@@ -454,7 +502,8 @@ namespace artery {
         double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
                 (double) highFrequencyContainer.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
-        double currentCamHeading = (double) highFrequencyContainer.heading.headingValue / 10.0;
+        double currentCamHeading = angle_cast(
+                traci::TraCIAngle((double) highFrequencyContainer.heading.headingValue / 10.0)).value.value();
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
         auto *result = new CheckResult;
@@ -530,14 +579,15 @@ namespace artery {
                                DetectionParameters *detectionParameters,
                                Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
                                Kalman_SI *kalmanSI, Kalman_SI *kalmanVI) :
-            traciAPI(std::move(traciAPI)),
             detectionParameters(detectionParameters),
             kalmanSVI(kalmanSVI), kalmanSVSI(kalmanSVSI),
             kalmanSI(kalmanSI), kalmanVI(kalmanVI) {
-            if(!staticInitializationComplete){
-                staticInitializationComplete = true;
-                mGlobalEnvironmentModel = globalEnvironmentModel;
-            }
+        if (!staticInitializationComplete) {
+            staticInitializationComplete = true;
+            mGlobalEnvironmentModel = globalEnvironmentModel;
+            mTraciAPI = std::move(traciAPI);
+            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+        }
 
     }
 }

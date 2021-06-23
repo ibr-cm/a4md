@@ -74,6 +74,7 @@ namespace artery {
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
         mTimer = &getFacilities().get_const<Timer>();
         mLocalDynamicMap = &getFacilities().get_mutable<artery::LocalDynamicMap>();
+        mVehicleController = &getFacilities().get_const<traci::VehicleController>();
 
         mStationId = mVehicleDataProvider->station_id();
         WATCH(mStationId);
@@ -166,7 +167,7 @@ namespace artery {
 
     void CaService::sendCam(const SimTime &T_now) {
         uint16_t genDeltaTimeMod = countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
-        auto cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, genDeltaTimeMod);
+        auto cam = createCooperativeAwarenessMessage(*mVehicleDataProvider,*mVehicleController, genDeltaTimeMod);
 
         mLastCamPosition = mVehicleDataProvider->position();
         mLastCamSpeed = mVehicleDataProvider->speed();
@@ -210,7 +211,7 @@ namespace artery {
         return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
     }
 
-    vanetza::asn1::Cam createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, uint16_t genDeltaTime) {
+    vanetza::asn1::Cam createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, const traci::VehicleController &vdc, uint16_t genDeltaTime) {
         vanetza::asn1::Cam message;
 
         ItsPduHeader_t &header = (*message).header;
@@ -261,10 +262,10 @@ namespace artery {
         if (bvc.yawRate.yawRateValue < -32766 || bvc.yawRate.yawRateValue > 32766) {
             bvc.yawRate.yawRateValue = YawRateValue_unavailable;
         }
-        bvc.vehicleLength.vehicleLengthValue = VehicleLengthValue_unavailable;
+        bvc.vehicleLength.vehicleLengthValue = (long)(vdc.getLength().value() * 10);
         bvc.vehicleLength.vehicleLengthConfidenceIndication =
                 VehicleLengthConfidenceIndication_noTrailerPresent;
-        bvc.vehicleWidth = VehicleWidth_unavailable;
+        bvc.vehicleWidth = (long)(vdc.getWidth().value() * 10);
 
         std::string error;
         if (!message.validate(error)) {

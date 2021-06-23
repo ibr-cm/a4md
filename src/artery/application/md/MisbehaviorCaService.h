@@ -54,8 +54,6 @@ namespace artery {
 
         void sendCam(const omnetpp::SimTime &);
 
-        vanetza::asn1::Cam createBenignCAM(uint16_t genDeltaTime);
-
         vanetza::asn1::Cam createAttackCAM(uint16_t genDeltaTime);
 
         omnetpp::SimTime genCamDcc();

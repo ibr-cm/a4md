@@ -26,11 +26,10 @@ namespace artery {
     std::shared_ptr<const traci::API> MisbehaviorDetectionService::mTraciAPI;
     GlobalEnvironmentModel *MisbehaviorDetectionService::mGlobalEnvironmentModel;
 
-    traci::Boundary MisbehaviorDetectionService::simulationBoundary;
+    traci::Boundary MisbehaviorDetectionService::mSimulationBoundary;
 
     MisbehaviorDetectionService::MisbehaviorDetectionService() {
         curl = curl_easy_init();
-//        m_self_msg = new cMessage();
     }
 
     MisbehaviorDetectionService::~MisbehaviorDetectionService() {
@@ -56,26 +55,10 @@ namespace artery {
             staticInitializationComplete = true;
             mGlobalEnvironmentModel = mLocalEnvironmentModel->getGlobalEnvMod();
             mTraciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
-//            traciPoiScope = &mTraciAPI->poi;
-            simulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
             initializeParameters();
-
-
-////            namespace bg = boost::geometry;
-////            namespace bgi = boost::geometry::index;
-//            using TreeValue = std::pair<std::shared_ptr<geometry::Box>, std::shared_ptr<PolygonStruct>>;
-//            typedef bg::model::point<float, 2, bg::cs::cartesian> point;
-//            typedef bg::model::box<point> box;
-//            typedef std::shared_ptr<geometry::Box> shp;
-//            typedef shp value;
-//            typedef std::pair<std::shared_ptr<geometry::Box>,std::shared_ptr<PolygonStruct>> value_t;
-////            using RTree = boost::geometry::index::rtree<geometry::Box, boost::geometry::index::rstar<16>>;
-////            RTree tree;
-//            bgi::rtree<value, bgi::linear<16, 4> > rtree;
         }
     }
-
-//    boost::geometry::index::linear<>
 
     void MisbehaviorDetectionService::initializeParameters() {
         F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
@@ -142,7 +125,7 @@ namespace artery {
         poiId += idPrefix;
         poiId += "_CAM_";
         poiId += std::to_string(cam->header.messageID);
-        poiId += "--";
+        poiId += "-";
         poiId += std::to_string(cam->cam.generationDeltaTime);
         poiId += "-";
         poiId += std::to_string(counter++);
@@ -174,25 +157,34 @@ namespace artery {
                 std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
                           << message->cam.generationDeltaTime << std::endl;
 
-//                traci::TraCIGeoPosition traciGeoPositionSelf = {
-//                        mVehicleDataProvider->longitude().value(),
-//                        mVehicleDataProvider->latitude().value()};
-//                traci::TraCIPosition traciPositionSelf = mTraciAPI->convert2D(traciGeoPositionSelf);
-//                Position ownPosition = Position(traciPositionSelf.x, traciPositionSelf.y);
-//                auto &allObjects = mLocalEnvironmentModel->allObjects();
-//                TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
-//                CheckResult *result;
-//                if (detectedSenders.find(senderStationId) != detectedSenders.end()) {
-//                    result = detectedSenders[senderStationId]->addAndCheckCam(message, ownPosition,
-//                                                                              envModObjects);
-//                } else {
-//                    detectedSenders[senderStationId] = new DetectedSender(mTraciAPI, mGlobalEnvironmentModel,
-//                                                                          &F2MDParameters::detectionParameters,
-//                                                                          message);
-//                    result = detectedSenders[senderStationId]->addAndCheckCam(message, ownPosition,
-//                                                                              envModObjects);
-//                }
-//                std::cout << result->toString(0.5) << std::endl;
+                auto &allObjects = mLocalEnvironmentModel->allObjects();
+                TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
+                CheckResult *result;
+                if (detectedSenders.find(senderStationId) != detectedSenders.end()) {
+                    result = detectedSenders[senderStationId]->addAndCheckCam(message, mVehicleDataProvider->position(),
+                                                                              envModObjects);
+                } else {
+                    detectedSenders[senderStationId] = new DetectedSender(mTraciAPI, mGlobalEnvironmentModel,
+                                                                          &F2MDParameters::detectionParameters,
+                                                                          message);
+                    result = detectedSenders[senderStationId]->addAndCheckCam(message, mVehicleDataProvider->position(),
+                                                                              envModObjects);
+                }
+
+                std::cout << result->toString(0.5) << std::endl;
+                if (result->positionPlausibility == 1) {
+                    visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
+                                         "inside road");
+
+                } else {
+                    visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 0, 255),
+                                         "outside road");
+                }
+
+
+
+
+
 
 //            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
 //                EV_INFO << "Received manipulated CAM!";
@@ -217,69 +209,18 @@ namespace artery {
 //                EV_INFO << "Received weird misbehaviorType";
 //            }
 
-
-                ReferencePosition_t referencePosition = message->cam.camParameters.basicContainer.referencePosition;
-                traci::TraCIGeoPosition traciGeoPositionSender = {
-                        (double) referencePosition.longitude / 10000000.0,
-                        (double) referencePosition.latitude / 10000000.0};
-                Position senderPosition = position_cast(simulationBoundary,
-                                                        mTraciAPI->convert2D(traciGeoPositionSender));
-                bool messageHasPoi = false;
-
-
-                std::vector<GeometryRtreeValue> obstacleResults;
-                mGlobalEnvironmentModel->getObstacleRTree()->query(boost::geometry::index::nearest(senderPosition, 3),
-                                                                   std::back_inserter(obstacleResults));
-                for (const auto &qResult : obstacleResults) {
-                    const auto &obstacle = mGlobalEnvironmentModel->getObstacle(qResult.second);
-                    if (boost::geometry::within(senderPosition, obstacle->getOutline())) {
-                        if (!messageHasPoi) {
-                            std::string prefix = "inside obstacle";
-                            prefix += qResult.second;
-                            visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 255, 255),
-                                                 prefix);
-                            messageHasPoi = true;
-                        }
-                    }
+            } else {
+                libsumo::TraCIPositionVector outline;
+                for (const Position &p : LegacyChecks::getVehicleOutline(message)) {
+                    outline.value.emplace_back(position_cast(mSimulationBoundary, p));
                 }
-
-                std::vector<GeometryRtreeValue> laneResults;
-                mGlobalEnvironmentModel->getLaneRTree()->query(boost::geometry::index::nearest(senderPosition, 10),
-                                                               std::back_inserter(laneResults));
-
-                for (const auto &lResult : laneResults) {
-                    const auto &lane = mGlobalEnvironmentModel->getLane(lResult.second);
-                    if (boost::geometry::distance(senderPosition, lane->getShape()) < lane->getWidth() / 2) {
-                        if (!messageHasPoi) {
-                            std::string prefix = "inside lane";
-                            prefix += lResult.second;
-                            visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
-                                                 prefix);
-
-                            messageHasPoi = true;
-                        }
-                    }
+                if (!lastPolyId.empty()) {
+                    mTraciAPI->polygon.remove(lastPolyId);
                 }
-
-                std::vector<GeometryRtreeValue> junctionResults;
-                mGlobalEnvironmentModel->getJunctionRTree()->query(boost::geometry::index::nearest(senderPosition, 3),
-                                                                   std::back_inserter(junctionResults));
-                for (const auto &jResult : junctionResults) {
-                    const auto &junction = mGlobalEnvironmentModel->getJunction(jResult.second);
-                    if (boost::geometry::within(senderPosition, junction->getOutline())) {
-                        if (!messageHasPoi) {
-                            std::string prefix = "inside junction";
-                            prefix += jResult.second;
-                            visualizeCamPosition(message, libsumo::TraCIColor(255, 0, 255, 255),
-                                                 prefix);
-                            messageHasPoi = true;
-                        }
-                    }
-                }
-            if (!messageHasPoi) {
-                    visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 0, 255),
-                                         "outside");
-                }
+                std::string id{"vehicleOutline_" + std::to_string(mVehicleDataProvider->getStationId())};
+                lastPolyId = id;
+                mTraciAPI->polygon.add(id, outline, libsumo::TraCIColor(255, 0, 255, 255), false, "helper", 5);
+                mTraciAPI->polygon.setLineWidth(id, 1);
             }
         }
     }

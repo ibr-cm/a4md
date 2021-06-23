@@ -20,12 +20,12 @@
 #include <chrono>
 #include <omnetpp/ccomponent.h>
 
+#include "artery/application/CaService.h"
 #include "artery/application/md/MisbehaviorDetectionService.h"
 
 
 using namespace omnetpp;
 namespace artery {
-
 
 
     auto microdegree2 = vanetza::units::degree * boost::units::si::micro;
@@ -112,12 +112,14 @@ namespace artery {
 
         // Constant Speed Attack
         AttackConstantSpeedValue = buildSpeedValue2(
-                uniform(F2MDParameters::attackParameters.AttackConstantSpeedMin, F2MDParameters::attackParameters.AttackConstantSpeedMax) *
+                uniform(F2MDParameters::attackParameters.AttackConstantSpeedMin,
+                        F2MDParameters::attackParameters.AttackConstantSpeedMax) *
                 boost::units::si::meter_per_second);
 
         //Constant Speed Offset Attack
         AttackConstantSpeedOffsetValue =
-                ((long) uniform(0, F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax)) * boost::units::si::meter_per_second;
+                ((long) uniform(0, F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax)) *
+                boost::units::si::meter_per_second;
 
 
         attackEventualStopHasStopped = false;
@@ -149,7 +151,7 @@ namespace artery {
 
 
         mMisbehaviorType = misbehaviorTypes::LocalAttacker;
-        if(F2MDParameters::attackParameters.StaticAttackType > 0){
+        if (F2MDParameters::attackParameters.StaticAttackType > 0) {
             mAttackType = attackTypes::AttackTypes(F2MDParameters::attackParameters.StaticAttackType);
         } else {
             mAttackType = attackTypes::EventualStop;
@@ -168,7 +170,7 @@ namespace artery {
 
     }
 
-    void MisbehaviorCaService::initializeParameters(){
+    void MisbehaviorCaService::initializeParameters() {
         F2MDParameters::attackParameters.StaticAttackType = par("StaticAttackType");
 
         // Constant Position Attack
@@ -190,7 +192,8 @@ namespace artery {
         F2MDParameters::attackParameters.AttackRandomPositionMaxLongitude = par("AttackRandomPositionMaxLongitude");
 
         // Random Position Offset Attack
-        F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset = par("AttackRandomPositionOffsetMaxLatitudeOffset");
+        F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset = par(
+                "AttackRandomPositionOffsetMaxLatitudeOffset");
         F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset = par(
                 "AttackRandomPositionOffsetMaxLongitudeOffset");
 
@@ -211,7 +214,8 @@ namespace artery {
         F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax = par("AttackRandomSpeedOffsetMax");
 
         // Eventual Stop Attack
-        F2MDParameters::attackParameters.AttackEventualStopProbabilityThreshold = par("AttackEventualStopProbabilityThreshold");
+        F2MDParameters::attackParameters.AttackEventualStopProbabilityThreshold = par(
+                "AttackEventualStopProbabilityThreshold");
 
         // Disruptive Attack
         F2MDParameters::attackParameters.AttackDisruptiveBufferSize = par("AttackDisruptiveBufferSize");
@@ -233,6 +237,8 @@ namespace artery {
     void MisbehaviorCaService::trigger() {
         Enter_Method("trigger");
         checkTriggeringConditions(simTime());
+
+
     }
 
     void
@@ -320,8 +326,8 @@ namespace artery {
         }
         int alphaStep = 185 / F2MDParameters::miscParameters.CamLocationVisualizerMaxLength;
         int currentAlpha = 80;
-        for(const auto& poi : activePoIs){
-            traciPoiScope->setColor(poi,libsumo::TraCIColor(255,0,255,currentAlpha));
+        for (const auto &poi : activePoIs) {
+            traciPoiScope->setColor(poi, libsumo::TraCIColor(255, 0, 255, currentAlpha));
             currentAlpha += alphaStep;
         }
     }
@@ -331,7 +337,7 @@ namespace artery {
         vanetza::asn1::Cam cam;
         switch (mMisbehaviorType) {
             case misbehaviorTypes::Benign:
-                cam = createBenignCAM(genDeltaTimeMod);
+                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController,genDeltaTimeMod);
                 break;
             case misbehaviorTypes::LocalAttacker: {
                 cam = createAttackCAM(genDeltaTimeMod);
@@ -341,7 +347,7 @@ namespace artery {
                 cam = createAttackCAM(genDeltaTimeMod);
                 break;
             default:
-                cam = createBenignCAM(genDeltaTimeMod);
+                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider,*mVehicleController, genDeltaTimeMod);
         }
         if (cam->header.messageID != 2) {
             return;
@@ -394,77 +400,8 @@ namespace artery {
         return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
     }
 
-    vanetza::asn1::Cam MisbehaviorCaService::createBenignCAM(uint16_t genDeltaTime) {
-        vanetza::asn1::Cam message;
-
-        ItsPduHeader_t &header = (*message).header;
-        header.protocolVersion = 2;
-        header.messageID = ItsPduHeader__messageID_cam;
-        header.stationID = mVehicleDataProvider->station_id();
-
-        CoopAwareness_t &cam = (*message).cam;
-        cam.generationDeltaTime = genDeltaTime * GenerationDeltaTime_oneMilliSec;
-        BasicContainer_t &basic = cam.camParameters.basicContainer;
-        HighFrequencyContainer_t &hfc = cam.camParameters.highFrequencyContainer;
-
-        basic.stationType = StationType_passengerCar;
-        basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
-        basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
-        basic.referencePosition.longitude =
-                round(mVehicleDataProvider->longitude(), microdegree2) * Longitude_oneMicrodegreeEast;
-        basic.referencePosition.latitude =
-                round(mVehicleDataProvider->latitude(), microdegree2) * Latitude_oneMicrodegreeNorth;
-        basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
-        basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
-                SemiAxisLength_unavailable;
-        basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence =
-                SemiAxisLength_unavailable;
-
-        hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
-        BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
-        bvc.heading.headingValue = round(mVehicleDataProvider->heading(), decidegree2);
-        bvc.heading.headingConfidence = HeadingConfidence_equalOrWithinOneDegree;
-        bvc.speed.speedValue = buildSpeedValue2(mVehicleDataProvider->speed());
-        bvc.speed.speedConfidence = SpeedConfidence_equalOrWithinOneCentimeterPerSec * 3;
-        bvc.driveDirection =
-                mVehicleDataProvider->speed().value() >= 0.0 ? DriveDirection_forward : DriveDirection_backward;
-        const double lonAccelValue =
-                mVehicleDataProvider->acceleration() / vanetza::units::si::meter_per_second_squared;
-        // extreme speed changes can occur when SUMO swaps vehicles between lanes (speed is swapped as well)
-        if (lonAccelValue >= -160.0 && lonAccelValue <= 161.0) {
-            bvc.longitudinalAcceleration.longitudinalAccelerationValue =
-                    (long) lonAccelValue * LongitudinalAccelerationValue_pointOneMeterPerSecSquaredForward;
-        } else {
-            bvc.longitudinalAcceleration.longitudinalAccelerationValue = LongitudinalAccelerationValue_unavailable;
-        }
-        bvc.longitudinalAcceleration.longitudinalAccelerationConfidence = AccelerationConfidence_unavailable;
-        bvc.curvature.curvatureValue =
-                abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) * 10000.0;
-        if (bvc.curvature.curvatureValue >= 1023) {
-            bvc.curvature.curvatureValue = 1023;
-        }
-        bvc.curvature.curvatureConfidence = CurvatureConfidence_unavailable;
-        bvc.curvatureCalculationMode = CurvatureCalculationMode_yawRateUsed;
-        bvc.yawRate.yawRateValue =
-                round(mVehicleDataProvider->yaw_rate(), degree_per_second2) * YawRateValue_degSec_000_01ToLeft * 100.0;
-        if (bvc.yawRate.yawRateValue < -32766 || bvc.yawRate.yawRateValue > 32766) {
-            bvc.yawRate.yawRateValue = YawRateValue_unavailable;
-        }
-        bvc.vehicleLength.vehicleLengthValue = VehicleLengthValue_unavailable;
-        bvc.vehicleLength.vehicleLengthConfidenceIndication =
-                VehicleLengthConfidenceIndication_noTrailerPresent;
-        bvc.vehicleWidth = VehicleWidth_unavailable;
-
-        std::string error;
-        if (!message.validate(error)) {
-            throw cRuntimeError("Invalid High Frequency CAM: %s", error.c_str());
-        }
-
-        return message;
-    }
-
     vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
-        vanetza::asn1::Cam message = createBenignCAM(genDeltaTime);
+        vanetza::asn1::Cam message = createCooperativeAwarenessMessage(*mVehicleDataProvider,*mVehicleController, genDeltaTime);
 
         switch (mAttackType) {
             case attackTypes::ConstPos: {
@@ -499,12 +436,14 @@ namespace artery {
                 break;
             }
             case attackTypes::RandomPosOffset: {
-                long attackLatitudeOffset = (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset,
-                                                            F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset) *
-                                                    1000000);
-                long attackLongitudeOffset = (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset,
-                                                             F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
-                                                     1000000);
+                long attackLatitudeOffset = (long) (
+                        uniform(-F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset,
+                                F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLatitudeOffset) *
+                        1000000);
+                long attackLongitudeOffset = (long) (
+                        uniform(-F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset,
+                                F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
+                        1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
                         (round(mVehicleDataProvider->latitude(), microdegree2) + attackLatitudeOffset) *
                         Latitude_oneMicrodegreeNorth;
@@ -523,7 +462,8 @@ namespace artery {
                 break;
             }
             case attackTypes::RandomSpeed: {
-                double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin, F2MDParameters::attackParameters.AttackRandomSpeedMax);
+                double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin,
+                                             F2MDParameters::attackParameters.AttackRandomSpeedMax);
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
                         randomSpeed * boost::units::si::meter_per_second);
                 break;
@@ -531,7 +471,8 @@ namespace artery {
             case attackTypes::RandomSpeedOffset: {
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
                         mVehicleDataProvider->speed() +
-                        (uniform(0, F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax) * boost::units::si::meter_per_second));
+                        (uniform(0, F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax) *
+                         boost::units::si::meter_per_second));
                 break;
             }
             case attackTypes::EventualStop: {
