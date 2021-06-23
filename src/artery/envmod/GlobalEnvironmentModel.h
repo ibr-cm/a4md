@@ -8,7 +8,7 @@
 #define GLOBALENVIRONMENTMODEL_H_
 
 
-// #include "artery/envmod/sensor/Sensor.h"
+ #include "artery/envmod/sensor/Sensor.h"
 #include "artery/envmod/sensor/SensorDetection.h"
 #include "artery/envmod/Geometry.h"
 #include "artery/envmod/EnvironmentModelObject.h"
@@ -101,9 +101,6 @@ namespace artery {
             return &mJunctionRtree;
         }
 
-        GridCell getGridCellFromPosition(const Position &position) {
-            return mGridCellMatrix.getGridCell(position);
-        };
 
     private:
         /**
@@ -187,7 +184,6 @@ namespace artery {
         omnetpp::cGroupFigure *mDrawObstacles = nullptr;
         omnetpp::cGroupFigure *mDrawVehicles = nullptr;
         std::set<std::string> mObstacleTypes;
-        GridCellMatrix mGridCellMatrix;
 
     };
 
