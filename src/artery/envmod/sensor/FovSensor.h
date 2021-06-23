@@ -30,7 +30,7 @@ public:
     const std::string& getSensorCategory() const override;
     const std::string getSensorName() const override;
     void setSensorName(const std::string& name) override;
-    SensorDetection detectObjects(ObstacleRtree& obstacleRtree, PreselectionMethod& preselector) const override;
+    SensorDetection detectObjects(GeometryRtree& obstacleRtree, PreselectionMethod& preselector) const override;
 
 protected:
     template<typename T>

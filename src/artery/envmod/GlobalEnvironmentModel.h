@@ -12,7 +12,9 @@
 #include "artery/envmod/sensor/SensorDetection.h"
 #include "artery/envmod/Geometry.h"
 #include "artery/envmod/EnvironmentModelObject.h"
-#include "artery/envmod/EnvironmentModelObstacle.h"
+#include "artery/envmod/EnvironmentModelPolygon.h"
+#include "artery/envmod/EnvironmentModelAbstract.h"
+#include "artery/envmod/EnvironmentModelLane.h"
 #include "artery/utility/Geometry.h"
 #include <omnetpp/ccanvas.h>
 #include <omnetpp/clistener.h>
@@ -24,7 +26,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <artery/envmod/GridCellMatrix.h>
 
 
 namespace traci {
@@ -35,7 +36,7 @@ namespace traci {
 
 namespace artery {
 
-    class EnvironmentModelObstacle;
+    class EnvironmentModelPolygon;
 
     class IdentityRegistry;
 
@@ -75,25 +76,33 @@ namespace artery {
          * @param obsId obstacle id
          * @return obstacle model matching the id or nullptr
          */
-        std::shared_ptr<EnvironmentModelObstacle> getObstacle(const std::string &obsId);
+        std::shared_ptr<EnvironmentModelPolygon> getObstacle(const std::string &obsId);
+
+        std::shared_ptr<EnvironmentModelLane> getLane(const std::string &laneId);
+
+        std::shared_ptr<EnvironmentModelPolygon> getJunction(const std::string &junctionId);
 
         /**
          * Returns GSDE of all objects in based on the detection logic of the sensor
          * @param detect
          * @return
          */
-        SensorDetection detectObjects(std::function<SensorDetection(ObstacleRtree &, PreselectionMethod &)> detect);
+        SensorDetection detectObjects(std::function<SensorDetection(GeometryRtree &, PreselectionMethod &)> detect);
 
-//    ObstacleRtree* getObstacleRTree(){
-//        return &mObstacleRtree;
-//    }
-//
-//    ObstacleDB * getObstacleDB(){
-//        return &mObstacles;
-//    }
+        GeometryRtree *getObstacleRTree() {
+            return &mObstacleRtree;
+        }
+
+        GeometryRtree  *getLaneRTree(){
+            return &mLaneRtree;
+        }
+
+        GeometryRtree *getJunctionRTree(){
+            return &mJunctionRtree;
+        }
 
         GridCell getGridCellFromPosition(const Position &position) {
-            return mGridCellMatrix.getGridCellFromPosition(position);
+            return mGridCellMatrix.getGridCell(position);
         };
 
     private:
@@ -129,11 +138,19 @@ namespace artery {
          */
         bool addObstacle(std::string id, std::vector<Position> outline);
 
+        bool addLane(const std::string& id, const std::vector<Position>&shape, double width);
+
+        bool addJunction(const std::string& id, std::vector<Position> outline);
+
         /**
          * Create the obstacle rtree.
          * This method should be called after all static obstacles have been added.
          */
         void buildObstacleRtree();
+
+        void buildLaneRTree();
+
+        void buildJunctionRTree();
 
         /**
          * Clears the internal database completely
@@ -146,6 +163,10 @@ namespace artery {
          */
         void fetchObstacles(const traci::API &api);
 
+        void fetchLanes(const traci::API &api);
+
+        void fetchJunctions(const traci::API &api);
+
         /**
          * Try to get vehicle controller corresponding to given module
          * @param mod vehicle host module
@@ -154,8 +175,12 @@ namespace artery {
         virtual traci::VehicleController *getVehicleController(omnetpp::cModule *mod);
 
         ObjectDB mObjects;
-        ObstacleDB mObstacles;
-        ObstacleRtree mObstacleRtree;
+        PolygonDB mObstacles;
+        GeometryRtree mObstacleRtree;
+        LaneDB mLanes;
+        PolygonDB mJunctions;
+        GeometryRtree mLaneRtree;
+        GeometryRtree mJunctionRtree;
         std::unique_ptr<PreselectionMethod> mPreselector;
         IdentityRegistry *mIdentityRegistry;
         bool mTainted;
@@ -163,6 +188,7 @@ namespace artery {
         omnetpp::cGroupFigure *mDrawVehicles = nullptr;
         std::set<std::string> mObstacleTypes;
         GridCellMatrix mGridCellMatrix;
+
     };
 
 } // namespace artery

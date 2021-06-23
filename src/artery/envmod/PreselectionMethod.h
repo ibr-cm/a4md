@@ -7,7 +7,7 @@
 #ifndef ARTERY_ENVMOD_PRESELECTIONMETHOD_H_
 #define ARTERY_ENVMOD_PRESELECTIONMETHOD_H_
 
-#include "artery/envmod/EnvironmentModelObstacle.h"
+#include "artery/envmod/EnvironmentModelPolygon.h"
 #include "artery/envmod/sensor/SensorConfiguration.h"
 #include <string>
 #include <vector>

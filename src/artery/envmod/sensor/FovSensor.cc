@@ -8,7 +8,7 @@
 #include "artery/envmod/sensor/FovSensor.h"
 #include "artery/envmod/sensor/SensorDetection.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
-#include "artery/envmod/EnvironmentModelObstacle.h"
+#include "artery/envmod/EnvironmentModelPolygon.h"
 #include <boost/geometry/geometries/register/linestring.hpp>
 #include <unordered_set>
 
@@ -62,7 +62,7 @@ void FovSensor::measurement()
     mLastDetection = std::move(objects);
 }
 
-SensorDetection FovSensor::detectObjects(ObstacleRtree& obstacleRtree, PreselectionMethod& preselector) const {
+SensorDetection FovSensor::detectObjects(GeometryRtree& obstacleRtree, PreselectionMethod& preselector) const {
 
     namespace bg = boost::geometry;
     if (mFovConfig.fieldOfView.range <= 0.0 * boost::units::si::meter) {
@@ -83,7 +83,7 @@ SensorDetection FovSensor::detectObjects(ObstacleRtree& obstacleRtree, Preselect
     std::vector<std::string> preselObjectsInSensorRange = preselector.select(*egoObj, mFovConfig);
 
     // get obstacles intersecting with sensor cone
-    std::vector<ObstacleRtreeValue> obstacleIntersections;
+    std::vector<GeometryRtreeValue> obstacleIntersections;
     geometry::Polygon tmp; /*< Boost 1.61 fails when detection.sensorCone is used directly in R-Tree query */
     bg::convert(detection.sensorCone, tmp);
     obstacleRtree.query(bg::index::intersects(tmp), std::back_inserter(obstacleIntersections));
@@ -92,7 +92,7 @@ SensorDetection FovSensor::detectObjects(ObstacleRtree& obstacleRtree, Preselect
 
     if (mFovConfig.doLineOfSightCheck)
     {
-        std::unordered_set<std::shared_ptr<EnvironmentModelObstacle>> blockingObstacles;
+        std::unordered_set<std::shared_ptr<EnvironmentModelPolygon>> blockingObstacles;
 
         // check if objects in sensor cone are hidden by another object or an obstacle
         for (const auto& objectId : preselObjectsInSensorRange)
@@ -116,7 +116,7 @@ SensorDetection FovSensor::detectObjects(ObstacleRtree& obstacleRtree, Preselect
                         });
 
                 bool noObstacleOccultation = std::none_of(obstacleIntersections.begin(), obstacleIntersections.end(),
-                        [&](const ObstacleRtreeValue& obstacleIntersection) {
+                        [&](const GeometryRtreeValue& obstacleIntersection) {
                             const auto& obstacle = mGlobalEnvironmentModel->getObstacle(obstacleIntersection.second);
                             ASSERT(obstacle);
                             if (bg::intersects(lineOfSight, obstacle->getOutline())) {
@@ -266,7 +266,7 @@ void FovSensor::refreshDisplay() const
         }
 
         for (const auto& obstacle : mLastDetection->obstacles) {
-            auto polygon = new cPolygonFigure(obstacle->getObstacleId().c_str());
+            auto polygon = new cPolygonFigure(obstacle->getId().c_str());
             polygon->setFilled(true);
             polygon->setFillColor(mColor);
             polygon->setLineColor(cFigure::BLUE);

@@ -110,7 +110,7 @@ namespace artery {
             EV_ERROR << "skip invalid obstacle polygon " << id << ": " << invalid << " \n";
             return false;
         }
-        auto insertion = mObstacles.emplace(id, std::make_shared<EnvironmentModelObstacle>(id, outline));
+        auto insertion = mObstacles.emplace(id, std::make_shared<EnvironmentModelPolygon>(id, outline));
 
         if (mDrawObstacles) {
             auto polygon = new cPolygonFigure();
@@ -126,6 +126,46 @@ namespace artery {
         return insertion.second;
     }
 
+    bool GlobalEnvironmentModel::addLane(const std::string &id, const std::vector<Position>& shape, double width) {
+        geometry::LineString lineString;
+        for (const auto &v : shape) {
+            boost::geometry::append(lineString,v);
+        }
+        boost::geometry::correct(lineString);
+        std::string invalid;
+        if (!boost::geometry::is_valid(lineString, invalid)) {
+            // skip self-intersecting geometry
+            EV_ERROR << "skip invalid lane shape " << id << ": " << invalid << " \n";
+            return false;
+        }
+        auto insertion = mLanes.emplace(id, std::make_shared<EnvironmentModelLane>(id, lineString, width));
+        return insertion.second;
+    }
+
+    bool GlobalEnvironmentModel::addJunction(const std::string& id, std::vector<Position> outline){
+        boost::geometry::correct(outline);
+        std::string invalid;
+        if (!boost::geometry::is_valid(outline, invalid)) {
+            // skip self-intersecting geometry
+            EV_ERROR << "skip invalid obstacle polygon " << id << ": " << invalid << " \n";
+            return false;
+        }
+        auto insertion = mJunctions.emplace(id, std::make_shared<EnvironmentModelPolygon>(id, outline));
+
+//        if (mDrawObstacles) {
+//            auto polygon = new cPolygonFigure();
+//            polygon->setFilled(true);
+//            polygon->setFillColor(cFigure::BLACK);
+//            polygon->setFillOpacity(0.7);
+//            for (const Position &pos : outline) {
+//                polygon->addPoint(cFigure::Point{pos.x.value(), pos.y.value()});
+//            }
+//            mDrawObstacles->addFigure(polygon);
+//        }
+
+        return insertion.second;
+    }
+
     void GlobalEnvironmentModel::buildObstacleRtree() {
         std::string message;
         for (const auto &obstacle_kv : mObstacles) {
@@ -133,9 +173,36 @@ namespace artery {
             const auto &polygon = obstacle->getOutline();
             if (boost::geometry::is_valid(polygon, message)) {
                 auto bb = boost::geometry::return_envelope<geometry::Box>(polygon);
-                mObstacleRtree.insert(std::make_pair(bb, obstacle->getObstacleId()));
+                mObstacleRtree.insert(std::make_pair(bb, obstacle->getId()));
             } else {
-                throw std::runtime_error("invalid obstacle polygon #" + obstacle->getObstacleId() + " : " + message);
+                throw std::runtime_error("invalid obstacle polygon #" + obstacle->getId() + " : " + message);
+            }
+        }
+    }
+
+    void GlobalEnvironmentModel::buildLaneRTree() {
+        std::string message;
+        for (const auto &lane_kv : mLanes) {
+            auto &lane = lane_kv.second;
+            const auto &shape = lane->getShape();
+            if (boost::geometry::is_valid(shape, message)) {
+                auto bb = boost::geometry::return_envelope<geometry::Box>(shape);
+                mLaneRtree.insert(std::make_pair(bb, lane->getId()));
+            } else {
+                throw std::runtime_error("invalid lane shape #" + lane->getId() + " : " + message);
+            }
+        }
+    }
+    void GlobalEnvironmentModel::buildJunctionRTree() {
+        std::string message;
+        for (const auto &junction_kv : mJunctions) {
+            auto &junction = junction_kv.second;
+            const auto &polygon = junction->getOutline();
+            if (boost::geometry::is_valid(polygon, message)) {
+                auto bb = boost::geometry::return_envelope<geometry::Box>(polygon);
+                mJunctionRtree.insert(std::make_pair(bb, junction->getId()));
+            } else {
+                throw std::runtime_error("invalid junction polygon #" + junction->getId() + " : " + message);
             }
         }
     }
@@ -165,7 +232,7 @@ namespace artery {
     }
 
     SensorDetection GlobalEnvironmentModel::detectObjects(
-            std::function<SensorDetection(ObstacleRtree &, PreselectionMethod &)> detect) {
+            std::function<SensorDetection(GeometryRtree &, PreselectionMethod &)> detect) {
         ASSERT(!mTainted); /*< object database and preselector are in sync */
         return detect(mObstacleRtree, *mPreselector);
     }
@@ -229,7 +296,9 @@ namespace artery {
         if (signal == traciInitSignal) {
             auto core = check_and_cast<traci::Core *>(source);
             fetchObstacles(*core->getAPI());
-            mGridCellMatrix.initialize(par("gridSize"), &(*core->getAPI()), &mObstacleRtree, &mObstacles);
+            fetchLanes(*core->getAPI());
+            fetchJunctions(*core->getAPI());
+//            mGridCellMatrix.initialize(par("gridSize"), &(*core->getAPI()), &mObstacleRtree, &mObstacles);
         } else if (signal == traciCloseSignal) {
             clear();
         }
@@ -282,6 +351,52 @@ namespace artery {
         buildObstacleRtree();
     }
 
+    void GlobalEnvironmentModel::fetchLanes(const traci::API &traci) {
+        auto &lanes = traci.lane;
+        const traci::Boundary boundary{traci.simulation.getNetBoundary()};
+        std::vector<std::string> junctionIDs = traci.junction.getIDList();
+        for (const std::string &id : lanes.getIDList()) {
+            std::vector<Position> shape;
+            if (std::find(junctionIDs.begin(), junctionIDs.end(), id.substr(1, id.find('_') - 1)) !=
+                junctionIDs.end()) {
+                continue;
+            }
+            for (const traci::TraCIPosition &traci_point : lanes.getShape(id).value) {
+                shape.push_back(traci::position_cast(boundary, traci_point));
+            }
+            if (shape.size() >= 2) {
+                addLane(id, shape, lanes.getWidth(id));
+            } else {
+                EV_WARN << "skip obstacle polygon " << id << " because its shape is degraded\n";
+            }
+
+        }
+        buildLaneRTree();
+    }
+
+    void GlobalEnvironmentModel::fetchJunctions(const traci::API &traci){
+        auto &junctions = traci.junction;
+        const traci::Boundary boundary{traci.simulation.getNetBoundary()};
+        std::vector<std::string> junctionIDs = traci.junction.getIDList();
+        for (const std::string &id : junctionIDs){
+            if (std::find(junctionIDs.begin(), junctionIDs.end(), id.substr(1, id.find('_') - 1)) !=
+                junctionIDs.end()) {
+                continue;
+            }
+            std::vector<Position> shape;
+            for (const traci::TraCIPosition &traci_point : junctions.getShape(id).value) {
+                shape.push_back(traci::position_cast(boundary, traci_point));
+            }
+            if (shape.size() >= 3) {
+                addJunction(id, shape);
+            } else {
+                EV_WARN << "skip obstacle polygon " << id << " because its shape is degraded\n";
+            }
+        }
+        buildJunctionRTree();
+
+    }
+
     traci::VehicleController *GlobalEnvironmentModel::getVehicleController(cModule *module) {
         assert(module);
         auto vehicle = dynamic_cast<ControllableVehicle *>(module->getModuleByPath(par("nodeMobilityModule")));
@@ -293,9 +408,20 @@ namespace artery {
         return found != mObjects.end() ? *found : nullptr;
     }
 
-    std::shared_ptr<EnvironmentModelObstacle> GlobalEnvironmentModel::getObstacle(const std::string &obsId) {
+    std::shared_ptr<EnvironmentModelPolygon> GlobalEnvironmentModel::getObstacle(const std::string &obsId) {
         auto found = mObstacles.find(obsId);
         return found != mObstacles.end() ? found->second : nullptr;
+    }
+
+    std::shared_ptr<EnvironmentModelLane> GlobalEnvironmentModel::getLane(const std::string &laneId) {
+        auto found = mLanes.find(laneId);
+        return found != mLanes.end() ? found->second : nullptr;
+    }
+
+
+    std::shared_ptr<EnvironmentModelPolygon> GlobalEnvironmentModel::getJunction(const std::string &junctionId) {
+        auto found = mJunctions.find(junctionId);
+        return found != mJunctions.end() ? found->second : nullptr;
     }
 
 } // namespace artery
