@@ -82,6 +82,7 @@ namespace artery {
         double maxSuddenAppearanceTime;
         double maxCamFrequency;
         double maxOffroadSpeed;
+        double maxDistanceFromRoad;
         double positionHeadingTime;
         double maxHeadingChange;
 

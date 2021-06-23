@@ -13,7 +13,30 @@
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include <artery/application/md/util/CustomRing.h>
 
+//#include <boost/shared_ptr.hpp>
+//#include <boost/geometry/index/rtree.hpp>
+//#include <boost/geometry.hpp>
+//#include <boost/geometry/geometries/point.hpp>
+//#include <boost/geometry/geometries/box.hpp>
+//
+//namespace bg = boost::geometry;
+//namespace bgi = boost::geometry::index;
+//namespace boost {
+//    namespace geometry {
+//        namespace index {
+//            template<typename Box>
+//            struct indexable<std::shared_ptr<Box> > {
+//                typedef std::shared_ptr<Box> V;
+//
+//                typedef Box const &result_type;
+//
+//                result_type operator()(V const &v) const { return *v; }
+//            };
+//        }
+//    }
+//}// namespace boost::geometry::index
 namespace artery {
+
 
     class MisbehaviorDetectionService : public ItsG5Service {
     public:
@@ -53,12 +76,12 @@ namespace artery {
         CURL *curl;
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
-        GlobalEnvironmentModel *mGlobalEnvironmentModel = nullptr;
+        static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         const Timer *mTimer = nullptr;
 
         static traci::Boundary simulationBoundary;
         std::map<uint32_t, DetectedSender *> detectedSenders;
-        static std::shared_ptr<const traci::API> traciAPI;
+        static std::shared_ptr<const traci::API> mTraciAPI;
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
     };

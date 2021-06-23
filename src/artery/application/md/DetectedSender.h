@@ -20,10 +20,12 @@ namespace artery {
 
     class DetectedSender {
     public:
-        DetectedSender(const std::shared_ptr<const traci::API> &traciAPI, DetectionParameters *detectionParameters,
+        DetectedSender(const std::shared_ptr<const traci::API> &traciAPI,
+                       GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
                        const vanetza::asn1::Cam &message);
 
-        CheckResult * addAndCheckCam(const vanetza::asn1::Cam &message, const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects);
+        CheckResult *addAndCheckCam(const vanetza::asn1::Cam &message, const Position &receiverPosition,
+                                    TrackedObjectsFilterRange &envModObjects);
 
     private:
         LegacyChecks legacyChecks;

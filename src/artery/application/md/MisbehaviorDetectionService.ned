@@ -21,6 +21,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double maxSuddenAppearanceTime = default(2.1);
         double maxCamFrequency = default(1.05);
         double maxOffroadSpeed = default(-1);
+        double maxDistanceFromRoad = default(5);
         double positionHeadingTime = default(1.1);
         double maxHeadingChange = default(90);
 

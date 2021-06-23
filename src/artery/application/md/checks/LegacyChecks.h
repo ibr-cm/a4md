@@ -8,6 +8,7 @@
 #include <artery/application/md/kalman/Kalman_SC.h>
 #include <artery/application/md/kalman/Kalman_SI.h>
 #include <artery/envmod/LocalEnvironmentModel.h>
+#include <artery/envmod/GlobalEnvironmentModel.h>
 #include <artery/application/VehicleDataProvider.h>
 #include <artery/application/md/F2MDParameters.h>
 #include "artery/traci/VehicleController.h"
@@ -19,7 +20,7 @@ namespace artery {
     public:
         LegacyChecks() = delete;
 
-        LegacyChecks(std::shared_ptr<const traci::API> traciAPI, DetectionParameters *detectionParameters,
+        LegacyChecks(std::shared_ptr<const traci::API> traciAPI,GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
                      Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
                      Kalman_SI *kalmanSI, Kalman_SI *kalmanVI);
 
@@ -31,6 +32,9 @@ namespace artery {
         static Position getVector(const double &value, const double &angle);
 
     private:
+
+        static bool staticInitializationComplete;
+        static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         std::shared_ptr<const traci::API> traciAPI;
         DetectionParameters *detectionParameters;
 

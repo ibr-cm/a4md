@@ -4,7 +4,8 @@
 #include "artery/envmod/sensor/Sensor.h"
 
 namespace artery {
-
+    bool LegacyChecks::staticInitializationComplete = false;
+    GlobalEnvironmentModel *LegacyChecks::mGlobalEnvironmentModel;
     using namespace omnetpp;
 
     double LegacyChecks::calculateHeadingAngle(const Position &position) {
@@ -149,13 +150,27 @@ namespace artery {
         if (senderSpeed < detectionParameters->maxOffroadSpeed) {
             return 1;
         } else {
-            //TODO check distance from road
+            double minDistance = 9999;
+            std::vector<GeometryRtreeValue> laneResults;
+            mGlobalEnvironmentModel->getLaneRTree()->query(boost::geometry::index::nearest(senderPosition, 10),
+                                                           std::back_inserter(laneResults));
+
+            for (const auto &lResult : laneResults) {
+                const auto &lane = mGlobalEnvironmentModel->getLane(lResult.second);
+                double distance = boost::geometry::distance(senderPosition, lane->getShape()) - lane->getWidth() / 2;
+                if(distance < minDistance){
+                    minDistance = distance;
+                }
+            }
+            if (minDistance < detectionParameters->maxDistanceFromRoad) {
+                return 1;
+            }
         }
         return 1;
     }
 
     double LegacyChecks::FrequencyCheck(long newTime, long oldTime) const {
-        if (newTime - oldTime < (long) (detectionParameters->maxCamFrequency * 1000)) {
+        if (newTime - oldTime > (long) (detectionParameters->maxCamFrequency * 1000)) {
             return 0;
         } else {
             return 1;
@@ -449,7 +464,6 @@ namespace artery {
         result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
 
         if (lastCamPtr != nullptr) {
-            std::cout << "consistency checks" << std::endl;
             vanetza::asn1::Cam lastCam = *lastCamPtr;
             Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition);
             double lastCamSpeed =
@@ -512,6 +526,7 @@ namespace artery {
     }
 
     LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI,
+                               GlobalEnvironmentModel *globalEnvironmentModel,
                                DetectionParameters *detectionParameters,
                                Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
                                Kalman_SI *kalmanSI, Kalman_SI *kalmanVI) :
@@ -519,7 +534,10 @@ namespace artery {
             detectionParameters(detectionParameters),
             kalmanSVI(kalmanSVI), kalmanSVSI(kalmanSVSI),
             kalmanSI(kalmanSI), kalmanVI(kalmanVI) {
-
+            if(!staticInitializationComplete){
+                staticInitializationComplete = true;
+                mGlobalEnvironmentModel = globalEnvironmentModel;
+            }
 
     }
 }
