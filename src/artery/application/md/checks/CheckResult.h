@@ -62,9 +62,10 @@ struct CheckResult {
                                     threshold);
             ss << attributeToString("Speed", 2, kalmanSpeedConsistencyConfidence, threshold);
             ss << attributeToString("Frequency", 0, frequency, threshold);
+            ss << attributeToString("Intersection", 0, intersection, threshold);
+        } else {
+            ss << attributeToString("Sudden Appearance", 0, suddenAppearance, threshold);
         }
-        ss << attributeToString("Intersection", 0, intersection, threshold);
-        ss << attributeToString("Sudden Appearance", 0, suddenAppearance, threshold);
 
         return ss.str();
     };

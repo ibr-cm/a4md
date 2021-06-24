@@ -25,14 +25,12 @@ namespace artery {
                      Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
                      Kalman_SI *kalmanSI, Kalman_SI *kalmanVI);
 
-        CheckResult *checkCAM(const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects,
+        CheckResult *checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position>& receiverVehicleOutline, TrackedObjectsFilterRange &envModObjects,
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr);
 
         Position convertCamPosition(const ReferencePosition_t &referencePosition);
 
         static Position getVector(const double &value, const double &angle);
-
-        static std::vector<Position> getVehicleOutline(const vanetza::asn1::Cam &message);
 
     private:
 
@@ -67,8 +65,8 @@ namespace artery {
 
         double SpeedPlausibilityCheck(double speed) const;
 
-//        double IntersectionCheck(Position nodePosition1, Position nodeSize1, Position head1, Position nodePosition2,
-//                                 Position nodeSize2, Position head2, double deltaTime);
+        double IntersectionCheck(const std::vector<Position>& receiverVehicleOutline, const StationID_t &senderStationId,
+                                 TrackedObjectsFilterRange &envModObjects);
 
         double SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const;
 

@@ -68,6 +68,8 @@ namespace artery {
 
         void initializeParameters();
 
+        std::vector<Position> getVehicleOutline();
+
 
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;

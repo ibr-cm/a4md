@@ -1,6 +1,7 @@
 
 #include "artery/application/md/MisbehaviorDetectionService.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
+#include "artery/envmod/EnvironmentModelObject.h"
 #include "artery/traci/VehicleController.h"
 #include <omnetpp/cmessage.h>
 #include <omnetpp/cpacket.h>
@@ -13,6 +14,9 @@
 #include <inet/common/ModuleAccess.h>
 #include "artery/traci/Cast.h"
 #include "artery/application/md/MisbehaviorCaService.h"
+#include <boost/math/constants/constants.hpp>
+#include <boost/units/cmath.hpp>
+#include <boost/math/constants/info.hpp>
 
 namespace artery {
     using namespace omnetpp;
@@ -145,31 +149,77 @@ namespace artery {
 //        }
     }
 
+
+    boost::geometry::strategy::transform::matrix_transformer<double, 2, 2>
+    transformVehicle(double length, double width, const Position &pos, Angle alpha) {
+        using namespace boost::geometry::strategy::transform;
+
+        // scale square to vehicle dimensions
+        scale_transformer<double, 2, 2> scaling(length, width);
+        // rotate into driving direction
+        rotate_transformer<boost::geometry::radian, double, 2, 2> rotation(alpha.radian());
+        // move to given front bumper position
+        translate_transformer<double, 2, 2> translation(pos.x.value(), pos.y.value());
+
+        return matrix_transformer<double, 2, 2>{translation.matrix() * rotation.matrix() * scaling.matrix()};
+    }
+
+    std::vector<Position> MisbehaviorDetectionService::getVehicleOutline() {
+        Angle heading = -1.0 * (mVehicleDataProvider->heading() -
+                                0.5 * boost::math::double_constants::pi * boost::units::si::radian);
+        auto transformationMatrix = transformVehicle(mVehicleController->getVehicleType().getLength().value(),
+                                                     mVehicleController->getVehicleType().getWidth().value(),
+                                                     mVehicleDataProvider->position(),
+                                                     heading);
+        std::vector<Position> squareOutline = {
+                Position(0.0, 0.5), // front left
+                Position(0.0, -0.5), // front right
+                Position(-1.0, -0.5), // back right
+                Position(-1.0, 0.5) // back left
+        };
+        std::vector<Position> vehicleOutline;
+        boost::geometry::transform(squareOutline, vehicleOutline, transformationMatrix);
+        return vehicleOutline;
+
+    }
+
+
     void MisbehaviorDetectionService::receiveSignal(cComponent *source, simsignal_t signal, cObject *c_obj, cObject *) {
         Enter_Method("receiveSignal");
         if (signal == scSignalCamReceived) {
             auto *ca = dynamic_cast<CaObject *>(c_obj);
             vanetza::asn1::Cam message = ca->asn1();
             uint32_t senderStationId = message->header.stationID;
+
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
 
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
+                std::vector<Position> vehicleOutline = getVehicleOutline();
+//                libsumo::TraCIPositionVector outline;
+//                for (const Position &p : vehicleOutline) {
+//                    outline.value.emplace_back(position_cast(mSimulationBoundary, p));
+//                }
+//                if (!lastPolyId.empty()) {
+//                    mTraciAPI->polygon.remove(lastPolyId);
+//                }
+//                std::string id{"vehicleOutline_" + std::to_string(mVehicleDataProvider->getStationId())};
+//                lastPolyId = id;
+//                mTraciAPI->polygon.add(id, outline, libsumo::TraCIColor(255, 0, 255, 255), false, "helper", 5);
+//                mTraciAPI->polygon.setLineWidth(id, 1);
                 std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
                           << message->cam.generationDeltaTime << std::endl;
 
                 auto &allObjects = mLocalEnvironmentModel->allObjects();
                 TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
-                CheckResult *result;
-                if (detectedSenders.find(senderStationId) != detectedSenders.end()) {
-                    result = detectedSenders[senderStationId]->addAndCheckCam(message, mVehicleDataProvider->position(),
-                                                                              envModObjects);
-                } else {
+                if (detectedSenders.find(senderStationId) == detectedSenders.end()) {
                     detectedSenders[senderStationId] = new DetectedSender(mTraciAPI, mGlobalEnvironmentModel,
                                                                           &F2MDParameters::detectionParameters,
                                                                           message);
-                    result = detectedSenders[senderStationId]->addAndCheckCam(message, mVehicleDataProvider->position(),
-                                                                              envModObjects);
                 }
+                CheckResult *result = detectedSenders[senderStationId]->addAndCheckCam(message,
+                                                                                       mVehicleDataProvider,
+                                                                                       vehicleOutline,
+                                                                                       envModObjects);
 
                 std::cout << result->toString(0.5) << std::endl;
                 if (result->positionPlausibility == 1) {
@@ -209,18 +259,6 @@ namespace artery {
 //                EV_INFO << "Received weird misbehaviorType";
 //            }
 
-            } else {
-                libsumo::TraCIPositionVector outline;
-                for (const Position &p : LegacyChecks::getVehicleOutline(message)) {
-                    outline.value.emplace_back(position_cast(mSimulationBoundary, p));
-                }
-                if (!lastPolyId.empty()) {
-                    mTraciAPI->polygon.remove(lastPolyId);
-                }
-                std::string id{"vehicleOutline_" + std::to_string(mVehicleDataProvider->getStationId())};
-                lastPolyId = id;
-                mTraciAPI->polygon.add(id, outline, libsumo::TraCIColor(255, 0, 255, 255), false, "helper", 5);
-                mTraciAPI->polygon.setLineWidth(id, 1);
             }
         }
     }

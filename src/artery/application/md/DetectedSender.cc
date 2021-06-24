@@ -12,6 +12,7 @@ namespace artery {
             : legacyChecks(traciAPI, globalEnvironmentModel, detectionParameters,
                            &kalmanSVI, &kalmanSVSI, &kalmanSI,
                            &kalmanVI) {
+        mStationId = message->header.stationID;
         Position position = legacyChecks.convertCamPosition(
                 message->cam.camParameters.basicContainer.referencePosition);
         double speed =
@@ -29,13 +30,13 @@ namespace artery {
 
 
     CheckResult *
-    DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const Position &receiverPosition,
+    DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,const std::vector<Position>& receiverVehicleOutline,
                                    TrackedObjectsFilterRange &envModObjects) {
         CheckResult *result;
         if (!checkResults.empty()) {
-            result = legacyChecks.checkCAM(receiverPosition, envModObjects, message, &checkResults.back()->cam);
+            result = legacyChecks.checkCAM(receiverVDP,receiverVehicleOutline, envModObjects, message, &checkResults.back()->cam);
         } else {
-            result = legacyChecks.checkCAM(receiverPosition, envModObjects, message, nullptr);
+            result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline,envModObjects, message, nullptr);
         }
         result->cam = message;
         checkResults.push_back(result);

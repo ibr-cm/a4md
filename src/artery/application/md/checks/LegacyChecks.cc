@@ -50,7 +50,6 @@ namespace artery {
 
     double
     LegacyChecks::RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const {
-        std::cout << distance(senderPosition, receiverPosition).value() << std::endl;
         if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleRange) {
             return 1;
         } else {
@@ -136,12 +135,46 @@ namespace artery {
         }
     }
 
-//    double
-//    LegacyChecks::IntersectionCheck(Position nodePosition1, Position nodeSize1, Position head1, Position nodePosition2,
-//                                    Position nodeSize2, Position head2, double deltaTime) {
-//        //TODO
-//        return 0;
-//    }
+    double
+    LegacyChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
+                                    const StationID_t &senderStationId,
+                                    TrackedObjectsFilterRange &envModObjects) {
+        std::vector<Position> senderOutline;
+        for (const auto &object : envModObjects) {
+            std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
+            if (obj_ptr.expired()) {
+                continue;
+            }
+            std::shared_ptr<EnvironmentModelObject> envModObject = obj_ptr.lock();
+            if (envModObject->getVehicleData().getStationId() == senderStationId) {
+                senderOutline = envModObject->getOutline();
+                break;
+            }
+        }
+        if (senderOutline.empty()) {
+            return 1;
+        } else {
+            if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
+                return 0;
+            } else {
+                for (const auto &object : envModObjects) {
+                    std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
+                    if (obj_ptr.expired()) {
+                        continue;
+                    } else {
+                        std::shared_ptr<EnvironmentModelObject> envModObject = obj_ptr.lock();
+                        if (envModObject->getVehicleData().getStationId() != senderStationId &&
+                            boost::geometry::intersects(senderOutline, envModObject->getOutline())) {
+                            return 0;
+                        }
+                    }
+                }
+                return 1;
+            }
+        }
+
+    }
+
 
     double LegacyChecks::SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const {
         if (distance(senderPosition, receiverPosition).value() > detectionParameters->maxSuddenAppearanceRange) {
@@ -451,53 +484,16 @@ namespace artery {
         return Position(x, y);
     }
 
-    std::vector<Position> LegacyChecks::getVehicleOutline(const vanetza::asn1::Cam &message){
-        traci::TraCIGeoPosition traciGeoPositionSender = {
-                (double) message->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
-                (double) message->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
-        Position position = position_cast(mSimulationBoundary, mTraciAPI->convert2D(traciGeoPositionSender));
-        Angle heading = Angle::from_degree((double)
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
-                10);
-        double vehicleWidth = (double)
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleWidth /
-                10;
-        double vehicleLength = (double)
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleLength.vehicleLengthValue /
-                10;
-        geometry::Ring vehicle;
-        double widthOffsetY = vehicleWidth / 2 * sin(heading.radian());
-        double widthOffsetX = sqrt(pow(vehicleWidth / 2, 2) - pow(widthOffsetY, 2));
-
-        double lengthOffsetX = vehicleLength * sin(heading.radian());
-        double lengthOffsetY = sqrt(pow(vehicleLength, 2) - pow(lengthOffsetX, 2));
-
-        if (heading.degree() < 90 || heading.degree() > 270) {
-            widthOffsetX *= -1;
-            lengthOffsetY *= -1;
-        }
-
-        Position frontLeft = Position(position.x.value() + widthOffsetX,
-                                      position.y.value() - widthOffsetY);
-        Position frontRight = Position(position.x.value() - widthOffsetX,
-                                       position.y.value() + widthOffsetY);
-        Position rearCenter = Position(position.x.value() - lengthOffsetX,
-                                       position.y.value() - lengthOffsetY);
-        Position rearLeft = Position(rearCenter.x.value() + widthOffsetX,
-                                     rearCenter.y.value() - widthOffsetY);
-        Position rearRight = Position(rearCenter.x.value() - widthOffsetX,
-                                      rearCenter.y.value() + widthOffsetY);
-        return std::vector<Position>{frontLeft, frontRight, rearRight, rearLeft, frontLeft};
-    }
-
-    CheckResult *LegacyChecks::checkCAM(const Position &receiverPosition, TrackedObjectsFilterRange &envModObjects,
-                                        const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr) {
+    CheckResult *
+    LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
+                           TrackedObjectsFilterRange &envModObjects,
+                           const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr) {
 
         BasicVehicleContainerHighFrequency_t highFrequencyContainer = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
         Position currentCamPosition = convertCamPosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition);
-
+        const Position &receiverPosition = receiverVDP->position();
         double currentCamSpeed = (double) highFrequencyContainer.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
@@ -566,8 +562,9 @@ namespace artery {
                                                                                    currentCamSpeedConfidence,
                                                                                    currentCamAccelerationVector,
                                                                                    camDeltaTime);
-            //TODO IntersectionCheck
             result->frequency = FrequencyCheck(currentCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
+            result->intersection = IntersectionCheck(receiverVehicleOutline, currentCam->header.stationID,
+                                                     envModObjects);
         } else {
             result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
         }
