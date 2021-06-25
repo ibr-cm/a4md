@@ -11,7 +11,7 @@
 #include "DetectedSender.h"
 #include "F2MDParameters.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
-#include <artery/application/md/util/CustomRing.h>
+#include <vanetza/asn1/misbehavior_report.hpp>
 
 //#include <boost/shared_ptr.hpp>
 //#include <boost/geometry/index/rtree.hpp>
@@ -70,11 +70,12 @@ namespace artery {
 
         std::vector<Position> getVehicleOutline();
 
+        vanetza::asn1::MisbehaviorReport createMisbehaviorReport(const std::string& reportId,vanetza::asn1::Cam cam);
+
 
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;
 
-        omnetpp::cMessage *m_self_msg;
         CURL *curl;
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
