@@ -17,6 +17,7 @@
 #include <boost/math/constants/constants.hpp>
 #include <boost/units/cmath.hpp>
 #include <boost/math/constants/info.hpp>
+#include <bitset>
 
 namespace artery {
     using namespace omnetpp;
@@ -37,7 +38,6 @@ namespace artery {
     }
 
     MisbehaviorDetectionService::~MisbehaviorDetectionService() {
-        cancelAndDelete(m_self_msg);
         curl_easy_cleanup(curl);
 
 //        while (!activePoIs.empty()) {
@@ -48,12 +48,11 @@ namespace artery {
 
     void MisbehaviorDetectionService::initialize() {
         ItsG5BaseService::initialize();
-        m_self_msg = new cMessage("InitializeMessage");
         subscribe(scSignalCamReceived);
-        scheduleAt(simTime() + 3.0, m_self_msg);
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
-        mLocalEnvironmentModel = getFacilities().get_mutable_ptr<LocalEnvironmentModel>();
         mVehicleController = &getFacilities().get_const<traci::VehicleController>();
+        mLocalEnvironmentModel = getFacilities().get_mutable_ptr<LocalEnvironmentModel>();
+        mTimer = &getFacilities().get_const<Timer>();
 
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
@@ -112,10 +111,6 @@ namespace artery {
 
     void MisbehaviorDetectionService::handleMessage(cMessage *msg) {
         Enter_Method("handleMessage");
-
-        if (msg == m_self_msg) {
-            EV_INFO << "self message\n";
-        }
     }
 
     void MisbehaviorDetectionService::visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color,
@@ -222,37 +217,34 @@ namespace artery {
                                                                                        envModObjects);
 
                 std::cout << result->toString(0.5) << std::endl;
-                if (result->positionPlausibility == 1) {
-                    visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
-                                         "inside road");
+//                if (result->positionPlausibility == 1) {
+//                    visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
+//                                         "inside road");
+//
+//                } else {
+//                    visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 0, 255),
+//                                         "outside road");
+//                }
 
-                } else {
-                    visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 0, 255),
-                                         "outside road");
-                }
-
-
-
-
-
+//                message.encode();
 
 //            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
-//                EV_INFO << "Received manipulated CAM!";
-//                EV_INFO << "Received DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " delta:  "
-//                        << message->cam.generationDeltaTime << "\n";
-//                vanetza::ByteBuffer byteBuffer = ca->asn1().encode();
-//                std::string encoded(byteBuffer.begin(), byteBuffer.end());
-//                std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()),
-//                                                       encoded.length(), false);
-//                if (curl) {
-//                    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
-//                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
-//                    CURLcode curlResponse = curl_easy_perform(curl);
-//                    if (curlResponse != CURLE_OK) {
-//                        EV_ERROR << "curl_easy_perform() failed: %s\n"
-//                                 << curl_easy_strerror(curlResponse);
-//                    }
-//                }
+                EV_INFO << "Received manipulated CAM!";
+                EV_INFO << "Received DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " delta:  "
+                        << message->cam.generationDeltaTime << "\n";
+                vanetza::ByteBuffer byteBuffer = message.encode();
+                std::string encoded(byteBuffer.begin(), byteBuffer.end());
+                std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()),
+                                                       encoded.length(), false);
+                if (curl) {
+                    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
+                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
+                    CURLcode curlResponse = curl_easy_perform(curl);
+                    if (curlResponse != CURLE_OK) {
+                        EV_ERROR << "curl_easy_perform() failed: %s\n"
+                                 << curl_easy_strerror(curlResponse);
+                    }
+                }
 //            } else if (senderMisbehaviorType == misbehaviorTypes::Benign) {
 //                EV_INFO << "Received benign CAM!";
 //            } else {
@@ -261,6 +253,40 @@ namespace artery {
 
             }
         }
+    }
+
+    vanetza::asn1::MisbehaviorReport MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId,vanetza::asn1::Cam cam) {
+        vanetza::asn1::MisbehaviorReport misbehaviorReport;
+
+        misbehaviorReport->version = 1;
+
+        ReportMetadataContainer_t &reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
+        assert(asn_long2INTEGER(&reportMetadataContainer.generationTime,
+                                countTaiMilliseconds(mTimer->getCurrentTime())) == 0);
+        OCTET_STRING_fromBuf(&reportMetadataContainer.reportID, reportId.c_str(), (int) strlen(reportId.c_str()));
+
+        ReportContainer &reportContainer = misbehaviorReport->reportContainer;
+        reportContainer.reportedMessageContainer.present = ReportedMessageContainer_PR_certificateIncludedContainer;
+        EtsiTs103097Data_t reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
+        reportedMessage.protocolVersion = 3;
+        Ieee1609Dot2Content_t ieee1609Dot2Content;
+        reportedMessage.content = &ieee1609Dot2Content;
+        ieee1609Dot2Content.present = Ieee1609Dot2Content_PR_unsecuredData;
+        vanetza::ByteBuffer byteBuffer = cam.encode();
+        std::string encodedCam(byteBuffer.begin(), byteBuffer.end());
+        OCTET_STRING_fromBuf(&ieee1609Dot2Content.choice.unsecuredData, encodedCam.c_str(), (int) strlen(encodedCam.c_str()));
+
+        reportContainer.misbehaviorTypeContainer.present = MisbehaviorTypeContainer_PR_semanticDetection;
+        SemanticDetection_t semanticDetection= reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
+        semanticDetection.present = SemanticDetection_PR_semanticDetectionReferenceCAM;
+        semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM = 3;
+        int semanticDetectionErrorCodeCAM = 0;
+        semanticDetectionErrorCodeCAM |= 1; //set bit for wrong referencePosition
+        std::string encoded = std::bitset<24>(semanticDetectionErrorCodeCAM).to_string();
+        OCTET_STRING_fromBuf(&semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM,encoded.c_str(),(int) strlen(encoded.c_str()));
+
+
+        return misbehaviorReport;
     }
 
 
