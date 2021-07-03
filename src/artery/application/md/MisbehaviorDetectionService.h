@@ -13,28 +13,6 @@
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include <vanetza/asn1/misbehavior_report.hpp>
 
-//#include <boost/shared_ptr.hpp>
-//#include <boost/geometry/index/rtree.hpp>
-//#include <boost/geometry.hpp>
-//#include <boost/geometry/geometries/point.hpp>
-//#include <boost/geometry/geometries/box.hpp>
-//
-//namespace bg = boost::geometry;
-//namespace bgi = boost::geometry::index;
-//namespace boost {
-//    namespace geometry {
-//        namespace index {
-//            template<typename Box>
-//            struct indexable<std::shared_ptr<Box> > {
-//                typedef std::shared_ptr<Box> V;
-//
-//                typedef Box const &result_type;
-//
-//                result_type operator()(V const &v) const { return *v; }
-//            };
-//        }
-//    }
-//}// namespace boost::geometry::index
 namespace artery {
 
 
