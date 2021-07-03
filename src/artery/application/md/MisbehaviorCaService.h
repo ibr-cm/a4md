@@ -21,6 +21,8 @@
 #include <omnetpp/crng.h>
 #include <map>
 #include "artery/traci/VehicleController.h"
+#include "artery/envmod/LocalEnvironmentModel.h"
+#include "artery/envmod/GlobalEnvironmentModel.h"
 
 namespace artery {
 
@@ -64,10 +66,15 @@ namespace artery {
 
         ChannelNumber mPrimaryChannel = channel::CCH;
         const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
-        const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const Timer *mTimer = nullptr;
         LocalDynamicMap *mLocalDynamicMap = nullptr;
+
+        const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const traci::VehicleController *mVehicleController = nullptr;
+        const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
+        static GlobalEnvironmentModel *mGlobalEnvironmentModel;
+        static std::shared_ptr<const traci::API> mTraciAPI;
+        static traci::Boundary mSimulationBoundary;
 
         omnetpp::SimTime mGenCamMin;
         omnetpp::SimTime mGenCamMax;
@@ -100,6 +107,10 @@ namespace artery {
         ReferencePosition_t attackEventualStopPosition;
         uint32_t attackDataReplayCurrentStationId;
         int attackGridSybilVehicleCount;
+        double attackGridSybilActualDistanceX;
+        double attackGridSybilActualDistanceY;
+        int attackGridSybilCurrentVehicleIndex;
+        double attackGridSybilLastHeadingAngle;
 
         std::queue<uint32_t> mPseudonyms;
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
@@ -113,7 +124,6 @@ namespace artery {
     void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
     static TraCIAPI::VehicleScope *traciVehicleScope;
-    static std::shared_ptr<const traci::API> traciAPI;
     static const TraCIAPI::POIScope *traciPoiScope;
 
 } // namespace artery

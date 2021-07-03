@@ -64,9 +64,13 @@ namespace artery {
         int AttackStaleDelayCount;
 
         // Grid Sybil Attack
-        int AttackSybilVehicleCount;
-        int AttackSybilVehicleCountVariation;
-        bool AttackSybilSelfSybil;
+        int AttackGridSybilVehicleCount;
+        int AttackGridSybilVehicleCountVariation;
+        bool AttackGridSybilSelfSybil;
+        double AttackGridSybilDistanceX;
+        double AttackGridSybilDistanceY;
+        double AttackGridSybilDistanceVariation;
+        int AttackGridSybilMaxDistanceFromRoad;
     };
 
     struct DetectionParameters {

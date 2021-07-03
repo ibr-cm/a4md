@@ -108,8 +108,12 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
 		int AttackStaleDelayCount = default(50);
 
         // Grid Sybil Attack
-        int AttackSybilVehicleCount = default(5);
-        int AttackSybilVehicleCountVariation = default(2);
-        bool AttackSybilSelfSybil = default(false);
+        int AttackGridSybilVehicleCount = default(5);
+        int AttackGridSybilVehicleCountVariation = default(2);
+        bool AttackGridSybilSelfSybil = default(false);
+        double AttackGridSybilDistanceX = default(5);
+        double AttackGridSybilDistanceY = default(2);
+        double AttackGridSybilDistanceVariation = default(2);
+        double AttackGridSybilMaxDistanceFromRoad = default(5);
 
 }
