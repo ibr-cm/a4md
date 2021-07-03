@@ -121,10 +121,23 @@ namespace artery {
                 ((long) uniform(0, F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax)) *
                 boost::units::si::meter_per_second;
 
-
+        // Eventual Stop Attack
         attackEventualStopHasStopped = false;
+
+        // Data Replay Attack
         attackDataReplayCurrentStationId = -1;
 
+        // Grid Sybil Attack
+        attackGridSybilVehicleCount = intuniform(F2MDParameters::attackParameters.AttackSybilVehicleCount -
+                                                 F2MDParameters::attackParameters.AttackSybilVehicleCountVariation,
+                                                 F2MDParameters::attackParameters.AttackSybilVehicleCount +
+                                                 F2MDParameters::attackParameters.AttackSybilVehicleCountVariation);
+        if (attackGridSybilVehicleCount < 1) {
+            attackGridSybilVehicleCount = 1;
+        }
+        for (int i = 0; i < attackGridSybilVehicleCount; i++){
+            mPseudonyms.push(Identity::randomStationId(getRNG(0)));
+        }
 
         // avoid unreasonable high elapsed time values for newly inserted vehicles
         mLastCamTimestamp = simTime();
@@ -161,7 +174,7 @@ namespace artery {
 
         traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
-        if (mAttackType == attackTypes::DoS) {
+        if (mAttackType == attackTypes::DoS || mAttackType == attackTypes::GridSybil) {
             mGenCamMin = {F2MDParameters::attackParameters.AttackDoSInterval, SIMTIME_MS};
             mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
@@ -171,6 +184,10 @@ namespace artery {
     }
 
     void MisbehaviorCaService::initializeParameters() {
+        // CAM Location Visualizer (PoI)
+        F2MDParameters::miscParameters.CamLocationVisualizer = par("CamLocationVisualizer");
+        F2MDParameters::miscParameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
+
         F2MDParameters::attackParameters.StaticAttackType = par("StaticAttackType");
 
         // Constant Position Attack
@@ -228,17 +245,15 @@ namespace artery {
         // Stale Messages Attack
         F2MDParameters::attackParameters.AttackStaleDelayCount = par("AttackStaleDelayCount");
 
-
-        // CAM Location Visualizer (PoI)
-        F2MDParameters::miscParameters.CamLocationVisualizer = par("CamLocationVisualizer");
-        F2MDParameters::miscParameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
+        // Grid Sybil Attack
+        F2MDParameters::attackParameters.AttackSybilVehicleCount = par("AttackSybilVehicleCount");
+        F2MDParameters::attackParameters.AttackSybilVehicleCountVariation = par("AttackSybilVehicleCountVariation");
+        F2MDParameters::attackParameters.AttackSybilSelfSybil = par("AttackSybilSelfSybil");
     }
 
     void MisbehaviorCaService::trigger() {
         Enter_Method("trigger");
         checkTriggeringConditions(simTime());
-
-
     }
 
     void
@@ -262,6 +277,11 @@ namespace artery {
                 }
                 case attackTypes::DataReplay: {
                     receivedMessages[message->header.stationID].push(message);
+                    break;
+                }
+                case attackTypes::DoSDisruptive: {
+                    receivedMessages[message->header.stationID].push(message);
+                    break;
                 }
                 default:
                     break;
@@ -337,7 +357,7 @@ namespace artery {
         vanetza::asn1::Cam cam;
         switch (mMisbehaviorType) {
             case misbehaviorTypes::Benign:
-                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController,genDeltaTimeMod);
+                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController, genDeltaTimeMod);
                 break;
             case misbehaviorTypes::LocalAttacker: {
                 cam = createAttackCAM(genDeltaTimeMod);
@@ -347,7 +367,7 @@ namespace artery {
                 cam = createAttackCAM(genDeltaTimeMod);
                 break;
             default:
-                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider,*mVehicleController, genDeltaTimeMod);
+                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController, genDeltaTimeMod);
         }
         if (cam->header.messageID != 2) {
             return;
@@ -401,7 +421,8 @@ namespace artery {
     }
 
     vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
-        vanetza::asn1::Cam message = createCooperativeAwarenessMessage(*mVehicleDataProvider,*mVehicleController, genDeltaTime);
+        vanetza::asn1::Cam message = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController,
+                                                                       genDeltaTime);
 
         switch (mAttackType) {
             case attackTypes::ConstPos: {
@@ -555,16 +576,41 @@ namespace artery {
                 break;
             }
             case attackTypes::DoS: {
-//                EV_INFO << "Sent DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " old:  "
-//                        << message->cam.generationDeltaTime << " new: "
-//                        << (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) << "\n";
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime()));
                 break;
             }
             case attackTypes::DoSRandom: {
+                message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime()));
+                long attackLatitude =
+                        (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLatitude,
+                                        F2MDParameters::attackParameters.AttackRandomPositionMaxLatitude) * 1000000);
+                long attackLongitude =
+                        (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLongitude,
+                                        F2MDParameters::attackParameters.AttackRandomPositionMaxLongitude) * 1000000);
+                message->cam.camParameters.basicContainer.referencePosition.latitude =
+                        attackLatitude * Latitude_oneMicrodegreeNorth;
+                message->cam.camParameters.basicContainer.referencePosition.longitude =
+                        attackLongitude * Longitude_oneMicrodegreeEast;
+                double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin,
+                                             F2MDParameters::attackParameters.AttackRandomSpeedMax);
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                        randomSpeed * boost::units::si::meter_per_second);
                 break;
             }
             case attackTypes::DoSDisruptive: {
+                auto it = receivedMessages.begin();
+                int index = (int) uniform(0, (double) receivedMessages.size());
+                std::advance(it, index);
+                if (!it->second.empty()) {
+                    message = it->second.front();
+                    it->second.pop();
+                    message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+                            mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                    message->header.stationID = mVehicleDataProvider->getStationId();
+                } else {
+                    receivedMessages.erase(it->first);
+                    message = vanetza::asn1::Cam();
+                }
                 break;
             }
             case attackTypes::GridSybil: {
@@ -574,6 +620,24 @@ namespace artery {
                 break;
             }
             case attackTypes::DoSRandomSybil: {
+                message->header.stationID = mPseudonyms.front();
+                mPseudonyms.push(mPseudonyms.front());
+                mPseudonyms.pop();
+                message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime()));
+                long attackLatitude =
+                        (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLatitude,
+                                        F2MDParameters::attackParameters.AttackRandomPositionMaxLatitude) * 1000000);
+                long attackLongitude =
+                        (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLongitude,
+                                        F2MDParameters::attackParameters.AttackRandomPositionMaxLongitude) * 1000000);
+                message->cam.camParameters.basicContainer.referencePosition.latitude =
+                        attackLatitude * Latitude_oneMicrodegreeNorth;
+                message->cam.camParameters.basicContainer.referencePosition.longitude =
+                        attackLongitude * Longitude_oneMicrodegreeEast;
+                double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin,
+                                             F2MDParameters::attackParameters.AttackRandomSpeedMax);
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                        randomSpeed * boost::units::si::meter_per_second);
                 break;
             }
             case attackTypes::DoSDisruptiveSybil: {

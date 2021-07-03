@@ -99,9 +99,9 @@ namespace artery {
         bool attackEventualStopHasStopped;
         ReferencePosition_t attackEventualStopPosition;
         uint32_t attackDataReplayCurrentStationId;
+        int attackGridSybilVehicleCount;
 
-
-
+        std::queue<uint32_t> mPseudonyms;
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
         std::map<uint32_t,std::queue<vanetza::asn1::Cam>> receivedMessages;

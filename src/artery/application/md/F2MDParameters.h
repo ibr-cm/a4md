@@ -62,6 +62,11 @@ namespace artery {
 
         // Stale Messages Attack
         int AttackStaleDelayCount;
+
+        // Grid Sybil Attack
+        int AttackSybilVehicleCount;
+        int AttackSybilVehicleCountVariation;
+        bool AttackSybilSelfSybil;
     };
 
     struct DetectionParameters {

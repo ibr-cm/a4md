@@ -107,4 +107,9 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
 		// Stale Messages Attack
 		int AttackStaleDelayCount = default(50);
 
+        // Grid Sybil Attack
+        int AttackSybilVehicleCount = default(5);
+        int AttackSybilVehicleCountVariation = default(2);
+        bool AttackSybilSelfSybil = default(false);
+
 }

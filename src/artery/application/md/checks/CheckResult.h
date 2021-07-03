@@ -50,7 +50,7 @@ struct CheckResult {
             ss << attributeToString("PositionSpeed", 1, positionSpeedConsistency, threshold);
             ss << attributeToString("PositionSpeedMax", 1, positionSpeedMaxConsistency, threshold);
             ss << attributeToString("PositionHeading", 1, positionHeadingConsistency, threshold);
-            ss << "\tKalman: " << std::endl;
+            ss << "  Kalman: " << std::endl;
             ss << attributeToString("PositionSpeed-Position", 2, kalmanPositionSpeedConsistencyPosition, threshold);
             ss << attributeToString("PositionSpeed-Speed", 2, kalmanPositionSpeedConsistencySpeed, threshold);
             ss << attributeToString("PositionSpeedScalar-Position", 2, kalmanPositionSpeedScalarConsistencyPosition,
