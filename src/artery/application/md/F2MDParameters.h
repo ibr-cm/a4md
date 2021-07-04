@@ -70,7 +70,7 @@ namespace artery {
         double AttackGridSybilDistanceX;
         double AttackGridSybilDistanceY;
         double AttackGridSybilDistanceVariation;
-        int AttackGridSybilMaxDistanceFromRoad;
+        double AttackGridSybilMaxDistanceFromRoad;
     };
 
     struct DetectionParameters {

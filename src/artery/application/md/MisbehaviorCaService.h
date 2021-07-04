@@ -111,6 +111,7 @@ namespace artery {
         double attackGridSybilActualDistanceY;
         int attackGridSybilCurrentVehicleIndex;
         double attackGridSybilLastHeadingAngle;
+        std::string lastPoiId;
 
         std::queue<uint32_t> mPseudonyms;
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;

@@ -32,6 +32,8 @@ namespace artery {
 
         static Position getVector(const double &value, const double &angle);
 
+        static double calculateHeadingAngle(const Position &position);
+        static double getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position);
     private:
 
         static bool staticInitializationComplete;
@@ -44,9 +46,6 @@ namespace artery {
         Kalman_SC *kalmanSVSI;
         Kalman_SI *kalmanSI;
         Kalman_SI *kalmanVI;
-
-
-        static double calculateHeadingAngle(const Position &position);
 
         double ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
                                           TrackedObjectsFilterRange &envModObjects);

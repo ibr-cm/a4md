@@ -101,6 +101,32 @@ namespace artery {
             traciVehicleScope = (TraCIAPI::VehicleScope *) &mTraciAPI->vehicle;
             initializeParameters();
         }
+        mMisbehaviorType = misbehaviorTypes::LocalAttacker;
+
+        // avoid unreasonable high elapsed time values for newly inserted vehicles
+        mLastCamTimestamp = simTime();
+
+        // first generated CAM shall include the low frequency container
+        mLastLowCamTimestamp = mLastCamTimestamp - artery::simtime_cast(scLowFrequencyContainerInterval);
+
+        // generation rate boundaries
+        mGenCamMin = par("minInterval");
+        mGenCamMax = par("maxInterval");
+        mGenCam = mGenCamMax;
+
+        // vehicle dynamics thresholds
+        mHeadingDelta = vanetza::units::Angle{par("headingDelta").doubleValue() * vanetza::units::degree};
+        mPositionDelta = par("positionDelta").doubleValue() * vanetza::units::si::meter;
+        mSpeedDelta = par("speedDelta").doubleValue() * vanetza::units::si::meter_per_second;
+
+        mDccRestriction = par("withDccRestriction");
+        mFixedRate = par("fixedRate");
+
+
+        // look up primary channel for CA
+        mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
+
+
 
         //Constant Position Attack
         AttackConstantPositionLatitudeMicrodegrees =
@@ -144,8 +170,13 @@ namespace artery {
             attackGridSybilVehicleCount = 1;
         }
         for (int i = 0; i < attackGridSybilVehicleCount; i++) {
-            mPseudonyms.push(Identity::randomStationId(getRNG(0)));
+            StationType_t stationId = Identity::randomStationId(getRNG(0));
+            mPseudonyms.push(stationId);
+            MisbehaviorDetectionService::addStationIdToVehicleList(stationId,
+                                                                   mMisbehaviorType);
+
         }
+        attackGridSybilCurrentVehicleIndex = 0;
         attackGridSybilActualDistanceX = uniform(F2MDParameters::attackParameters.AttackGridSybilDistanceX -
                                                  F2MDParameters::attackParameters.AttackGridSybilDistanceVariation,
                                                  F2MDParameters::attackParameters.AttackGridSybilDistanceX +
@@ -155,36 +186,10 @@ namespace artery {
                                                  F2MDParameters::attackParameters.AttackGridSybilDistanceY +
                                                  F2MDParameters::attackParameters.AttackGridSybilDistanceVariation);
 
-        // avoid unreasonable high elapsed time values for newly inserted vehicles
-        mLastCamTimestamp = simTime();
-
-        // first generated CAM shall include the low frequency container
-        mLastLowCamTimestamp = mLastCamTimestamp - artery::simtime_cast(scLowFrequencyContainerInterval);
-
-        // generation rate boundaries
-        mGenCamMin = par("minInterval");
-        mGenCamMax = par("maxInterval");
-        mGenCam = mGenCamMax;
-
-        // vehicle dynamics thresholds
-        mHeadingDelta = vanetza::units::Angle{par("headingDelta").doubleValue() * vanetza::units::degree};
-        mPositionDelta = par("positionDelta").doubleValue() * vanetza::units::si::meter;
-        mSpeedDelta = par("speedDelta").doubleValue() * vanetza::units::si::meter_per_second;
-
-        mDccRestriction = par("withDccRestriction");
-        mFixedRate = par("fixedRate");
 
 
-        // look up primary channel for CA
-        mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
 
-
-        mMisbehaviorType = misbehaviorTypes::LocalAttacker;
-        if (F2MDParameters::attackParameters.StaticAttackType > 0) {
-            mAttackType = attackTypes::AttackTypes(F2MDParameters::attackParameters.StaticAttackType);
-        } else {
-            mAttackType = attackTypes::EventualStop;
-        }
+        mAttackType = attackTypes::AttackTypes(F2MDParameters::attackParameters.StaticAttackType);
 
         par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
@@ -198,6 +203,7 @@ namespace artery {
             mFixedRate = true;
         }
         MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(), mMisbehaviorType);
+
 
     }
 
@@ -352,17 +358,25 @@ namespace artery {
     }
 
     void MisbehaviorCaService::visualizeCamPosition(vanetza::asn1::Cam cam) {
+
+//        std::vector<libsumo::TraCIColor> colors = {libsumo::TraCIColor(255, 0, 255, 255),
+//                                                   libsumo::TraCIColor(207, 255, 0, 255),
+//                                                   libsumo::TraCIColor(255, 155, 155, 255),
+//                                                   libsumo::TraCIColor(0, 140, 255, 255),
+//                                                   libsumo::TraCIColor(0, 255, 162, 255)};
+        int index =
+                (attackGridSybilCurrentVehicleIndex + (attackGridSybilVehicleCount - 1)) % attackGridSybilVehicleCount;
         traci::TraCIGeoPosition traciGeoPosition = {
                 (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
                 (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
         traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
-        std::string poiId = mVehicleController->getVehicleId();
-        poiId += "_CAM_";
-        poiId += std::to_string(cam->cam.generationDeltaTime);
+        std::string poiId = {
+                mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
+                std::to_string(cam->cam.generationDeltaTime)};
         traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, libsumo::TraCIColor(255, 0, 255, 255),
                            poiId, 5, "", 0,
                            0, 0);
-        activePoIs.push_back(poiId);
+        activePoIs.emplace_back(poiId);
         if (activePoIs.size() > F2MDParameters::miscParameters.CamLocationVisualizerMaxLength) {
             traciPoiScope->remove(activePoIs.front());
             activePoIs.pop_front();
@@ -395,7 +409,7 @@ namespace artery {
         if (cam->header.messageID != 2) {
             return;
         }
-        if (F2MDParameters::miscParameters.CamLocationVisualizer && mMisbehaviorType != misbehaviorTypes::Benign) {
+        if (F2MDParameters::miscParameters.CamLocationVisualizer) {
             visualizeCamPosition(cam);
         }
 
@@ -443,8 +457,7 @@ namespace artery {
         return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
     }
 
-
-    int setValueToRange(long value,long lower,long upper) {
+    long setValueToRange(long value, long lower, long upper) {
         if (value <= lower) {
             return lower;
         } else if (value >= upper) {
@@ -454,22 +467,15 @@ namespace artery {
         }
     }
 
-//    long generateConfidenceOffset(cRNG *rng, long value, double variance) {
-//
-//        return intuniform(rng, (int) (-variance * (double) value), (int) (+variance * (double) value));
-//    }
-
-
     void
     addOffsetToCamParameter(cRNG *rng, long *camParameter, long unavailabilityValue, double variance, long lower,
                             long upper) {
         if (*camParameter < unavailabilityValue) {
             int confidenceOffset = intuniform(rng, (int) (-variance * (double) *camParameter),
-                                               (int) (+variance * (double) *camParameter));
+                                              (int) (+variance * (double) *camParameter));
             *camParameter = (long) setValueToRange((int) (*camParameter + confidenceOffset), lower, upper);
         }
     }
-
 
 
     vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
@@ -668,31 +674,32 @@ namespace artery {
             case attackTypes::GridSybil: {
 
                 int squareX = attackGridSybilCurrentVehicleIndex / 2;
-                int squareY = attackGridSybilCurrentVehicleIndex / 2;
+                int squareY = attackGridSybilCurrentVehicleIndex % 2;
 
                 if (F2MDParameters::attackParameters.AttackGridSybilSelfSybil) {
-                    double sybilDistanceX = uniform(-(attackGridSybilActualDistanceX / 10),
-                                                    attackGridSybilActualDistanceX / 10);
-                    double sybilDistanceY = uniform(-(attackGridSybilActualDistanceY / 10),
-                                                    attackGridSybilActualDistanceY / 10);
                     double offsetX =
-                            -squareX * (mVehicleController->getLength().value() + attackGridSybilActualDistanceX) +
-                            sybilDistanceX;
+                            -squareX * (mVehicleController->getWidth().value() + attackGridSybilActualDistanceX) +
+                            uniform(-attackGridSybilActualDistanceX / 10, attackGridSybilActualDistanceX / 10);
                     double offsetY =
-                            -squareY * (mVehicleController->getWidth().value() + attackGridSybilActualDistanceY) +
-                            sybilDistanceY;
-                    double currentHeadingAngle = mVehicleController->getHeading().degree();
+                            -squareY * (mVehicleController->getLength().value() + attackGridSybilActualDistanceY) +
+                            uniform(-attackGridSybilActualDistanceY / 10, attackGridSybilActualDistanceY / 10);
+                    double currentHeadingAngle = artery::Angle::from_radian(
+                            mVehicleDataProvider->heading().value()).degree();
                     Position relativePosition = Position(offsetX, offsetY);
                     double newAngle = currentHeadingAngle + LegacyChecks::calculateHeadingAngle(relativePosition);
-                    newAngle = std::fmod(newAngle, 360);
-                    newAngle = 360 - newAngle;
+                    newAngle = 360 - std::fmod(newAngle, 360);
 
                     double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
-                    double relativeX = offsetDistance * cos(newAngle * PI / 180);
-                    double relativeY = offsetDistance * sin(newAngle * PI / 180);
-
+                    double relativeX = offsetDistance * sin(newAngle * PI / 180);
+                    double relativeY = offsetDistance * cos(newAngle * PI / 180);
                     Position newSenderPosition = Position(mVehicleDataProvider->position().x.value() + relativeX,
                                                           mVehicleDataProvider->position().y.value() + relativeY);
+
+                    if (LegacyChecks::getDistanceToNearestRoad(mGlobalEnvironmentModel, newSenderPosition) >
+                        F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
+                        message = vanetza::asn1::Cam();
+                        break;
+                    }
 
                     ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
                     addOffsetToCamParameter(getRNG(0),
@@ -705,6 +712,7 @@ namespace artery {
                             position_cast(mSimulationBoundary, newSenderPosition));
                     referencePosition->longitude = (long) (traciGeoPos.longitude * 10000000);
                     referencePosition->latitude = (long) (traciGeoPos.latitude * 10000000);
+
                     addOffsetToCamParameter(getRNG(0),
                                             &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue,
                                             SpeedValue_unavailable, 0.05, 0, 16382);
@@ -717,51 +725,33 @@ namespace artery {
                                             LongitudinalAccelerationValue_unavailable, 0.1, -160, 160);
                     addOffsetToCamParameter(getRNG(0),
                                             &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationConfidence,
-                                            AccelerationConfidence_unavailable, 0.1, 0, AccelerationConfidence_outOfRange);
+                                            AccelerationConfidence_unavailable, 0.1, 0,
+                                            AccelerationConfidence_outOfRange);
 
-                    double deltaAngle = currentHeadingAngle + uniform(-currentHeadingAngle / 360,+currentHeadingAngle/360);
-                    deltaAngle = std::fmod(deltaAngle,360);
-                    deltaAngle = 360 - deltaAngle;
-                    message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue = round(Angle::from_degree(deltaAngle).value,decidegree2);
+                    double deltaAngle =
+                            currentHeadingAngle + uniform(-currentHeadingAngle / 360, +currentHeadingAngle / 360);
+                    deltaAngle = std::fmod(deltaAngle + 360, 360);
+
+                    message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue = round(
+                            Angle::from_degree(deltaAngle).value, decidegree2);
                     addOffsetToCamParameter(getRNG(0),
                                             &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingConfidence,
                                             HeadingConfidence_unavailable, 0.1, 0, HeadingConfidence_outOfRange);
 
-                    double steeringAngle = std::fmod(attackGridSybilLastHeadingAngle-currentHeadingAngle,360);
+                    double steeringAngle = std::fmod(attackGridSybilLastHeadingAngle - currentHeadingAngle, 360);
                     steeringAngle = steeringAngle > 180 ? 360 - steeringAngle : steeringAngle;
-                    if (steeringAngle > 5 && attackGridSybilCurrentVehicleIndex > 0){
+                    attackGridSybilLastHeadingAngle = currentHeadingAngle;
+                    if (steeringAngle > 5 && attackGridSybilCurrentVehicleIndex > 0) {
                         message = vanetza::asn1::Cam();
                         break;
-                    }
-                    attackGridSybilLastHeadingAngle = currentHeadingAngle;
-
-
-                    std::vector<GeometryRtreeValue> laneResults;
-                    mGlobalEnvironmentModel->getLaneRTree()->query(boost::geometry::index::nearest(newSenderPosition, 10),
-                                                                   std::back_inserter(laneResults));
-                    for (const auto &lResult : laneResults) {
-                        const auto &lane = mGlobalEnvironmentModel->getLane(lResult.second);
-                        if (boost::geometry::distance(newSenderPosition, lane->getShape()) - lane->getWidth() / 2 <
-                            F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
-                            message = vanetza::asn1::Cam();
-                            break;
-                        }
-                    }
-                    std::vector<GeometryRtreeValue> junctionResults;
-                    mGlobalEnvironmentModel->getJunctionRTree()->query(boost::geometry::index::nearest(newSenderPosition, 3),
-                                                                       std::back_inserter(junctionResults));
-                    for (const auto &jResult : junctionResults) {
-                        if (boost::geometry::distance(newSenderPosition,
-                                                      mGlobalEnvironmentModel->getJunction(jResult.second)->getOutline()) <
-                                F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
-                            message = vanetza::asn1::Cam();
-                            break;
-                        }
                     }
                 } else {
 
                 }
                 attackGridSybilCurrentVehicleIndex = ++attackGridSybilCurrentVehicleIndex % attackGridSybilVehicleCount;
+                message->header.stationID = mPseudonyms.front();
+                mPseudonyms.push(mPseudonyms.front());
+                mPseudonyms.pop();
                 break;
             }
             case attackTypes::DataReplaySybil: {

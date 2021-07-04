@@ -17,6 +17,28 @@ namespace artery {
         return angle;
     }
 
+    double LegacyChecks::getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position){
+        double minRoadDistance = 9999;
+        std::vector<GeometryRtreeValue> laneResults;
+        globalEnvMod->getLaneRTree()->query(
+                boost::geometry::index::nearest(position, 10),
+                std::back_inserter(laneResults));
+        for (const auto &lResult : laneResults) {
+            const auto &lane = globalEnvMod->getLane(lResult.second);
+            minRoadDistance = std::min(minRoadDistance,boost::geometry::distance(position, lane->getShape()) - lane->getWidth() / 2);
+        }
+        std::vector<GeometryRtreeValue> junctionResults;
+        globalEnvMod->getJunctionRTree()->query(
+                boost::geometry::index::nearest(position, 3),
+                std::back_inserter(junctionResults));
+        for (const auto &jResult : junctionResults) {
+            minRoadDistance = std::min(minRoadDistance,boost::geometry::distance(position,
+                                                                                 globalEnvMod->getJunction(
+                                                                                         jResult.second)->getOutline()));
+        }
+        return minRoadDistance;
+    }
+
     double LegacyChecks::ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
                                                     TrackedObjectsFilterRange &envModObjects) {
         Position::value_type deltaDistance = distance(testPosition, myPosition);
@@ -185,29 +207,9 @@ namespace artery {
     }
 
     double LegacyChecks::PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const {
-        if (senderSpeed < detectionParameters->maxOffroadSpeed) {
+        if (senderSpeed < detectionParameters->maxOffroadSpeed || getDistanceToNearestRoad(mGlobalEnvironmentModel,senderPosition) < detectionParameters->maxDistanceFromRoad) {
             return 1;
         } else {
-            std::vector<GeometryRtreeValue> laneResults;
-            mGlobalEnvironmentModel->getLaneRTree()->query(boost::geometry::index::nearest(senderPosition, 10),
-                                                           std::back_inserter(laneResults));
-            for (const auto &lResult : laneResults) {
-                const auto &lane = mGlobalEnvironmentModel->getLane(lResult.second);
-                if (boost::geometry::distance(senderPosition, lane->getShape()) - lane->getWidth() / 2 <
-                    detectionParameters->maxDistanceFromRoad) {
-                    return 1;
-                }
-            }
-            std::vector<GeometryRtreeValue> junctionResults;
-            mGlobalEnvironmentModel->getJunctionRTree()->query(boost::geometry::index::nearest(senderPosition, 3),
-                                                               std::back_inserter(junctionResults));
-            for (const auto &jResult : junctionResults) {
-                if (boost::geometry::distance(senderPosition,
-                                              mGlobalEnvironmentModel->getJunction(jResult.second)->getOutline()) <
-                    detectionParameters->maxDistanceFromRoad) {
-                    return 1;
-                }
-            }
             return 0;
         }
     }
