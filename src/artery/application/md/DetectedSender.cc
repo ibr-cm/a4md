@@ -13,8 +13,9 @@ namespace artery {
                            &kalmanSVI, &kalmanSVSI, &kalmanSI,
                            &kalmanVI) {
         mStationId = message->header.stationID;
-        Position position = legacyChecks.convertCamPosition(
-                message->cam.camParameters.basicContainer.referencePosition);
+        Position position = LegacyChecks::convertCamPosition(
+                message->cam.camParameters.basicContainer.referencePosition,
+                traci::Boundary{traciAPI->simulation.getNetBoundary()}, traciAPI);
         double speed =
                 (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
                 100.0;
@@ -30,13 +31,15 @@ namespace artery {
 
 
     CheckResult *
-    DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,const std::vector<Position>& receiverVehicleOutline,
+    DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
+                                   const std::vector<Position> &receiverVehicleOutline,
                                    TrackedObjectsFilterRange &envModObjects) {
         CheckResult *result;
         if (!checkResults.empty()) {
-            result = legacyChecks.checkCAM(receiverVDP,receiverVehicleOutline, envModObjects, message, &checkResults.back()->cam);
+            result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline, envModObjects, message,
+                                           &checkResults.back()->cam);
         } else {
-            result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline,envModObjects, message, nullptr);
+            result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline, envModObjects, message, nullptr);
         }
         result->cam = message;
         checkResults.push_back(result);

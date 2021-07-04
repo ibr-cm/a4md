@@ -187,7 +187,6 @@ namespace artery {
             uint32_t senderStationId = message->header.stationID;
 
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
-
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
                 std::vector<Position> vehicleOutline = getVehicleOutline();
 //                libsumo::TraCIPositionVector outline;

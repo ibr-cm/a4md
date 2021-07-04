@@ -119,6 +119,8 @@ namespace artery {
         std::map<uint32_t,std::queue<vanetza::asn1::Cam>> receivedMessages;
         std::list<std::string> activePoIs;
         static bool staticInitializationComplete;
+
+        vanetza::asn1::Cam getNextReplayCam();
     };
 
 

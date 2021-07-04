@@ -28,7 +28,7 @@ namespace artery {
         CheckResult *checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position>& receiverVehicleOutline, TrackedObjectsFilterRange &envModObjects,
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr);
 
-        Position convertCamPosition(const ReferencePosition_t &referencePosition);
+        static Position convertCamPosition(const ReferencePosition_t &referencePosition, traci::Boundary simulationBoundary, std::shared_ptr<const traci::API> traciAPI);
 
         static Position getVector(const double &value, const double &angle);
 

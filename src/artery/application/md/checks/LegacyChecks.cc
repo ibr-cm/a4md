@@ -470,11 +470,11 @@ namespace artery {
         }
     }
 
-    Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition) {
+    Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition, traci::Boundary simulationBoundary, std::shared_ptr<const traci::API> traciAPI) {
         traci::TraCIGeoPosition traciGeoPositionSender = {
                 (double) referencePosition.longitude / 10000000.0,
                 (double) referencePosition.latitude / 10000000.0};
-        return position_cast(mSimulationBoundary, mTraciAPI->convert2D(traciGeoPositionSender));
+        return position_cast(simulationBoundary, traciAPI->convert2D(traciGeoPositionSender));
     }
 
     Position LegacyChecks::getVector(const double &value, const double &angle) {
@@ -494,7 +494,7 @@ namespace artery {
         BasicVehicleContainerHighFrequency_t highFrequencyContainer = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
         Position currentCamPosition = convertCamPosition(
-                currentCam->cam.camParameters.basicContainer.referencePosition);
+                currentCam->cam.camParameters.basicContainer.referencePosition,mSimulationBoundary,mTraciAPI);
         const Position &receiverPosition = receiverVDP->position();
         double currentCamSpeed = (double) highFrequencyContainer.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
@@ -512,7 +512,7 @@ namespace artery {
 
         if (lastCamPtr != nullptr) {
             vanetza::asn1::Cam lastCam = *lastCamPtr;
-            Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition);
+            Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition,mSimulationBoundary,mTraciAPI);
             double lastCamSpeed =
                     (double) lastCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
                     100.0;
