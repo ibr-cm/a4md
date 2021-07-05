@@ -192,17 +192,6 @@ namespace artery {
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
                 std::vector<Position> vehicleOutline = getVehicleOutline();
-//                libsumo::TraCIPositionVector outline;
-//                for (const Position &p : vehicleOutline) {
-//                    outline.value.emplace_back(position_cast(mSimulationBoundary, p));
-//                }
-//                if (!lastPolyId.empty()) {
-//                    mTraciAPI->polygon.remove(lastPolyId);
-//                }
-//                std::string id{"vehicleOutline_" + std::to_string(mVehicleDataProvider->getStationId())};
-//                lastPolyId = id;
-//                mTraciAPI->polygon.add(id, outline, libsumo::TraCIColor(255, 0, 255, 255), false, "helper", 5);
-//                mTraciAPI->polygon.setLineWidth(id, 1);
                 std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
                           << message->cam.generationDeltaTime << std::endl;
 
@@ -223,16 +212,6 @@ namespace artery {
 
                 MisbehaviorReportObject obj(std::move(misbehaviorReport));
                 emit(scSignalMisbehaviorAuthorityNewReport, &obj);
-//                if (result->positionPlausibility == 1) {
-//                    visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
-//                                         "inside road");
-//
-//                } else {
-//                    visualizeCamPosition(message, libsumo::TraCIColor(0, 255, 0, 255),
-//                                         "outside road");
-//                }
-
-//                message.encode();
 
 //            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
                 EV_INFO << "Received manipulated CAM!";
@@ -267,7 +246,6 @@ namespace artery {
 
 //        misbehaviorReport->version = 1;
         misbehaviorReport->version = cam->header.stationID;
-
         ReportMetadataContainer_t &reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
         assert(asn_long2INTEGER(&reportMetadataContainer.generationTime,
                                 countTaiMilliseconds(mTimer->getCurrentTime())) == 0);

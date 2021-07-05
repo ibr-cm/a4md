@@ -63,15 +63,11 @@ namespace artery {
     void MisbehaviorAuthority::receiveSignal(cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                                              cObject *) {
         if (signal == MAnewReport) {
-//            return;
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
-            auto report = reportObject->shared_ptr();
-            const vanetza::asn1::MisbehaviorReport &misbehaviorReport = report.operator*();
-//            auto *misbehaviorReport = dynamic_cast<vanetza::asn1::MisbehaviorReport *>(obj);
-//            vanetza::asn1::MisbehaviorReport report = *misbehaviorReport;
-//            uint32_t time =
-
-            std::cout << "received report: " << misbehaviorReport->version << " " << std::endl;
+            const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
+            long generationTime;
+            asn_INTEGER2long(&misbehaviorReport->reportMetadataContainer.generationTime,&generationTime);
+            std::cout << "received report: " << misbehaviorReport->version << " " << generationTime << std::endl;
         }
 
     }
