@@ -7,7 +7,7 @@
 #ifndef ARTERY_MISBEHAVIORCASERVICE_H_
 #define ARTERY_MISBEHAVIORCASERVICE_H_
 
-#include "F2MDParameters.h"
+#include "artery/application/md/util/F2MDParameters.h"
 #include "artery/application/ItsG5BaseService.h"
 #include "artery/utility/Channel.h"
 #include "artery/utility/Geometry.h"
@@ -16,8 +16,8 @@
 #include <vanetza/units/angle.hpp>
 #include <vanetza/units/velocity.hpp>
 #include <omnetpp/simtime.h>
-#include "artery/application/md/MisbehaviorTypes.h"
-#include "artery/application/md/checks/AttackTypes.h"
+#include "artery/application/md/util/MisbehaviorTypes.h"
+#include "artery/application/md/util/AttackTypes.h"
 #include <omnetpp/crng.h>
 #include <map>
 #include "artery/traci/VehicleController.h"

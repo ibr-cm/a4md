@@ -3,6 +3,7 @@ package artery.application.md;
 simple MisbehaviorDetectionService like artery.application.ItsG5Service
 {
     parameters:
+        @signal[misbehaviorAuthority.newReport](type=MisbehaviorReportObject);
         string appName = default("MisbehaviorDetectionService");
 
         double maxPlausibleSpeed = default(60);
