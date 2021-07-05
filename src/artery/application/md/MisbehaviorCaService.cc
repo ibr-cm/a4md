@@ -739,8 +739,8 @@ namespace artery {
                 newAngle = 360 - std::fmod(newAngle, 360);
 
                 double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
-                double relativeX = offsetDistance * cos(newAngle * PI / 180);
-                double relativeY = offsetDistance * sin(newAngle * PI / 180);
+                double relativeX = offsetDistance * sin(newAngle * PI / 180);
+                double relativeY = offsetDistance * cos(newAngle * PI / 180);
                 newPosition = Position(originalPosition.x.value() + relativeX,
                                        originalPosition.y.value() + relativeY);
                 if (LegacyChecks::getDistanceToNearestRoad(mGlobalEnvironmentModel, newPosition) >
