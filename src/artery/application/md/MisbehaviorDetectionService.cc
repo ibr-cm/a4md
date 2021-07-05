@@ -6,14 +6,15 @@
 #include <omnetpp/cmessage.h>
 #include <omnetpp/cpacket.h>
 #include <vanetza/asn1/cam.hpp>
-#include "artery/application/md/base64.h"
+#include "artery/application/md/util/base64.h"
 #include "artery/application/CaService.h"
 #include "artery/application/VehicleDataProvider.h"
-#include "artery/application/md/MisbehaviorTypes.h"
+#include "artery/application/md/util/MisbehaviorTypes.h"
 #include "artery/envmod/sensor/Sensor.h"
 #include <inet/common/ModuleAccess.h>
 #include "artery/traci/Cast.h"
 #include "artery/application/md/MisbehaviorCaService.h"
+#include "MisbehaviorReportObject.h"
 #include <boost/math/constants/constants.hpp>
 #include <boost/units/cmath.hpp>
 #include <boost/math/constants/info.hpp>
@@ -25,6 +26,7 @@ namespace artery {
     Define_Module(MisbehaviorDetectionService);
 
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
+    static const simsignal_t scSignalMisbehaviorAuthorityNewReport = cComponent::registerSignal("misbehaviorAuthority.newReport");
 
     bool MisbehaviorDetectionService::staticInitializationComplete = false;
     std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> MisbehaviorDetectionService::mStationIdMisbehaviorTypeMap;
@@ -182,6 +184,7 @@ namespace artery {
     void MisbehaviorDetectionService::receiveSignal(cComponent *source, simsignal_t signal, cObject *c_obj, cObject *) {
         Enter_Method("receiveSignal");
         if (signal == scSignalCamReceived) {
+//            return;
             auto *ca = dynamic_cast<CaObject *>(c_obj);
             vanetza::asn1::Cam message = ca->asn1();
             uint32_t senderStationId = message->header.stationID;
@@ -216,6 +219,10 @@ namespace artery {
                                                                                        envModObjects);
 
                 std::cout << result->toString(0.5) << std::endl;
+                vanetza::asn1::MisbehaviorReport misbehaviorReport =  createMisbehaviorReport("123",message);
+
+                MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                emit(scSignalMisbehaviorAuthorityNewReport, &obj);
 //                if (result->positionPlausibility == 1) {
 //                    visualizeCamPosition(message, libsumo::TraCIColor(255, 255, 0, 255),
 //                                         "inside road");
@@ -252,18 +259,23 @@ namespace artery {
 
             }
         }
+
     }
 
-    vanetza::asn1::MisbehaviorReport MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId,vanetza::asn1::Cam cam) {
+    vanetza::asn1::MisbehaviorReport MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId,const vanetza::asn1::Cam& cam) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport;
 
-        misbehaviorReport->version = 1;
+//        misbehaviorReport->version = 1;
+        misbehaviorReport->version = cam->header.stationID;
 
         ReportMetadataContainer_t &reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
         assert(asn_long2INTEGER(&reportMetadataContainer.generationTime,
                                 countTaiMilliseconds(mTimer->getCurrentTime())) == 0);
         OCTET_STRING_fromBuf(&reportMetadataContainer.reportID, reportId.c_str(), (int) strlen(reportId.c_str()));
-
+//        const char *bla = reportId.c_str();
+//        std::cout << bla << std::endl;
+//        bla = (char*) &reportMetadataContainer.reportID.buf;
+//        std::cout << bla << std::endl;
         ReportContainer &reportContainer = misbehaviorReport->reportContainer;
         reportContainer.reportedMessageContainer.present = ReportedMessageContainer_PR_certificateIncludedContainer;
         EtsiTs103097Data_t reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
@@ -273,7 +285,7 @@ namespace artery {
         ieee1609Dot2Content.present = Ieee1609Dot2Content_PR_unsecuredData;
         vanetza::ByteBuffer byteBuffer = cam.encode();
         std::string encodedCam(byteBuffer.begin(), byteBuffer.end());
-        OCTET_STRING_fromBuf(&ieee1609Dot2Content.choice.unsecuredData, encodedCam.c_str(), (int) strlen(encodedCam.c_str()));
+//        OCTET_STRING_fromBuf(&ieee1609Dot2Content.choice.unsecuredData, encodedCam.c_str(), (int) strlen(encodedCam.c_str()));
 
         reportContainer.misbehaviorTypeContainer.present = MisbehaviorTypeContainer_PR_semanticDetection;
         SemanticDetection_t semanticDetection= reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
@@ -283,7 +295,6 @@ namespace artery {
         semanticDetectionErrorCodeCAM |= 1; //set bit for wrong referencePosition
         std::string encoded = std::bitset<24>(semanticDetectionErrorCodeCAM).to_string();
         OCTET_STRING_fromBuf(&semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM,encoded.c_str(),(int) strlen(encoded.c_str()));
-
 
         return misbehaviorReport;
     }

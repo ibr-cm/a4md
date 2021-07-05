@@ -7,9 +7,9 @@
 #include <curl/curl.h>
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/application/VehicleDataProvider.h"
-#include "MisbehaviorTypes.h"
+#include "artery/application/md/util/MisbehaviorTypes.h"
 #include "DetectedSender.h"
-#include "F2MDParameters.h"
+#include "artery/application/md/util/F2MDParameters.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include <vanetza/asn1/misbehavior_report.hpp>
 
@@ -48,7 +48,7 @@ namespace artery {
 
         std::vector<Position> getVehicleOutline();
 
-        vanetza::asn1::MisbehaviorReport createMisbehaviorReport(const std::string& reportId,vanetza::asn1::Cam cam);
+        vanetza::asn1::MisbehaviorReport createMisbehaviorReport(const std::string& reportId,const vanetza::asn1::Cam& cam);
 
 
         std::list<std::string> activePoIs;

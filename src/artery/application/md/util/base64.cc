@@ -31,7 +31,7 @@
 
 */
 
-#include "artery/application/md/base64.h"
+#include "base64.h"
 
 #include <algorithm>
 #include <stdexcept>

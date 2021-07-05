@@ -13,7 +13,7 @@
 #include <artery/application/md/kalman/Kalman_SI.h>
 #include <artery/application/md/checks/CheckResult.h>
 #include <artery/traci/VehicleController.h>
-#include <artery/application/md/F2MDParameters.h>
+#include <artery/application/md/util/F2MDParameters.h>
 #include <artery/application/md/checks/LegacyChecks.h>
 
 namespace artery {

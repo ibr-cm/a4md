@@ -71,8 +71,10 @@ add_library(core SHARED
     utility/Geometry.cc
     application/md/MisbehaviorDetectionService.cc
     application/md/MisbehaviorCaService.cc
-    application/md/F2MDParameters.cc
-    application/md/base64.cc
+    application/md/MisbehaviorAuthority.cc
+    application/md/MisbehaviorReportObject.cc
+    application/md/util/F2MDParameters.cc
+    application/md/util/base64.cc
     application/md/checks/LegacyChecks.cc
     application/md/kalman/Kalman_SC.cc
     application/md/kalman/Kalman_SI.cc
@@ -84,8 +86,7 @@ add_library(core SHARED
     application/md/kalman/MatrixOp_SI.cc
     application/md/kalman/MatrixOp_SVI.cc
     application/md/DetectedSender.cc
-    application/md/util/CustomRing.cc
-)
+        )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)
 target_link_libraries(core PUBLIC CURL::libcurl)

@@ -10,7 +10,7 @@
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/envmod/GlobalEnvironmentModel.h>
 #include <artery/application/VehicleDataProvider.h>
-#include <artery/application/md/F2MDParameters.h>
+#include <artery/application/md/util/F2MDParameters.h>
 #include "artery/traci/VehicleController.h"
 #include "artery/utility/Geometry.h"
 
