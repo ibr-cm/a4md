@@ -28,39 +28,41 @@
 using namespace omnetpp;
 namespace artery {
 
+    namespace {
+        auto microdegree = vanetza::units::degree * boost::units::si::micro;
+        auto decidegree = vanetza::units::degree * boost::units::si::deci;
+        auto degree_per_second = vanetza::units::degree / vanetza::units::si::second;
+        auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
-    auto microdegree2 = vanetza::units::degree * boost::units::si::micro;
-    auto decidegree2 = vanetza::units::degree * boost::units::si::deci;
-    auto degree_per_second2 = vanetza::units::degree / vanetza::units::si::second;
-    auto centimeter_per_second2 = vanetza::units::si::meter_per_second * boost::units::si::centi;
+        static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
+        static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
+        static const auto scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
 
+        template<typename T, typename U>
+        long round(const boost::units::quantity<T> &q, const U &u) {
+            boost::units::quantity<U> v{q};
+            return std::round(v.value());
+        }
+
+        SpeedValue_t buildSpeedValue(const vanetza::units::Velocity &v) {
+            static const vanetza::units::Velocity lower{0.0 * boost::units::si::meter_per_second};
+            static const vanetza::units::Velocity upper{163.82 * boost::units::si::meter_per_second};
+
+            SpeedValue_t speed = SpeedValue_unavailable;
+            if (v >= upper) {
+                speed = 16382; // see CDD A.74 (TS 102 894 v1.2.1)
+            } else if (v >= lower) {
+                speed = round(v, centimeter_per_second) * SpeedValue_oneCentimeterPerSec;
+            }
+            return speed;
+        }
+    }
     std::shared_ptr<const traci::API> MisbehaviorCaService::mTraciAPI;
     traci::Boundary MisbehaviorCaService::mSimulationBoundary;
     GlobalEnvironmentModel *MisbehaviorCaService::mGlobalEnvironmentModel;
 
-    static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
-    static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
-    static const auto scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
     bool MisbehaviorCaService::staticInitializationComplete = false;
 
-    template<typename T, typename U>
-    long round(const boost::units::quantity<T> &q, const U &u) {
-        boost::units::quantity<U> v{q};
-        return std::round(v.value());
-    }
-
-    SpeedValue_t buildSpeedValue2(const vanetza::units::Velocity &v) {
-        static const vanetza::units::Velocity lower{0.0 * boost::units::si::meter_per_second};
-        static const vanetza::units::Velocity upper{163.82 * boost::units::si::meter_per_second};
-
-        SpeedValue_t speed = SpeedValue_unavailable;
-        if (v >= upper) {
-            speed = 16382; // see CDD A.74 (TS 102 894 v1.2.1)
-        } else if (v >= lower) {
-            speed = round(v, centimeter_per_second2) * SpeedValue_oneCentimeterPerSec;
-        }
-        return speed;
-    }
 
     Define_Module(MisbehaviorCaService)
 
@@ -145,7 +147,7 @@ namespace artery {
                 F2MDParameters::attackParameters.AttackConstantPositionOffsetMaxLongitudeOffset) * 1000000);
 
         // Constant Speed Attack
-        AttackConstantSpeedValue = buildSpeedValue2(
+        AttackConstantSpeedValue = buildSpeedValue(
                 uniform(F2MDParameters::attackParameters.AttackConstantSpeedMin,
                         F2MDParameters::attackParameters.AttackConstantSpeedMax) *
                 boost::units::si::meter_per_second);
@@ -474,9 +476,19 @@ namespace artery {
     addOffsetToCamParameter(cRNG *rng, long *camParameter, long unavailabilityValue, double variance, long lower,
                             long upper) {
         if (*camParameter < unavailabilityValue) {
-            int confidenceOffset = intuniform(rng, (int) (-variance * (double) *camParameter),
-                                              (int) (+variance * (double) *camParameter));
-            *camParameter = (long) setValueToRange((int) (*camParameter + confidenceOffset), lower, upper);
+            int offset = intuniform(rng, (int) (-variance * (double) *camParameter),
+                                    (int) (+variance * (double) *camParameter));
+            *camParameter = (long) setValueToRange((int) (*camParameter + offset), lower, upper);
+        }
+    }
+
+    void
+    addJitterToCamParameter(cRNG *rng, long *camParameter, long unavailabilityValue, long variance, long lower,
+                            long upper) {
+        if (*camParameter < unavailabilityValue) {
+            int jitter = intuniform(rng, *camParameter - variance,
+                                    *camParameter + variance);
+            *camParameter = (long) setValueToRange(jitter, lower, upper);
         }
     }
 
@@ -501,7 +513,8 @@ namespace artery {
             }
         } else {
             if (!receivedMessages[attackDataReplayCurrentStationId].empty() &&
-                    receivedMessages[attackDataReplayCurrentStationId].front()->cam.generationDeltaTime < (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
+                receivedMessages[attackDataReplayCurrentStationId].front()->cam.generationDeltaTime <
+                (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
                 message = receivedMessages[attackDataReplayCurrentStationId].front();
                 receivedMessages[attackDataReplayCurrentStationId].pop();
             } else {
@@ -528,11 +541,11 @@ namespace artery {
             }
             case attackTypes::ConstPosOffset: {
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
-                        (round(mVehicleDataProvider->latitude(), microdegree2) +
+                        (round(mVehicleDataProvider->latitude(), microdegree) +
                          AttackConstantPositionOffsetLatitudeMicrodegrees) *
                         Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
-                        (round(mVehicleDataProvider->longitude(), microdegree2) +
+                        (round(mVehicleDataProvider->longitude(), microdegree) +
                          AttackConstantPositionOffsetLongitudeMicrodegrees) *
                         Longitude_oneMicrodegreeEast;
                 break;
@@ -560,10 +573,10 @@ namespace artery {
                                 F2MDParameters::attackParameters.AttackRandomPositionOffsetMaxLongitudeOffset) *
                         1000000);
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
-                        (round(mVehicleDataProvider->latitude(), microdegree2) + attackLatitudeOffset) *
+                        (round(mVehicleDataProvider->latitude(), microdegree) + attackLatitudeOffset) *
                         Latitude_oneMicrodegreeNorth;
                 message->cam.camParameters.basicContainer.referencePosition.longitude =
-                        (round(mVehicleDataProvider->longitude(), microdegree2) + attackLongitudeOffset) *
+                        (round(mVehicleDataProvider->longitude(), microdegree) + attackLongitudeOffset) *
                         Longitude_oneMicrodegreeEast;
                 break;
             }
@@ -572,19 +585,19 @@ namespace artery {
                 break;
             }
             case attackTypes::ConstSpeedOffset: {
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
                         mVehicleDataProvider->speed() + AttackConstantSpeedOffsetValue);
                 break;
             }
             case attackTypes::RandomSpeed: {
                 double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin,
                                              F2MDParameters::attackParameters.AttackRandomSpeedMax);
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
                         randomSpeed * boost::units::si::meter_per_second);
                 break;
             }
             case attackTypes::RandomSpeedOffset: {
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
                         mVehicleDataProvider->speed() +
                         (uniform(0, F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax) *
                          boost::units::si::meter_per_second));
@@ -662,7 +675,7 @@ namespace artery {
                         attackLongitude * Longitude_oneMicrodegreeEast;
                 double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin,
                                              F2MDParameters::attackParameters.AttackRandomSpeedMax);
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
                         randomSpeed * boost::units::si::meter_per_second);
                 break;
             }
@@ -687,7 +700,6 @@ namespace artery {
                 double offsetY;
                 double currentHeadingAngle;
                 Position originalPosition;
-                Position newPosition;
                 if (F2MDParameters::attackParameters.AttackGridSybilSelfSybil) {
                     offsetX =
                             -((double) attackGridSybilCurrentVehicleIndex / 2) *
@@ -741,7 +753,7 @@ namespace artery {
                 double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
                 double relativeX = offsetDistance * sin(newAngle * PI / 180);
                 double relativeY = offsetDistance * cos(newAngle * PI / 180);
-                newPosition = Position(originalPosition.x.value() + relativeX,
+                Position newPosition = Position(originalPosition.x.value() + relativeX,
                                        originalPosition.y.value() + relativeY);
                 if (LegacyChecks::getDistanceToNearestRoad(mGlobalEnvironmentModel, newPosition) >
                     F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
@@ -781,7 +793,7 @@ namespace artery {
                 deltaAngle = std::fmod(deltaAngle + 360, 360);
 
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue = round(
-                        Angle::from_degree(deltaAngle).value, decidegree2);
+                        Angle::from_degree(deltaAngle).value, decidegree);
                 addOffsetToCamParameter(getRNG(0),
                                         &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingConfidence,
                                         HeadingConfidence_unavailable, 0.1, 0, HeadingConfidence_outOfRange);
@@ -857,7 +869,7 @@ namespace artery {
                         attackLongitude * Longitude_oneMicrodegreeEast;
                 double randomSpeed = uniform(F2MDParameters::attackParameters.AttackRandomSpeedMin,
                                              F2MDParameters::attackParameters.AttackRandomSpeedMax);
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue2(
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
                         randomSpeed * boost::units::si::meter_per_second);
                 break;
             }
@@ -884,7 +896,33 @@ namespace artery {
             }
 
             default:
-                EV_ERROR << "invalid attack type \n";
+                ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
+                referencePosition->positionConfidenceEllipse.semiMajorOrientation = round(
+                        mVehicleDataProvider->heading(), decidegree);
+                referencePosition->positionConfidenceEllipse.semiMajorConfidence = 4093;
+                referencePosition->positionConfidenceEllipse.semiMinorConfidence = 1000;
+                double semiMajorConfidence =
+                        (double) referencePosition->positionConfidenceEllipse.semiMajorConfidence / 100.0;
+                double semiMinorConfidence =
+                        (double) referencePosition->positionConfidenceEllipse.semiMinorConfidence / 100.0;
+                double offsetX = sqrt(uniform(0,1)) * cos(uniform(0,2*PI)) * semiMajorConfidence / 2;
+                double offsetY = sqrt(uniform(0,1)) * sin(uniform(0,2*PI)) * semiMinorConfidence / 2;
+                double currentHeadingAngle = artery::Angle::from_radian(
+                        mVehicleDataProvider->heading().value()).degree();
+                double newAngle = currentHeadingAngle + LegacyChecks::calculateHeadingAngle(Position(offsetX, offsetY));
+                newAngle = 360 - std::fmod(newAngle, 360);
+
+                double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
+                double relativeX = offsetDistance * sin(newAngle * PI / 180);
+                double relativeY = offsetDistance * cos(newAngle * PI / 180);
+                Position originalPosition = mVehicleDataProvider->position();
+                Position newPosition = Position(originalPosition.x.value() + relativeX,
+                                                originalPosition.y.value() + relativeY);
+                traci::TraCIGeoPosition traciGeoPos = mTraciAPI->convertGeo(
+                        position_cast(mSimulationBoundary, newPosition));
+                referencePosition->longitude = (long) (traciGeoPos.longitude * 10000000);
+                referencePosition->latitude = (long) (traciGeoPos.latitude * 10000000);
+//                EV_ERROR << "invalid attack type \n";
                 break;
         }
         return message;

@@ -23,6 +23,7 @@
 #include "artery/traci/VehicleController.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
+#include "artery/application/CaService.h"
 
 namespace artery {
 
