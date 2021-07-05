@@ -229,6 +229,10 @@ namespace artery {
         removeVehicles();
         mObstacles.clear();
         mObstacleRtree.clear();
+        mLanes.clear();
+        mLaneRtree.clear();
+        mJunctions.clear();
+        mJunctionRtree.clear();
     }
 
     SensorDetection GlobalEnvironmentModel::detectObjects(
@@ -298,7 +302,6 @@ namespace artery {
             fetchObstacles(*core->getAPI());
             fetchLanes(*core->getAPI());
             fetchJunctions(*core->getAPI());
-//            mGridCellMatrix.initialize(par("gridSize"), &(*core->getAPI()), &mObstacleRtree, &mObstacles);
         } else if (signal == traciCloseSignal) {
             clear();
         }
