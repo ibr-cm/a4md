@@ -76,6 +76,7 @@ add_library(core SHARED
     application/md/MisbehaviorReportObject.cc
     application/md/util/F2MDParameters.cc
     application/md/util/base64.cc
+    application/md/util/HelperFunctions.cc
     application/md/checks/LegacyChecks.cc
     application/md/kalman/Kalman_SC.cc
     application/md/kalman/Kalman_SI.cc

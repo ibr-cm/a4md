@@ -3,7 +3,9 @@
 //
 
 #include "artery/application/BaseCaService.h"
+#include "artery/application/md/util/HelperFunctions.h"
 #include "artery/utility/simtime_cast.h"
+#include <artery/traci/Cast.h>
 #include <vanetza/facilities/cam_functions.hpp>
 #include <vanetza/btp/ports.hpp>
 #include <vanetza/dcc/transmission.hpp>
@@ -26,6 +28,11 @@ namespace artery {
 
         static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     }
+
+    bool BaseCaService::staticInitializationComplete = false;
+    std::shared_ptr<const traci::API> BaseCaService::mTraciAPI;
+    traci::Boundary BaseCaService::mSimulationBoundary;
+    std::chrono::milliseconds BaseCaService::scLowFrequencyContainerInterval;
 
     template<typename T, typename U>
     long BaseCaService::round(const boost::units::quantity<T> &q, const U &u) {
@@ -56,7 +63,12 @@ namespace artery {
     void BaseCaService::initialize() {
         ItsG5BaseService::initialize();
 
-        scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
+        if(!staticInitializationComplete){
+            staticInitializationComplete = true;
+            mTraciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
+            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+            scLowFrequencyContainerInterval = std::chrono::milliseconds(500);
+        }
 
         mNetworkInterfaceTable = &getFacilities().get_const<NetworkInterfaceTable>();
         mVehicleDataProvider = &getFacilities().get_const<VehicleDataProvider>();
@@ -88,6 +100,28 @@ namespace artery {
 
         // look up primary channel for CA
         mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
+
+        semiMajorConfidence = par("semiMajorConfidence");
+        semiMinorConfidence = par("semiMinorConfidence");
+        std::cout << "raw semiMajorConfidence: " << semiMajorConfidence << std::endl;
+        std::cout << "raw semiMinorConfidence: " << semiMinorConfidence << std::endl;
+        if (semiMajorConfidence >= 4094) {
+            semiMajorConfidence = SemiAxisLength_outOfRange;
+        }
+        if (semiMinorConfidence > 4094) {
+            semiMinorConfidence = SemiAxisLength_outOfRange;
+        }
+        if(semiMinorConfidence > semiMajorConfidence){
+            semiMajorOrientationOffset = 90;
+            std::swap(semiMajorConfidence,semiMinorConfidence);
+        } else {
+            semiMajorOrientationOffset = 0;
+        }
+
+        std::cout << "semiMajorConfidence: " << semiMajorConfidence << std::endl;
+        std::cout << "semiMinorConfidence: " << semiMinorConfidence << std::endl;
+        std::cout << "semiMajorOrientationOffset: " << semiMajorOrientationOffset << std::endl;
+
     }
 
     bool BaseCaService::checkTriggeringConditions(const SimTime &T_now) {
@@ -190,13 +224,14 @@ namespace artery {
         basic.stationType = StationType_passengerCar;
         basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
         basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
-        basic.referencePosition.longitude = round(mVehicleDataProvider->longitude(), microdegree) * Longitude_oneMicrodegreeEast;
-        basic.referencePosition.latitude = round(mVehicleDataProvider->latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
-        basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
-        basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
-                SemiAxisLength_unavailable;
-        basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence =
-                SemiAxisLength_unavailable;
+//        basic.referencePosition.longitude = round(mVehicleDataProvider->longitude(), microdegree) * Longitude_oneMicrodegreeEast;
+//        basic.referencePosition.latitude = round(mVehicleDataProvider->latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
+//        basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
+//        basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
+//                SemiAxisLength_unavailable;
+//        basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence =
+//                SemiAxisLength_unavailable;
+        setReferencePositionWithJitter(message);
 
         hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
         BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
@@ -236,6 +271,40 @@ namespace artery {
         }
 
         return message;
+    }
+
+    void BaseCaService::setReferencePositionWithJitter(vanetza::asn1::Cam &message) {
+        ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
+        double semiMajorOrientation = std::fmod(
+                mVehicleDataProvider->heading().value() + semiMajorOrientationOffset, 360);
+        referencePosition->positionConfidenceEllipse.semiMajorOrientation = round(
+                semiMajorOrientation * vanetza::units::degree, decidegree);
+        referencePosition->positionConfidenceEllipse.semiMajorConfidence = (long) semiMajorConfidence * 100;
+        if (referencePosition->positionConfidenceEllipse.semiMajorConfidence > SemiAxisLength_outOfRange) {
+            referencePosition->positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_outOfRange;
+        }
+        referencePosition->positionConfidenceEllipse.semiMinorConfidence = (long) semiMinorConfidence * 100;
+        if (referencePosition->positionConfidenceEllipse.semiMinorConfidence > SemiAxisLength_outOfRange) {
+            referencePosition->positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_outOfRange;
+        }
+
+        double offsetX = sqrt(uniform(0, 1)) * cos(uniform(0, 2 * PI)) * semiMajorConfidence / 2;
+        double offsetY = sqrt(uniform(0, 1)) * sin(uniform(0, 2 * PI)) * semiMinorConfidence / 2;
+        double currentHeadingAngle = artery::Angle::from_radian(
+                mVehicleDataProvider->heading().value()).degree() + semiMajorOrientationOffset;
+        double newAngle = currentHeadingAngle + calculateHeadingAngle(Position(offsetX, offsetY));
+        newAngle = 360 - std::fmod(newAngle, 360);
+
+        double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
+        double relativeX = offsetDistance * sin(newAngle * PI / 180);
+        double relativeY = offsetDistance * cos(newAngle * PI / 180);
+        Position originalPosition = mVehicleDataProvider->position();
+        Position newPosition = Position(originalPosition.x.value() + relativeX,
+                                        originalPosition.y.value() + relativeY);
+        traci::TraCIGeoPosition traciGeoPos = mTraciAPI->convertGeo(
+                position_cast(mSimulationBoundary, newPosition));
+        referencePosition->longitude = (long) (traciGeoPos.longitude * 10000000);
+        referencePosition->latitude = (long) (traciGeoPos.latitude * 10000000);
     }
 
     void BaseCaService::addLowFrequencyContainer(vanetza::asn1::Cam &message, unsigned pathHistoryLength) {

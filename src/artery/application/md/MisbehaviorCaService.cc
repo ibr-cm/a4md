@@ -6,6 +6,7 @@
 
 #include "artery/application/md/MisbehaviorCaService.h"
 #include "artery/application/md/MisbehaviorDetectionService.h"
+#include "artery/application/md/util/HelperFunctions.h"
 #include "artery/application/CaObject.h"
 #include "artery/application/Asn1PacketVisitor.h"
 #include "artery/application/MultiChannelPolicy.h"
@@ -23,10 +24,8 @@ namespace artery {
 
         static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
     }
-    std::shared_ptr<const traci::API> MisbehaviorCaService::mTraciAPI;
-    traci::Boundary MisbehaviorCaService::mSimulationBoundary;
-    GlobalEnvironmentModel *MisbehaviorCaService::mGlobalEnvironmentModel;
 
+    GlobalEnvironmentModel *MisbehaviorCaService::mGlobalEnvironmentModel;
     bool MisbehaviorCaService::staticInitializationComplete = false;
 
 
@@ -55,27 +54,11 @@ namespace artery {
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
             mGlobalEnvironmentModel = mLocalEnvironmentModel->getGlobalEnvMod();
-            mTraciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
-            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
             initializeStaticParameters();
         }
 
 
         mMisbehaviorType = misbehaviorTypes::LocalAttacker;
-
-        semiMajorConfidence = par("semiMajorConfidence");
-        semiMinorConfidence = par("semiMinorConfidence");
-        if (semiMajorConfidence >= 4094) {
-            semiMajorConfidence = SemiAxisLength_outOfRange;
-        }
-        if (semiMinorConfidence > 4094) {
-            semiMinorConfidence = SemiAxisLength_outOfRange;
-        }
-        semiMajorOrientationOffset = semiMinorConfidence > semiMajorConfidence ? 90 : 0;
-
-        std::cout << "semiMajorConfidence: " << semiMajorConfidence << std::endl;
-        std::cout << "semiMinorConfidence: " << semiMinorConfidence << std::endl;
-
 
         //Constant Position Attack
         AttackConstantPositionLatitudeMicrodegrees =
@@ -531,7 +514,7 @@ namespace artery {
                     }
                 }
                 Position relativePosition = Position(offsetX, offsetY);
-                double newAngle = currentHeadingAngle + LegacyChecks::calculateHeadingAngle(relativePosition);
+                double newAngle = currentHeadingAngle + calculateHeadingAngle(relativePosition);
                 newAngle = 360 - std::fmod(newAngle, 360);
 
                 double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
@@ -678,39 +661,7 @@ namespace artery {
             case attackTypes::MAStress: {
                 break;
             }
-
             default:
-                ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
-                double semiMajorOrientation = std::fmod(
-                        mVehicleDataProvider->heading().value() + semiMajorOrientationOffset, 360);
-                referencePosition->positionConfidenceEllipse.semiMajorOrientation = round(
-                        semiMajorOrientation * vanetza::units::degree, decidegree);
-                referencePosition->positionConfidenceEllipse.semiMajorConfidence = (long) semiMajorConfidence * 100;
-                if (referencePosition->positionConfidenceEllipse.semiMajorConfidence > SemiAxisLength_outOfRange) {
-                    referencePosition->positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_outOfRange;
-                }
-                referencePosition->positionConfidenceEllipse.semiMinorConfidence = (long) semiMinorConfidence * 100;
-                if (referencePosition->positionConfidenceEllipse.semiMinorConfidence > SemiAxisLength_outOfRange) {
-                    referencePosition->positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_outOfRange;
-                }
-
-                double offsetX = sqrt(uniform(0, 1)) * cos(uniform(0, 2 * PI)) * semiMajorConfidence / 2;
-                double offsetY = sqrt(uniform(0, 1)) * sin(uniform(0, 2 * PI)) * semiMinorConfidence / 2;
-                double currentHeadingAngle = artery::Angle::from_radian(
-                        mVehicleDataProvider->heading().value()).degree() + semiMajorOrientationOffset;
-                double newAngle = currentHeadingAngle + LegacyChecks::calculateHeadingAngle(Position(offsetX, offsetY));
-                newAngle = 360 - std::fmod(newAngle, 360);
-
-                double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
-                double relativeX = offsetDistance * sin(newAngle * PI / 180);
-                double relativeY = offsetDistance * cos(newAngle * PI / 180);
-                Position originalPosition = mVehicleDataProvider->position();
-                Position newPosition = Position(originalPosition.x.value() + relativeX,
-                                                originalPosition.y.value() + relativeY);
-                traci::TraCIGeoPosition traciGeoPos = mTraciAPI->convertGeo(
-                        position_cast(mSimulationBoundary, newPosition));
-                referencePosition->longitude = (long) (traciGeoPos.longitude * 10000000);
-                referencePosition->latitude = (long) (traciGeoPos.latitude * 10000000);
 //                EV_ERROR << "invalid attack type \n";
                 break;
         }

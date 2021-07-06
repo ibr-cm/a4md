@@ -57,8 +57,9 @@ namespace artery {
         vanetza::asn1::Cam
         createCooperativeAwarenessMessage(uint16_t genDeltaTime);
 
-        void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
+        void setReferencePositionWithJitter(vanetza::asn1::Cam &message);
 
+        void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
         ChannelNumber mPrimaryChannel = channel::CCH;
         const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
@@ -66,6 +67,7 @@ namespace artery {
         const Timer *mTimer = nullptr;
         LocalDynamicMap *mLocalDynamicMap = nullptr;
         const traci::VehicleController *mVehicleController = nullptr;
+
 
         omnetpp::SimTime mGenCamMin;
         omnetpp::SimTime mGenCamMax;
@@ -84,7 +86,14 @@ namespace artery {
         bool mFixedRate;
         long mStationId;
 
-        std::chrono::milliseconds scLowFrequencyContainerInterval;
+        double semiMajorConfidence;
+        double semiMinorConfidence;
+        double semiMajorOrientationOffset;
+
+        static bool staticInitializationComplete;
+        static std::shared_ptr<const traci::API> mTraciAPI;
+        static traci::Boundary mSimulationBoundary;
+        static std::chrono::milliseconds scLowFrequencyContainerInterval;
     };
 
 

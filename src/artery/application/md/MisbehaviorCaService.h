@@ -52,18 +52,18 @@ namespace artery {
 
         vanetza::asn1::Cam getNextReplayCam();
 
-        const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
+        static bool staticInitializationComplete;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
-        static std::shared_ptr<const traci::API> mTraciAPI;
-        static traci::Boundary mSimulationBoundary;
 
-        double semiMajorConfidence;
-        double semiMinorConfidence;
-        double semiMajorOrientationOffset;
-
+        const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
 
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
         attackTypes::AttackTypes mAttackType;
+        std::queue<uint32_t> mPseudonyms;
+        std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
+        std::queue<vanetza::asn1::Cam> staleMessageQueue;
+        std::map<uint32_t, std::queue<vanetza::asn1::Cam>> receivedMessages;
+        std::list<std::string> activePoIs;
 
         long AttackConstantPositionLatitudeMicrodegrees;
         long AttackConstantPositionLongitudeMicrodegrees;
@@ -81,12 +81,6 @@ namespace artery {
         double attackGridSybilLastHeadingAngle;
         std::string lastPoiId;
 
-        std::queue<uint32_t> mPseudonyms;
-        std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
-        std::queue<vanetza::asn1::Cam> staleMessageQueue;
-        std::map<uint32_t, std::queue<vanetza::asn1::Cam>> receivedMessages;
-        std::list<std::string> activePoIs;
-        static bool staticInitializationComplete;
 
     };
 } // namespace artery
