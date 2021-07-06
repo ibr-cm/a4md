@@ -69,6 +69,7 @@ add_library(core SHARED
     utility/IdentityRegistry.cc
     utility/FilterRules.cc
     utility/Geometry.cc
+    application/BaseCaService.cc
     application/md/MisbehaviorDetectionService.cc
     application/md/MisbehaviorCaService.cc
     application/md/MisbehaviorAuthority.cc

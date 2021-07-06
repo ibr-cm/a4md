@@ -1,0 +1,91 @@
+//
+// Created by bastian on 06.07.21.
+//
+
+#ifndef ARTERY_BASECASERVICE_H
+#define ARTERY_BASECASERVICE_H
+
+#include <omnetpp.h>
+#include "artery/application/ItsG5BaseService.h"
+#include <artery/traci/VehicleController.h>
+#include <vanetza/asn1/cam.hpp>
+#include <vanetza/units/angle.hpp>
+#include <vanetza/units/velocity.hpp>
+
+
+namespace artery {
+
+    class NetworkInterfaceTable;
+
+    class Timer;
+
+    class VehicleDataProvider;
+
+    class BaseCaService : public ItsG5BaseService {
+
+    public:
+        BaseCaService();
+
+//        ~BaseCaService() override;
+
+        void initialize() override;
+
+//        void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
+//
+//        virtual void trigger() override;
+
+
+    protected:
+
+        template<typename T, typename U>
+        static long round(const boost::units::quantity<T> &q, const U &u);
+
+        static SpeedValue_t buildSpeedValue(const vanetza::units::Velocity &v);
+
+        bool checkTriggeringConditions(const omnetpp::SimTime &);
+
+        bool checkHeadingDelta() const;
+
+        bool checkPositionDelta() const;
+
+        bool checkSpeedDelta() const;
+
+        omnetpp::SimTime genCamDcc();
+
+        vanetza::asn1::Cam
+        createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, const traci::VehicleController &vdc,
+                                          uint16_t genDeltaTime);
+
+        void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
+
+
+        ChannelNumber mPrimaryChannel = channel::CCH;
+        const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
+        const VehicleDataProvider *mVehicleDataProvider = nullptr;
+        const Timer *mTimer = nullptr;
+        LocalDynamicMap *mLocalDynamicMap = nullptr;
+        const traci::VehicleController *mVehicleController = nullptr;
+
+        omnetpp::SimTime mGenCamMin;
+        omnetpp::SimTime mGenCamMax;
+        omnetpp::SimTime mGenCam;
+        unsigned mGenCamLowDynamicsCounter;
+        unsigned mGenCamLowDynamicsLimit;
+        Position mLastCamPosition;
+        vanetza::units::Velocity mLastCamSpeed;
+        vanetza::units::Angle mLastCamHeading;
+        omnetpp::SimTime mLastCamTimestamp;
+        omnetpp::SimTime mLastLowCamTimestamp;
+        vanetza::units::Angle mHeadingDelta;
+        vanetza::units::Length mPositionDelta;
+        vanetza::units::Velocity mSpeedDelta;
+        bool mDccRestriction;
+        bool mFixedRate;
+        long mStationId;
+
+        std::chrono::milliseconds scLowFrequencyContainerInterval;
+    };
+
+
+} // namespace artery
+#endif //ARTERY_BASECASERVICE_H

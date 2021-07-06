@@ -20,8 +20,12 @@ namespace artery {
         MAnewReport = cComponent::registerSignal("misbehaviorAuthority.newReport");
     };
 
-    void MisbehaviorAuthority::clear() {
+    MisbehaviorAuthority::~MisbehaviorAuthority() {
+        this->clear();
+    }
 
+    void MisbehaviorAuthority::clear() {
+        cancelAndDelete(mSelfMsg);
     }
 
     void MisbehaviorAuthority::initialize() {
@@ -67,7 +71,7 @@ namespace artery {
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
             long generationTime;
             asn_INTEGER2long(&misbehaviorReport->reportMetadataContainer.generationTime,&generationTime);
-            std::cout << "received report: " << misbehaviorReport->version << " " << generationTime << std::endl;
+//            std::cout << "received report: " << misbehaviorReport->version << " " << generationTime << std::endl;
         }
 
     }

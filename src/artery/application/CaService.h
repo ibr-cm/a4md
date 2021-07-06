@@ -16,6 +16,7 @@
 #include <vanetza/units/velocity.hpp>
 #include <omnetpp/simtime.h>
 #include <artery/traci/VehicleController.h>
+#include "artery/application/BaseCaService.h"
 
 namespace artery {
 
@@ -25,9 +26,9 @@ namespace artery {
 
     class VehicleDataProvider;
 
-    class CaService : public ItsG5BaseService {
+    class CaService : public BaseCaService {
     public:
-        CaService();
+        CaService() = default;
 
         ~CaService() override;
 
@@ -37,47 +38,12 @@ namespace artery {
 
         void trigger() override;
 
+        template<typename T, typename U>
+        static long round(const boost::units::quantity<T> &q, const U &u);
+
     private:
-        void checkTriggeringConditions(const omnetpp::SimTime &);
-
-        bool checkHeadingDelta() const;
-
-        bool checkPositionDelta() const;
-
-        bool checkSpeedDelta() const;
-
         void sendCam(const omnetpp::SimTime &);
-
-        omnetpp::SimTime genCamDcc();
-
-        ChannelNumber mPrimaryChannel = channel::CCH;
-        const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
-        const VehicleDataProvider *mVehicleDataProvider = nullptr;
-        const Timer *mTimer = nullptr;
-        LocalDynamicMap *mLocalDynamicMap = nullptr;
-        const traci::VehicleController *mVehicleController = nullptr;
-
-        omnetpp::SimTime mGenCamMin;
-        omnetpp::SimTime mGenCamMax;
-        omnetpp::SimTime mGenCam;
-        unsigned mGenCamLowDynamicsCounter;
-        unsigned mGenCamLowDynamicsLimit;
-        Position mLastCamPosition;
-        vanetza::units::Velocity mLastCamSpeed;
-        vanetza::units::Angle mLastCamHeading;
-        omnetpp::SimTime mLastCamTimestamp;
-        omnetpp::SimTime mLastLowCamTimestamp;
-        vanetza::units::Angle mHeadingDelta;
-        vanetza::units::Length mPositionDelta;
-        vanetza::units::Velocity mSpeedDelta;
-        bool mDccRestriction;
-        bool mFixedRate;
-        long mStationId;
     };
-
-    vanetza::asn1::Cam createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, const traci::VehicleController &vdc, uint16_t genDeltaTime);
-
-    void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
 } // namespace artery
 

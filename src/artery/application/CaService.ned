@@ -15,7 +15,8 @@
 
 package artery.application;
 
-simple CaService like ItsG5Service
+//simple CaService like ItsG5Service
+simple CaService like BaseCaService
 {
     parameters:
         @signal[CamReceived](type=CaObject);

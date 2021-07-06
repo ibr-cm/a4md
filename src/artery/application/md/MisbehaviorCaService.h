@@ -23,7 +23,7 @@
 #include "artery/traci/VehicleController.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
-#include "artery/application/CaService.h"
+#include "artery/application/BaseCaService.h"
 
 namespace artery {
 
@@ -33,9 +33,9 @@ namespace artery {
 
     class VehicleDataProvider;
 
-    class MisbehaviorCaService : public ItsG5BaseService {
+    class MisbehaviorCaService : public BaseCaService {
     public:
-        MisbehaviorCaService();
+        MisbehaviorCaService() = default;
 
         ~MisbehaviorCaService() override;
 
@@ -45,54 +45,22 @@ namespace artery {
 
         void trigger() override;
 
+        template<typename T, typename U>
+        static long round(const boost::units::quantity<T> &q, const U &u);
 
     private:
-        void checkTriggeringConditions(const omnetpp::SimTime &);
-
-        bool checkHeadingDelta() const;
-
-        bool checkPositionDelta() const;
-
-        bool checkSpeedDelta() const;
-
         void sendCam(const omnetpp::SimTime &);
 
         vanetza::asn1::Cam createAttackCAM(uint16_t genDeltaTime);
-
-        omnetpp::SimTime genCamDcc();
 
         void initializeParameters();
 
         void visualizeCamPosition(vanetza::asn1::Cam cam);
 
-        ChannelNumber mPrimaryChannel = channel::CCH;
-        const NetworkInterfaceTable *mNetworkInterfaceTable = nullptr;
-        const Timer *mTimer = nullptr;
-        LocalDynamicMap *mLocalDynamicMap = nullptr;
-
-        const VehicleDataProvider *mVehicleDataProvider = nullptr;
-        const traci::VehicleController *mVehicleController = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         static std::shared_ptr<const traci::API> mTraciAPI;
         static traci::Boundary mSimulationBoundary;
-
-        omnetpp::SimTime mGenCamMin;
-        omnetpp::SimTime mGenCamMax;
-        omnetpp::SimTime mGenCam;
-        unsigned mGenCamLowDynamicsCounter;
-        unsigned mGenCamLowDynamicsLimit;
-        Position mLastCamPosition;
-        vanetza::units::Velocity mLastCamSpeed;
-        vanetza::units::Angle mLastCamHeading;
-        omnetpp::SimTime mLastCamTimestamp;
-        omnetpp::SimTime mLastLowCamTimestamp;
-        vanetza::units::Angle mHeadingDelta;
-        vanetza::units::Length mPositionDelta;
-        vanetza::units::Velocity mSpeedDelta;
-        bool mDccRestriction;
-        bool mFixedRate;
-        long mStationId;
 
         double semiMajorConfidence;
         double semiMinorConfidence;
@@ -121,15 +89,12 @@ namespace artery {
         std::queue<uint32_t> mPseudonyms;
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
-        std::map<uint32_t,std::queue<vanetza::asn1::Cam>> receivedMessages;
+        std::map<uint32_t, std::queue<vanetza::asn1::Cam>> receivedMessages;
         std::list<std::string> activePoIs;
         static bool staticInitializationComplete;
 
         vanetza::asn1::Cam getNextReplayCam();
     };
-
-
-    void addLowFrequencyContainer2(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
     static TraCIAPI::VehicleScope *traciVehicleScope;
     static const TraCIAPI::POIScope *traciPoiScope;

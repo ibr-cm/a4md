@@ -1,7 +1,8 @@
 
 package artery.application.md;
 
-simple MisbehaviorCaService like artery.application.ItsG5Service
+//simple MisbehaviorCaService like artery.application.ItsG5Service
+simple MisbehaviorCaService like artery.application.BaseCaService
 {
     parameters:
         @signal[CamReceived](type=CaObject);
