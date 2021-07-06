@@ -94,6 +94,10 @@ namespace artery {
         bool mFixedRate;
         long mStationId;
 
+        double semiMajorConfidence;
+        double semiMinorConfidence;
+        double semiMajorOrientationOffset;
+
 
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
         attackTypes::AttackTypes mAttackType;

@@ -32,6 +32,11 @@ simple MisbehaviorCaService like artery.application.ItsG5Service
         // length of path history
         volatile int pathHistoryLength = default(23);
 
+        // in cm
+        volatile double semiMajorConfidence = default(chi_square(2) / 2);
+        volatile double semiMinorConfidence = default(chi_square(2) / 2);
+
+
         
         string appName = default("MisbehaviorCaService");
 

@@ -129,6 +129,20 @@ namespace artery {
         mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
 
 
+        semiMajorConfidence = par("semiMajorConfidence");
+        semiMinorConfidence = par("semiMinorConfidence");
+        if (semiMajorConfidence >= 4094) {
+            semiMajorConfidence = SemiAxisLength_outOfRange;
+        }
+        if (semiMinorConfidence > 4094) {
+            semiMinorConfidence = SemiAxisLength_outOfRange;
+//            semiMinorConfidence = semiMajorConfidence;
+        }
+        semiMajorOrientationOffset = semiMinorConfidence > semiMajorConfidence ? 90 : 0;
+
+        std::cout << "semiMajorConfidence: " << semiMajorConfidence << std::endl;
+        std::cout << "semiMinorConfidence: " << semiMinorConfidence << std::endl;
+
 
         //Constant Position Attack
         AttackConstantPositionLatitudeMicrodegrees =
@@ -754,7 +768,7 @@ namespace artery {
                 double relativeX = offsetDistance * sin(newAngle * PI / 180);
                 double relativeY = offsetDistance * cos(newAngle * PI / 180);
                 Position newPosition = Position(originalPosition.x.value() + relativeX,
-                                       originalPosition.y.value() + relativeY);
+                                                originalPosition.y.value() + relativeY);
                 if (LegacyChecks::getDistanceToNearestRoad(mGlobalEnvironmentModel, newPosition) >
                     F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
                     message = vanetza::asn1::Cam();
@@ -897,18 +911,23 @@ namespace artery {
 
             default:
                 ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
+                double semiMajorOrientation = std::fmod(
+                        mVehicleDataProvider->heading().value() + semiMajorOrientationOffset, 360);
                 referencePosition->positionConfidenceEllipse.semiMajorOrientation = round(
-                        mVehicleDataProvider->heading(), decidegree);
-                referencePosition->positionConfidenceEllipse.semiMajorConfidence = 4093;
-                referencePosition->positionConfidenceEllipse.semiMinorConfidence = 1000;
-                double semiMajorConfidence =
-                        (double) referencePosition->positionConfidenceEllipse.semiMajorConfidence / 100.0;
-                double semiMinorConfidence =
-                        (double) referencePosition->positionConfidenceEllipse.semiMinorConfidence / 100.0;
-                double offsetX = sqrt(uniform(0,1)) * cos(uniform(0,2*PI)) * semiMajorConfidence / 2;
-                double offsetY = sqrt(uniform(0,1)) * sin(uniform(0,2*PI)) * semiMinorConfidence / 2;
+                        semiMajorOrientation * vanetza::units::degree, decidegree);
+                referencePosition->positionConfidenceEllipse.semiMajorConfidence = (long) semiMajorConfidence * 100;
+                if (referencePosition->positionConfidenceEllipse.semiMajorConfidence > SemiAxisLength_outOfRange) {
+                    referencePosition->positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_outOfRange;
+                }
+                referencePosition->positionConfidenceEllipse.semiMinorConfidence = (long) semiMinorConfidence * 100;
+                if (referencePosition->positionConfidenceEllipse.semiMinorConfidence > SemiAxisLength_outOfRange) {
+                    referencePosition->positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_outOfRange;
+                }
+
+                double offsetX = sqrt(uniform(0, 1)) * cos(uniform(0, 2 * PI)) * semiMajorConfidence / 2;
+                double offsetY = sqrt(uniform(0, 1)) * sin(uniform(0, 2 * PI)) * semiMinorConfidence / 2;
                 double currentHeadingAngle = artery::Angle::from_radian(
-                        mVehicleDataProvider->heading().value()).degree();
+                        mVehicleDataProvider->heading().value()).degree() + semiMajorOrientationOffset;
                 double newAngle = currentHeadingAngle + LegacyChecks::calculateHeadingAngle(Position(offsetX, offsetY));
                 newAngle = 360 - std::fmod(newAngle, 360);
 
