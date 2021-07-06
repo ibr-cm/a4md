@@ -2,12 +2,14 @@
 // Created by bastian on 06.07.21.
 //
 
-#include "BaseCaService.h"
-#include "artery/application/VehicleDataProvider.h"
+#include "artery/application/BaseCaService.h"
 #include "artery/utility/simtime_cast.h"
+#include <vanetza/facilities/cam_functions.hpp>
+#include <vanetza/btp/ports.hpp>
+#include <vanetza/dcc/transmission.hpp>
+#include <vanetza/dcc/transmit_rate_control.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 #include <boost/units/cmath.hpp>
-#include <vanetza/facilities/cam_functions.hpp>
 #include <chrono>
 
 namespace artery {
@@ -22,6 +24,7 @@ namespace artery {
         auto degree_per_second = vanetza::units::degree / vanetza::units::si::second;
         auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
+        static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     }
 
     template<typename T, typename U>
@@ -33,7 +36,6 @@ namespace artery {
     SpeedValue_t BaseCaService::buildSpeedValue(const vanetza::units::Velocity &v) {
         static const vanetza::units::Velocity lower{0.0 * boost::units::si::meter_per_second};
         static const vanetza::units::Velocity upper{163.82 * boost::units::si::meter_per_second};
-//        auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
         SpeedValue_t speed = SpeedValue_unavailable;
         if (v >= upper) {
@@ -69,7 +71,7 @@ namespace artery {
         mLastCamTimestamp = simTime();
 
         // first generated CAM shall include the low frequency container
-//        mLastLowCamTimestamp = mLastCamTimestamp - artery::simtime_cast(scLowFrequencyContainerInterval);
+        mLastLowCamTimestamp = mLastCamTimestamp - artery::simtime_cast(scLowFrequencyContainerInterval);
 
         // generation rate boundaries
         mGenCamMin = par("minInterval");
@@ -100,15 +102,12 @@ namespace artery {
         if (T_elapsed >= T_GenCamDcc) {
             if (mFixedRate) {
                 trigger = true;
-//                sendCam(T_now);
             } else if (checkHeadingDelta() || checkPositionDelta() || checkSpeedDelta()) {
                 trigger = true;
-//                sendCam(T_now);
                 T_GenCam = std::min(T_elapsed, T_GenCamMax); /*< if middleware update interval is too long */
                 mGenCamLowDynamicsCounter = 0;
             } else if (T_elapsed >= T_GenCam) {
                 trigger = true;
-//                sendCam(T_now);
                 if (++mGenCamLowDynamicsCounter >= mGenCamLowDynamicsLimit) {
                     T_GenCam = T_GenCamMax;
                 }
@@ -145,15 +144,43 @@ namespace artery {
         return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
     }
 
+    void BaseCaService::finalizeAndSendCam(vanetza::asn1::Cam cam,const SimTime &T_now){
+        mLastCamPosition = mVehicleDataProvider->position();
+        mLastCamSpeed = mVehicleDataProvider->speed();
+        mLastCamHeading = mVehicleDataProvider->heading();
+        mLastCamTimestamp = T_now;
+        if (T_now - mLastLowCamTimestamp >= artery::simtime_cast(scLowFrequencyContainerInterval)) {
+            addLowFrequencyContainer(cam, par("pathHistoryLength"));
+            mLastLowCamTimestamp = T_now;
+        }
+
+        using namespace vanetza;
+        btp::DataRequestB request;
+        request.destination_port = btp::ports::CAM;
+        request.gn.its_aid = aid::CA;
+        request.gn.transport_type = geonet::TransportType::SHB;
+        request.gn.maximum_lifetime = geonet::Lifetime{geonet::Lifetime::Base::One_Second, 1};
+        request.gn.traffic_class.tc_id(static_cast<unsigned>(dcc::Profile::DP2));
+        request.gn.communication_profile = geonet::CommunicationProfile::ITS_G5;
+
+        CaObject obj(std::move(cam));
+        emit(scSignalCamSent, &obj);
+
+        using CamByteBuffer = convertible::byte_buffer_impl<asn1::Cam>;
+        std::unique_ptr<geonet::DownPacket> payload{new geonet::DownPacket()};
+        std::unique_ptr<convertible::byte_buffer> buffer{new CamByteBuffer(obj.shared_ptr())};
+        payload->layer(OsiLayer::Application) = std::move(buffer);
+        this->request(request, std::move(payload));
+    }
+
     vanetza::asn1::Cam
-    BaseCaService::createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, const traci::VehicleController &vdc,
-                                      uint16_t genDeltaTime) {
+    BaseCaService::createCooperativeAwarenessMessage(uint16_t genDeltaTime) {
         vanetza::asn1::Cam message;
 
         ItsPduHeader_t &header = (*message).header;
         header.protocolVersion = 2;
         header.messageID = ItsPduHeader__messageID_cam;
-        header.stationID = vdp.station_id();
+        header.stationID = mVehicleDataProvider->station_id();
 
         CoopAwareness_t &cam = (*message).cam;
         cam.generationDeltaTime = genDeltaTime * GenerationDeltaTime_oneMilliSec;
@@ -163,8 +190,8 @@ namespace artery {
         basic.stationType = StationType_passengerCar;
         basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
         basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
-        basic.referencePosition.longitude = round(vdp.longitude(), microdegree) * Longitude_oneMicrodegreeEast;
-        basic.referencePosition.latitude = round(vdp.latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
+        basic.referencePosition.longitude = round(mVehicleDataProvider->longitude(), microdegree) * Longitude_oneMicrodegreeEast;
+        basic.referencePosition.latitude = round(mVehicleDataProvider->latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
         basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
         basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
                 SemiAxisLength_unavailable;
@@ -173,13 +200,13 @@ namespace artery {
 
         hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
         BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
-        bvc.heading.headingValue = round(vdp.heading(), decidegree);
+        bvc.heading.headingValue = round(mVehicleDataProvider->heading(), decidegree);
         bvc.heading.headingConfidence = HeadingConfidence_equalOrWithinOneDegree;
-        bvc.speed.speedValue = buildSpeedValue(vdp.speed());
+        bvc.speed.speedValue = buildSpeedValue(mVehicleDataProvider->speed());
         bvc.speed.speedConfidence = SpeedConfidence_equalOrWithinOneCentimeterPerSec * 3;
-        bvc.driveDirection = vdp.speed().value() >= 0.0 ?
+        bvc.driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
                              DriveDirection_forward : DriveDirection_backward;
-        const double lonAccelValue = vdp.acceleration() / vanetza::units::si::meter_per_second_squared;
+        const double lonAccelValue = mVehicleDataProvider->acceleration() / vanetza::units::si::meter_per_second_squared;
         // extreme speed changes can occur when SUMO swaps vehicles between lanes (speed is swapped as well)
         if (lonAccelValue >= -160.0 && lonAccelValue <= 161.0) {
             bvc.longitudinalAcceleration.longitudinalAccelerationValue =
@@ -188,20 +215,20 @@ namespace artery {
             bvc.longitudinalAcceleration.longitudinalAccelerationValue = LongitudinalAccelerationValue_unavailable;
         }
         bvc.longitudinalAcceleration.longitudinalAccelerationConfidence = AccelerationConfidence_unavailable;
-        bvc.curvature.curvatureValue = abs(vdp.curvature() / vanetza::units::reciprocal_metre) * 10000.0;
+        bvc.curvature.curvatureValue = abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) * 10000.0;
         if (bvc.curvature.curvatureValue >= 1023) {
             bvc.curvature.curvatureValue = 1023;
         }
         bvc.curvature.curvatureConfidence = CurvatureConfidence_unavailable;
         bvc.curvatureCalculationMode = CurvatureCalculationMode_yawRateUsed;
-        bvc.yawRate.yawRateValue = round(vdp.yaw_rate(), degree_per_second) * YawRateValue_degSec_000_01ToLeft * 100.0;
+        bvc.yawRate.yawRateValue = round(mVehicleDataProvider->yaw_rate(), degree_per_second) * YawRateValue_degSec_000_01ToLeft * 100.0;
         if (bvc.yawRate.yawRateValue < -32766 || bvc.yawRate.yawRateValue > 32766) {
             bvc.yawRate.yawRateValue = YawRateValue_unavailable;
         }
-        bvc.vehicleLength.vehicleLengthValue = (long) (vdc.getLength().value() * 10);
+        bvc.vehicleLength.vehicleLengthValue = (long) (mVehicleController->getLength().value() * 10);
         bvc.vehicleLength.vehicleLengthConfidenceIndication =
                 VehicleLengthConfidenceIndication_noTrailerPresent;
-        bvc.vehicleWidth = (long) (vdc.getWidth().value() * 10);
+        bvc.vehicleWidth = (long) (mVehicleController->getWidth().value() * 10);
 
         std::string error;
         if (!message.validate(error)) {

@@ -5,12 +5,13 @@
 #ifndef ARTERY_BASECASERVICE_H
 #define ARTERY_BASECASERVICE_H
 
-#include <omnetpp.h>
 #include "artery/application/ItsG5BaseService.h"
+#include "artery/application/VehicleDataProvider.h"
 #include <artery/traci/VehicleController.h>
 #include <vanetza/asn1/cam.hpp>
 #include <vanetza/units/angle.hpp>
 #include <vanetza/units/velocity.hpp>
+#include <omnetpp.h>
 
 
 namespace artery {
@@ -31,7 +32,6 @@ namespace artery {
         void initialize() override;
 
 //        void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
-//
 //        virtual void trigger() override;
 
 
@@ -52,9 +52,10 @@ namespace artery {
 
         omnetpp::SimTime genCamDcc();
 
+        void finalizeAndSendCam(vanetza::asn1::Cam cam,const omnetpp::SimTime &T_now);
+
         vanetza::asn1::Cam
-        createCooperativeAwarenessMessage(const VehicleDataProvider &vdp, const traci::VehicleController &vdc,
-                                          uint16_t genDeltaTime);
+        createCooperativeAwarenessMessage(uint16_t genDeltaTime);
 
         void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 

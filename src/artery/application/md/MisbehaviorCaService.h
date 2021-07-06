@@ -7,23 +7,16 @@
 #ifndef ARTERY_MISBEHAVIORCASERVICE_H_
 #define ARTERY_MISBEHAVIORCASERVICE_H_
 
+#include "artery/application/BaseCaService.h"
 #include "artery/application/md/util/F2MDParameters.h"
-#include "artery/application/ItsG5BaseService.h"
-#include "artery/utility/Channel.h"
-#include "artery/utility/Geometry.h"
-#include <vanetza/asn1/cam.hpp>
-#include <vanetza/btp/data_interface.hpp>
-#include <vanetza/units/angle.hpp>
-#include <vanetza/units/velocity.hpp>
-#include <omnetpp/simtime.h>
 #include "artery/application/md/util/MisbehaviorTypes.h"
 #include "artery/application/md/util/AttackTypes.h"
-#include <omnetpp/crng.h>
-#include <map>
-#include "artery/traci/VehicleController.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
-#include "artery/application/BaseCaService.h"
+#include "artery/utility/Channel.h"
+#include "artery/utility/Geometry.h"
+#include <vanetza/btp/data_interface.hpp>
+#include <map>
 
 namespace artery {
 

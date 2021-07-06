@@ -4,23 +4,13 @@
 * Licensed under GPLv2, see COPYING file for detailed license and warranty terms.
 */
 
-#include "artery/application/CaObject.h"
 #include "artery/application/md/MisbehaviorCaService.h"
+#include "artery/application/md/MisbehaviorDetectionService.h"
+#include "artery/application/CaObject.h"
 #include "artery/application/Asn1PacketVisitor.h"
 #include "artery/application/MultiChannelPolicy.h"
-#include "artery/utility/simtime_cast.h"
-#include <boost/units/cmath.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
-#include <omnetpp/cexception.h>
-#include <vanetza/btp/ports.hpp>
-#include <vanetza/dcc/transmission.hpp>
-#include <vanetza/facilities/cam_functions.hpp>
-#include <chrono>
-#include <omnetpp/ccomponent.h>
 #include <artery/traci/Cast.h>
-
-#include "artery/application/md/MisbehaviorDetectionService.h"
-
+#include <boost/units/systems/si/prefixes.hpp>
 
 using namespace omnetpp;
 namespace artery {
@@ -280,51 +270,12 @@ namespace artery {
         }
     }
 
-    void MisbehaviorCaService::visualizeCamPosition(vanetza::asn1::Cam cam) {
-
-        std::vector<libsumo::TraCIColor> colors = {libsumo::TraCIColor(255, 0, 255, 255),
-                                                   libsumo::TraCIColor(207, 255, 0, 255),
-                                                   libsumo::TraCIColor(255, 155, 155, 255),
-                                                   libsumo::TraCIColor(0, 140, 255, 255),
-                                                   libsumo::TraCIColor(0, 255, 162, 255)};
-        libsumo::TraCIColor color = libsumo::TraCIColor(255, 0, 255, 255);
-        int maxActivePoIs = F2MDParameters::miscParameters.CamLocationVisualizerMaxLength;
-        if (mAttackType == attackTypes::GridSybil && attackGridSybilVehicleCount <= 5) {
-            color = colors[(attackGridSybilCurrentVehicleIndex + (attackGridSybilVehicleCount - 1)) %
-                           attackGridSybilVehicleCount];
-            maxActivePoIs = attackGridSybilVehicleCount;
-        }
-        traci::TraCIGeoPosition traciGeoPosition = {
-                (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
-                (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
-        traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
-        std::string poiId = {
-                mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
-                std::to_string(cam->cam.generationDeltaTime)};
-        traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, color,
-                           poiId, 5, "", 0,
-                           0, 0);
-        activePoIs.push_back(poiId);
-        if (activePoIs.size() > maxActivePoIs) {
-            traciPoiScope->remove(activePoIs.front());
-            activePoIs.pop_front();
-        }
-        if (mAttackType != attackTypes::GridSybil) {
-            int alphaStep = 185 / maxActivePoIs;
-            int currentAlpha = 80;
-            for (const auto &poi : activePoIs) {
-                traciPoiScope->setColor(poi, libsumo::TraCIColor(255, 0, 255, currentAlpha));
-                currentAlpha += alphaStep;
-            }
-        }
-    }
-
     void MisbehaviorCaService::sendCam(const SimTime &T_now) {
         uint16_t genDeltaTimeMod = countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
         vanetza::asn1::Cam cam;
         switch (mMisbehaviorType) {
             case misbehaviorTypes::Benign:
-                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController, genDeltaTimeMod);
+                cam = createCooperativeAwarenessMessage(genDeltaTimeMod);
                 break;
             case misbehaviorTypes::LocalAttacker: {
                 cam = createAttackCAM(genDeltaTimeMod);
@@ -334,7 +285,7 @@ namespace artery {
                 cam = createAttackCAM(genDeltaTimeMod);
                 break;
             default:
-                cam = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController, genDeltaTimeMod);
+                cam = createCooperativeAwarenessMessage(genDeltaTimeMod);
         }
         if (cam->header.messageID != 2) {
             return;
@@ -342,33 +293,7 @@ namespace artery {
         if (F2MDParameters::miscParameters.CamLocationVisualizer) {
             visualizeCamPosition(cam);
         }
-
-        mLastCamPosition = mVehicleDataProvider->position();
-        mLastCamSpeed = mVehicleDataProvider->speed();
-        mLastCamHeading = mVehicleDataProvider->heading();
-        mLastCamTimestamp = T_now;
-        if (T_now - mLastLowCamTimestamp >= artery::simtime_cast(scLowFrequencyContainerInterval)) {
-            addLowFrequencyContainer(cam, par("pathHistoryLength"));
-            mLastLowCamTimestamp = T_now;
-        }
-
-        using namespace vanetza;
-        btp::DataRequestB request;
-        request.destination_port = btp::ports::CAM;
-        request.gn.its_aid = aid::CA;
-        request.gn.transport_type = geonet::TransportType::SHB;
-        request.gn.maximum_lifetime = geonet::Lifetime{geonet::Lifetime::Base::One_Second, 1};
-        request.gn.traffic_class.tc_id(static_cast<unsigned>(dcc::Profile::DP2));
-        request.gn.communication_profile = geonet::CommunicationProfile::ITS_G5;
-
-        CaObject obj(std::move(cam));
-        emit(scSignalCamSent, &obj);
-
-        using CamByteBuffer = convertible::byte_buffer_impl<asn1::Cam>;
-        std::unique_ptr<geonet::DownPacket> payload{new geonet::DownPacket()};
-        std::unique_ptr<convertible::byte_buffer> buffer{new CamByteBuffer(obj.shared_ptr())};
-        payload->layer(OsiLayer::Application) = std::move(buffer);
-        this->request(request, std::move(payload));
+        finalizeAndSendCam(cam,T_now);
     }
 
     long setValueToRange(long value, long lower, long upper) {
@@ -427,8 +352,7 @@ namespace artery {
 
 
     vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
-        vanetza::asn1::Cam message = createCooperativeAwarenessMessage(*mVehicleDataProvider, *mVehicleController,
-                                                                       genDeltaTime);
+        vanetza::asn1::Cam message = createCooperativeAwarenessMessage(genDeltaTime);
 
         switch (mAttackType) {
             case attackTypes::ConstPos: {
@@ -830,6 +754,45 @@ namespace artery {
                 break;
         }
         return message;
+    }
+
+    void MisbehaviorCaService::visualizeCamPosition(vanetza::asn1::Cam cam) {
+
+        std::vector<libsumo::TraCIColor> colors = {libsumo::TraCIColor(255, 0, 255, 255),
+                                                   libsumo::TraCIColor(207, 255, 0, 255),
+                                                   libsumo::TraCIColor(255, 155, 155, 255),
+                                                   libsumo::TraCIColor(0, 140, 255, 255),
+                                                   libsumo::TraCIColor(0, 255, 162, 255)};
+        libsumo::TraCIColor color = libsumo::TraCIColor(255, 0, 255, 255);
+        int maxActivePoIs = F2MDParameters::miscParameters.CamLocationVisualizerMaxLength;
+        if (mAttackType == attackTypes::GridSybil && attackGridSybilVehicleCount <= 5) {
+            color = colors[(attackGridSybilCurrentVehicleIndex + (attackGridSybilVehicleCount - 1)) %
+                           attackGridSybilVehicleCount];
+            maxActivePoIs = attackGridSybilVehicleCount;
+        }
+        traci::TraCIGeoPosition traciGeoPosition = {
+                (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
+                (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
+        traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
+        std::string poiId = {
+                mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
+                std::to_string(cam->cam.generationDeltaTime)};
+        traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, color,
+                           poiId, 5, "", 0,
+                           0, 0);
+        activePoIs.push_back(poiId);
+        if (activePoIs.size() > maxActivePoIs) {
+            traciPoiScope->remove(activePoIs.front());
+            activePoIs.pop_front();
+        }
+        if (mAttackType != attackTypes::GridSybil) {
+            int alphaStep = 185 / maxActivePoIs;
+            int currentAlpha = 80;
+            for (const auto &poi : activePoIs) {
+                traciPoiScope->setColor(poi, libsumo::TraCIColor(255, 0, 255, currentAlpha));
+                currentAlpha += alphaStep;
+            }
+        }
     }
 
 } // namespace artery
