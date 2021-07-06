@@ -3,6 +3,7 @@
 #include <utility>
 #include <artery/traci/Cast.h>
 #include "artery/envmod/sensor/Sensor.h"
+#include "artery/application/md/util/HelperFunctions.h"
 
 namespace artery {
     bool LegacyChecks::staticInitializationComplete = false;
@@ -11,11 +12,6 @@ namespace artery {
     traci::Boundary LegacyChecks::mSimulationBoundary;
 
     using namespace omnetpp;
-
-    double LegacyChecks::calculateHeadingAngle(const Position &position) {
-        double angle = atan2(-position.y.value(), position.x.value()) * 180 / PI;
-        return angle;
-    }
 
     double LegacyChecks::getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position){
         double minRoadDistance = 9999;
@@ -470,7 +466,7 @@ namespace artery {
         }
     }
 
-    Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition, traci::Boundary simulationBoundary, std::shared_ptr<const traci::API> traciAPI) {
+    Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary& simulationBoundary, std::shared_ptr<const traci::API> traciAPI) {
         traci::TraCIGeoPosition traciGeoPositionSender = {
                 (double) referencePosition.longitude / 10000000.0,
                 (double) referencePosition.latitude / 10000000.0};

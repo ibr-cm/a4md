@@ -63,7 +63,7 @@ namespace artery {
     void BaseCaService::initialize() {
         ItsG5BaseService::initialize();
 
-        if(!staticInitializationComplete){
+        if (!staticInitializationComplete) {
             staticInitializationComplete = true;
             mTraciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
@@ -111,9 +111,9 @@ namespace artery {
         if (semiMinorConfidence > 4094) {
             semiMinorConfidence = SemiAxisLength_outOfRange;
         }
-        if(semiMinorConfidence > semiMajorConfidence){
+        if (semiMinorConfidence > semiMajorConfidence) {
             semiMajorOrientationOffset = 90;
-            std::swap(semiMajorConfidence,semiMinorConfidence);
+            std::swap(semiMajorConfidence, semiMinorConfidence);
         } else {
             semiMajorOrientationOffset = 0;
         }
@@ -178,7 +178,7 @@ namespace artery {
         return std::min(mGenCamMax, std::max(mGenCamMin, dcc));
     }
 
-    void BaseCaService::finalizeAndSendCam(vanetza::asn1::Cam cam,const SimTime &T_now){
+    void BaseCaService::finalizeAndSendCam(vanetza::asn1::Cam cam, const SimTime &T_now) {
         mLastCamPosition = mVehicleDataProvider->position();
         mLastCamSpeed = mVehicleDataProvider->speed();
         mLastCamHeading = mVehicleDataProvider->heading();
@@ -224,14 +224,20 @@ namespace artery {
         basic.stationType = StationType_passengerCar;
         basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
         basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
-//        basic.referencePosition.longitude = round(mVehicleDataProvider->longitude(), microdegree) * Longitude_oneMicrodegreeEast;
-//        basic.referencePosition.latitude = round(mVehicleDataProvider->latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
-//        basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
-//        basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
-//                SemiAxisLength_unavailable;
-//        basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence =
-//                SemiAxisLength_unavailable;
-        setReferencePositionWithJitter(message);
+        if (semiMajorConfidence == SemiAxisLength_outOfRange || semiMinorConfidence == SemiAxisLength_outOfRange) {
+            basic.referencePosition.longitude =
+                    round(mVehicleDataProvider->longitude(), microdegree) * Longitude_oneMicrodegreeEast;
+            basic.referencePosition.latitude =
+                    round(mVehicleDataProvider->latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
+            basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
+            basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
+                    SemiAxisLength_unavailable;
+            basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence =
+                    SemiAxisLength_unavailable;
+        } else {
+            setReferencePositionWithJitter(message);
+        }
+
 
         hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
         BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
@@ -241,7 +247,8 @@ namespace artery {
         bvc.speed.speedConfidence = SpeedConfidence_equalOrWithinOneCentimeterPerSec * 3;
         bvc.driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
                              DriveDirection_forward : DriveDirection_backward;
-        const double lonAccelValue = mVehicleDataProvider->acceleration() / vanetza::units::si::meter_per_second_squared;
+        const double lonAccelValue =
+                mVehicleDataProvider->acceleration() / vanetza::units::si::meter_per_second_squared;
         // extreme speed changes can occur when SUMO swaps vehicles between lanes (speed is swapped as well)
         if (lonAccelValue >= -160.0 && lonAccelValue <= 161.0) {
             bvc.longitudinalAcceleration.longitudinalAccelerationValue =
@@ -250,13 +257,15 @@ namespace artery {
             bvc.longitudinalAcceleration.longitudinalAccelerationValue = LongitudinalAccelerationValue_unavailable;
         }
         bvc.longitudinalAcceleration.longitudinalAccelerationConfidence = AccelerationConfidence_unavailable;
-        bvc.curvature.curvatureValue = abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) * 10000.0;
+        bvc.curvature.curvatureValue =
+                abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) * 10000.0;
         if (bvc.curvature.curvatureValue >= 1023) {
             bvc.curvature.curvatureValue = 1023;
         }
         bvc.curvature.curvatureConfidence = CurvatureConfidence_unavailable;
         bvc.curvatureCalculationMode = CurvatureCalculationMode_yawRateUsed;
-        bvc.yawRate.yawRateValue = round(mVehicleDataProvider->yaw_rate(), degree_per_second) * YawRateValue_degSec_000_01ToLeft * 100.0;
+        bvc.yawRate.yawRateValue =
+                round(mVehicleDataProvider->yaw_rate(), degree_per_second) * YawRateValue_degSec_000_01ToLeft * 100.0;
         if (bvc.yawRate.yawRateValue < -32766 || bvc.yawRate.yawRateValue > 32766) {
             bvc.yawRate.yawRateValue = YawRateValue_unavailable;
         }
