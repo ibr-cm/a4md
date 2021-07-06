@@ -28,6 +28,9 @@ namespace artery {
 
     class MisbehaviorCaService : public BaseCaService {
     public:
+        template<typename T, typename U>
+        static long round(const boost::units::quantity<T> &q, const U &u);
+
         MisbehaviorCaService() = default;
 
         ~MisbehaviorCaService() override;
@@ -38,17 +41,16 @@ namespace artery {
 
         void trigger() override;
 
-        template<typename T, typename U>
-        static long round(const boost::units::quantity<T> &q, const U &u);
-
     private:
         void sendCam(const omnetpp::SimTime &);
 
         vanetza::asn1::Cam createAttackCAM(uint16_t genDeltaTime);
 
-        void initializeParameters();
+        void initializeStaticParameters();
 
         void visualizeCamPosition(vanetza::asn1::Cam cam);
+
+        vanetza::asn1::Cam getNextReplayCam();
 
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
@@ -86,12 +88,7 @@ namespace artery {
         std::list<std::string> activePoIs;
         static bool staticInitializationComplete;
 
-        vanetza::asn1::Cam getNextReplayCam();
     };
-
-    static TraCIAPI::VehicleScope *traciVehicleScope;
-    static const TraCIAPI::POIScope *traciPoiScope;
-
 } // namespace artery
 
 #endif /* ARTERY_MISBEHAVIORCASERVICE_H_ */

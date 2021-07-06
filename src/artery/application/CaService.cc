@@ -23,7 +23,6 @@ namespace artery {
         auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
         static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
-        static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     }
 
 

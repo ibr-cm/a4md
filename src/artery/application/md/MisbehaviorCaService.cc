@@ -22,7 +22,6 @@ namespace artery {
         auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
         static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
-        static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     }
     std::shared_ptr<const traci::API> MisbehaviorCaService::mTraciAPI;
     traci::Boundary MisbehaviorCaService::mSimulationBoundary;
@@ -43,7 +42,7 @@ namespace artery {
         MisbehaviorDetectionService::removeStationIdFromVehicleList(mVehicleDataProvider->getStationId());
 
         while (!activePoIs.empty()) {
-            traciPoiScope->remove(activePoIs.front());
+            mTraciAPI->poi.remove(activePoIs.front());
             activePoIs.pop_front();
         }
     }
@@ -58,9 +57,7 @@ namespace artery {
             mGlobalEnvironmentModel = mLocalEnvironmentModel->getGlobalEnvMod();
             mTraciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
-            traciPoiScope = &mTraciAPI->poi;
-            traciVehicleScope = (TraCIAPI::VehicleScope *) &mTraciAPI->vehicle;
-            initializeParameters();
+            initializeStaticParameters();
         }
 
 
@@ -143,7 +140,7 @@ namespace artery {
 
         par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
-        traciVehicleScope->setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
+        mTraciAPI->vehicle.setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
         if (mAttackType == attackTypes::DoS || mAttackType == attackTypes::GridSybil ||
             mAttackType == attackTypes::DataReplaySybil || mAttackType == attackTypes::DoSDisruptiveSybil ||
@@ -155,7 +152,7 @@ namespace artery {
         MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(), mMisbehaviorType);
     }
 
-    void MisbehaviorCaService::initializeParameters() {
+    void MisbehaviorCaService::initializeStaticParameters() {
         // CAM Location Visualizer (PoI)
         F2MDParameters::miscParameters.CamLocationVisualizer = par("CamLocationVisualizer");
         F2MDParameters::miscParameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
@@ -235,7 +232,6 @@ namespace artery {
             sendCam(T_now);
         }
     }
-
     void
     MisbehaviorCaService::indicate(const vanetza::btp::DataIndication &ind, std::unique_ptr<vanetza::UpPacket> packet) {
         Enter_Method("indicate");
@@ -293,7 +289,7 @@ namespace artery {
         if (F2MDParameters::miscParameters.CamLocationVisualizer) {
             visualizeCamPosition(cam);
         }
-        finalizeAndSendCam(cam,T_now);
+        finalizeAndSendCam(cam, T_now);
     }
 
     long setValueToRange(long value, long lower, long upper) {
@@ -315,41 +311,6 @@ namespace artery {
             *camParameter = (long) setValueToRange((int) (*camParameter + offset), lower, upper);
         }
     }
-
-    vanetza::asn1::Cam MisbehaviorCaService::getNextReplayCam() {
-        vanetza::asn1::Cam message;
-        if (attackDataReplayCurrentStationId == -1) {
-            auto it = receivedMessages.begin();
-            if (it != receivedMessages.end()) {
-                uint32_t mostReceivedStationId = -1;
-                unsigned long maxSize = 0;
-                for (; it != receivedMessages.end(); ++it) {
-                    if (receivedMessages[it->first].size() > maxSize) {
-                        maxSize = receivedMessages[it->first].size();
-                        mostReceivedStationId = it->first;
-                    }
-                }
-                attackDataReplayCurrentStationId = mostReceivedStationId;
-                message = receivedMessages[attackDataReplayCurrentStationId].front();
-                receivedMessages[attackDataReplayCurrentStationId].pop();
-            } else {
-                message = vanetza::asn1::Cam();
-            }
-        } else {
-            if (!receivedMessages[attackDataReplayCurrentStationId].empty() &&
-                receivedMessages[attackDataReplayCurrentStationId].front()->cam.generationDeltaTime <
-                (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
-                message = receivedMessages[attackDataReplayCurrentStationId].front();
-                receivedMessages[attackDataReplayCurrentStationId].pop();
-            } else {
-                receivedMessages.erase(attackDataReplayCurrentStationId);
-                attackDataReplayCurrentStationId = -1;
-                message = vanetza::asn1::Cam();
-            }
-        }
-        return message;
-    }
-
 
     vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
         vanetza::asn1::Cam message = createCooperativeAwarenessMessage(genDeltaTime);
@@ -756,6 +717,40 @@ namespace artery {
         return message;
     }
 
+    vanetza::asn1::Cam MisbehaviorCaService::getNextReplayCam() {
+        vanetza::asn1::Cam message;
+        if (attackDataReplayCurrentStationId == -1) {
+            auto it = receivedMessages.begin();
+            if (it != receivedMessages.end()) {
+                uint32_t mostReceivedStationId = -1;
+                unsigned long maxSize = 0;
+                for (; it != receivedMessages.end(); ++it) {
+                    if (receivedMessages[it->first].size() > maxSize) {
+                        maxSize = receivedMessages[it->first].size();
+                        mostReceivedStationId = it->first;
+                    }
+                }
+                attackDataReplayCurrentStationId = mostReceivedStationId;
+                message = receivedMessages[attackDataReplayCurrentStationId].front();
+                receivedMessages[attackDataReplayCurrentStationId].pop();
+            } else {
+                message = vanetza::asn1::Cam();
+            }
+        } else {
+            if (!receivedMessages[attackDataReplayCurrentStationId].empty() &&
+                receivedMessages[attackDataReplayCurrentStationId].front()->cam.generationDeltaTime <
+                (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
+                message = receivedMessages[attackDataReplayCurrentStationId].front();
+                receivedMessages[attackDataReplayCurrentStationId].pop();
+            } else {
+                receivedMessages.erase(attackDataReplayCurrentStationId);
+                attackDataReplayCurrentStationId = -1;
+                message = vanetza::asn1::Cam();
+            }
+        }
+        return message;
+    }
+
     void MisbehaviorCaService::visualizeCamPosition(vanetza::asn1::Cam cam) {
 
         std::vector<libsumo::TraCIColor> colors = {libsumo::TraCIColor(255, 0, 255, 255),
@@ -777,19 +772,19 @@ namespace artery {
         std::string poiId = {
                 mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
                 std::to_string(cam->cam.generationDeltaTime)};
-        traciPoiScope->add(poiId, traciPosition.x, traciPosition.y, color,
+        mTraciAPI->poi.add(poiId, traciPosition.x, traciPosition.y, color,
                            poiId, 5, "", 0,
                            0, 0);
         activePoIs.push_back(poiId);
         if (activePoIs.size() > maxActivePoIs) {
-            traciPoiScope->remove(activePoIs.front());
+            mTraciAPI->poi.remove(activePoIs.front());
             activePoIs.pop_front();
         }
         if (mAttackType != attackTypes::GridSybil) {
             int alphaStep = 185 / maxActivePoIs;
             int currentAlpha = 80;
             for (const auto &poi : activePoIs) {
-                traciPoiScope->setColor(poi, libsumo::TraCIColor(255, 0, 255, currentAlpha));
+                mTraciAPI->poi.setColor(poi, libsumo::TraCIColor(255, 0, 255, currentAlpha));
                 currentAlpha += alphaStep;
             }
         }
