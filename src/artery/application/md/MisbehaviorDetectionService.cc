@@ -26,7 +26,8 @@ namespace artery {
     Define_Module(MisbehaviorDetectionService);
 
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
-    static const simsignal_t scSignalMisbehaviorAuthorityNewReport = cComponent::registerSignal("misbehaviorAuthority.newReport");
+    static const simsignal_t scSignalMisbehaviorAuthorityNewReport = cComponent::registerSignal(
+            "misbehaviorAuthority.newReport");
 
     bool MisbehaviorDetectionService::staticInitializationComplete = false;
     std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> MisbehaviorDetectionService::mStationIdMisbehaviorTypeMap;
@@ -192,8 +193,8 @@ namespace artery {
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
                 std::vector<Position> vehicleOutline = getVehicleOutline();
-                std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
-                          << message->cam.generationDeltaTime << std::endl;
+//                std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
+//                          << message->cam.generationDeltaTime << std::endl;
 
                 auto &allObjects = mLocalEnvironmentModel->allObjects();
                 TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
@@ -207,29 +208,31 @@ namespace artery {
                                                                                        vehicleOutline,
                                                                                        envModObjects);
 
-                std::cout << result->toString(0.5) << std::endl;
-                vanetza::asn1::MisbehaviorReport misbehaviorReport =  createMisbehaviorReport("123",message);
+//                std::cout << result->toString(0.5) << std::endl;
+                std::string reportId = {std::to_string(message->header.stationID) + "_" +
+                                        std::to_string(simTime().inUnit(SimTimeUnit::SIMTIME_MS))};
+                vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, message);
 
                 MisbehaviorReportObject obj(std::move(misbehaviorReport));
                 emit(scSignalMisbehaviorAuthorityNewReport, &obj);
 
 //            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
-                EV_INFO << "Received manipulated CAM!";
-                EV_INFO << "Received DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " delta:  "
-                        << message->cam.generationDeltaTime << "\n";
-                vanetza::ByteBuffer byteBuffer = message.encode();
-                std::string encoded(byteBuffer.begin(), byteBuffer.end());
-                std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()),
-                                                       encoded.length(), false);
-                if (curl) {
-                    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
-                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
-                    CURLcode curlResponse = curl_easy_perform(curl);
-                    if (curlResponse != CURLE_OK) {
-                        EV_ERROR << "curl_easy_perform() failed: %s\n"
-                                 << curl_easy_strerror(curlResponse);
-                    }
-                }
+//                EV_INFO << "Received manipulated CAM!";
+//                EV_INFO << "Received DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " delta:  "
+//                        << message->cam.generationDeltaTime << "\n";
+//                vanetza::ByteBuffer byteBuffer = message.encode();
+//                std::string encoded(byteBuffer.begin(), byteBuffer.end());
+//                std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()),
+//                                                       encoded.length(), false);
+//                if (curl) {
+//                    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
+//                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
+//                    CURLcode curlResponse = curl_easy_perform(curl);
+//                    if (curlResponse != CURLE_OK) {
+//                        EV_ERROR << "curl_easy_perform() failed: %s\n"
+//                                 << curl_easy_strerror(curlResponse);
+//                    }
+//                }
 //            } else if (senderMisbehaviorType == misbehaviorTypes::Benign) {
 //                EV_INFO << "Received benign CAM!";
 //            } else {
@@ -241,39 +244,44 @@ namespace artery {
 
     }
 
-    vanetza::asn1::MisbehaviorReport MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId,const vanetza::asn1::Cam& cam) {
+    vanetza::asn1::MisbehaviorReport
+    MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId, const vanetza::asn1::Cam &cam) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport;
 
-//        misbehaviorReport->version = 1;
-        misbehaviorReport->version = cam->header.stationID;
+        misbehaviorReport->version = 1;
         ReportMetadataContainer_t &reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
         assert(asn_long2INTEGER(&reportMetadataContainer.generationTime,
                                 countTaiMilliseconds(mTimer->getCurrentTime())) == 0);
+
         OCTET_STRING_fromBuf(&reportMetadataContainer.reportID, reportId.c_str(), (int) strlen(reportId.c_str()));
-//        const char *bla = reportId.c_str();
-//        std::cout << bla << std::endl;
-//        bla = (char*) &reportMetadataContainer.reportID.buf;
-//        std::cout << bla << std::endl;
+
         ReportContainer &reportContainer = misbehaviorReport->reportContainer;
         reportContainer.reportedMessageContainer.present = ReportedMessageContainer_PR_certificateIncludedContainer;
-        EtsiTs103097Data_t reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
+        EtsiTs103097Data_t &reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
         reportedMessage.protocolVersion = 3;
-        Ieee1609Dot2Content_t ieee1609Dot2Content;
-        reportedMessage.content = &ieee1609Dot2Content;
-        ieee1609Dot2Content.present = Ieee1609Dot2Content_PR_unsecuredData;
+        auto *ieee1609Dot2Content = new Ieee1609Dot2Content_t();
+        reportedMessage.content = ieee1609Dot2Content;
+        ieee1609Dot2Content->present = Ieee1609Dot2Content_PR_unsecuredData;
         vanetza::ByteBuffer byteBuffer = cam.encode();
         std::string encodedCam(byteBuffer.begin(), byteBuffer.end());
-//        OCTET_STRING_fromBuf(&ieee1609Dot2Content.choice.unsecuredData, encodedCam.c_str(), (int) strlen(encodedCam.c_str()));
+        Opaque_t &unsecuredData = ieee1609Dot2Content->choice.unsecuredData;
+
+        OCTET_STRING_fromBuf(&unsecuredData, (const char *) &cam, (int) cam.size());
 
         reportContainer.misbehaviorTypeContainer.present = MisbehaviorTypeContainer_PR_semanticDetection;
-        SemanticDetection_t semanticDetection= reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
+        SemanticDetection_t &semanticDetection = reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
         semanticDetection.present = SemanticDetection_PR_semanticDetectionReferenceCAM;
         semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM = 3;
-        int semanticDetectionErrorCodeCAM = 0;
-        semanticDetectionErrorCodeCAM |= 1; //set bit for wrong referencePosition
-        std::string encoded = std::bitset<24>(semanticDetectionErrorCodeCAM).to_string();
-        OCTET_STRING_fromBuf(&semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM,encoded.c_str(),(int) strlen(encoded.c_str()));
+        std::bitset<16> semanticDetectionErrorCodeCAM(0);
+        semanticDetectionErrorCodeCAM[0] = true; //set bit for wrong referencePosition
+        std::string encoded = semanticDetectionErrorCodeCAM.to_string();
+        OCTET_STRING_fromBuf(&semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM,
+                             encoded.c_str(), (int) strlen(encoded.c_str()));
 
+
+        if (!misbehaviorReport.validate()) {
+            std::cout << "failed validation" << std::endl;
+        }
         return misbehaviorReport;
     }
 

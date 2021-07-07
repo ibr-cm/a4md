@@ -15,7 +15,7 @@ namespace artery {
     public:
         MisbehaviorAuthority();
 
-//        ~MisbehaviorAuthority() override;
+        ~MisbehaviorAuthority();
         void initialize() override;
 
         void handleMessage(omnetpp::cMessage *) override;

@@ -7,6 +7,8 @@
 #include "traci/Core.h"
 #include "artery/traci/Cast.h"
 #include "MisbehaviorReportObject.h"
+#include "artery/application/md/util/HelperFunctions.h"
+#include <bitset>
 
 namespace artery {
 
@@ -41,16 +43,16 @@ namespace artery {
         }
         mGlobalEnvironmentModel = dynamic_cast<GlobalEnvironmentModel *>(globalEnvMod);
         mSelfMsg = new cMessage("MisbehaviorAuthority");
-        scheduleAt(simTime() + 3.0, mSelfMsg);
+//        scheduleAt(simTime() + 3.0, mSelfMsg);
     }
 
     void MisbehaviorAuthority::handleMessage(omnetpp::cMessage *msg) {
         Enter_Method("handleMessage");
 
         if (msg == mSelfMsg) {
-            std::cout << "self message" << std::endl;
-            std::cout << mGlobalEnvironmentModel->getObstacle("-167762")->getId() << std::endl;
-            std::cout << mTraciAPI->simulation.getCurrentTime() << std::endl;
+//            std::cout << "self message" << std::endl;
+//            std::cout << mGlobalEnvironmentModel->getObstacle("-167762")->getId() << std::endl;
+//            std::cout << mTraciAPI->simulation.getCurrentTime() << std::endl;
         }
     }
 
@@ -64,14 +66,36 @@ namespace artery {
         }
     }
 
+
     void MisbehaviorAuthority::receiveSignal(cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                                              cObject *) {
         if (signal == MAnewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
             long generationTime;
-            asn_INTEGER2long(&misbehaviorReport->reportMetadataContainer.generationTime,&generationTime);
-//            std::cout << "received report: " << misbehaviorReport->version << " " << generationTime << std::endl;
+            asn_INTEGER2long(&misbehaviorReport->reportMetadataContainer.generationTime, &generationTime);
+            std::string reportId = ia5stringToString(misbehaviorReport->reportMetadataContainer.reportID);
+            std::cout << "received report: " << reportId << " " << generationTime << std::endl;
+            ReportContainer reportContainer = misbehaviorReport->reportContainer;
+            if (reportContainer.reportedMessageContainer.present ==
+                ReportedMessageContainer_PR_certificateIncludedContainer) {
+                EtsiTs103097Data_t reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
+                Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessage.content;
+                if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
+                    std::cout << "unsecuredData" << std::endl;
+                    auto *cam = (vanetza::asn1::Cam *) ieee1609Dot2Content.choice.unsecuredData.buf;
+                    std::cout << cam->operator->()->header.stationID << std::endl;
+                }
+            }
+            if(reportContainer.misbehaviorTypeContainer.present == MisbehaviorTypeContainer_PR_semanticDetection){
+                SemanticDetection_t semanticDetection = reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
+                if(semanticDetection.present == SemanticDetection_PR_semanticDetectionReferenceCAM){
+                    std::cout << "detection level: " << semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM << std::endl;
+                    OCTET_STRING_t buffer = semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM;
+                    std::bitset<16> semanticDetectionErrorCodeCAM = (std::bitset<16>) buffer.buf;
+                    std::cout << semanticDetectionErrorCodeCAM.to_string() << std::endl;
+                }
+            }
         }
 
     }
