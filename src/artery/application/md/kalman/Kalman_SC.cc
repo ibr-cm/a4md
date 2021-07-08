@@ -10,104 +10,105 @@
  *******************************************************************************/
 
 #include "Kalman_SC.h"
+
 using namespace std;
 
 Kalman_SC::Kalman_SC() {
 
-  double T = 1;
+    double T = 1;
 
-  A[0][0] = 1;
-  A[0][1] = T;
+    A[0][0] = 1;
+    A[0][1] = T;
 
-  A[1][0] = 0;
-  A[1][1] = 1;
+    A[1][0] = 0;
+    A[1][1] = 1;
 
-  B[0][0] = 0.5*T*T;
-  B[1][0] = T;
+    B[0][0] = 0.5 * T * T;
+    B[1][0] = T;
 
-  double H[KLM_N_SC][KLM_N_SC];
+    double H[KLM_N_SC][KLM_N_SC];
 
-  H[0][0] = 1;
-  H[0][1] = 0;
+    H[0][0] = 1;
+    H[0][1] = 0;
 
-  H[1][0] = 0;
-  H[1][1] = 1;
+    H[1][0] = 0;
+    H[1][1] = 1;
 
-  double Q[KLM_N_SC][KLM_N_SC];
-  Q[0][0] = 10;
-  Q[0][1] = 0;
+    double Q[KLM_N_SC][KLM_N_SC];
+    Q[0][0] = 10;
+    Q[0][1] = 0;
 
-  Q[1][0] = 0;
-  Q[1][1] = 10;
+    Q[1][0] = 0;
+    Q[1][1] = 10;
 
-  R[0][0] = 5;
-  R[0][1] = 0;
+    R[0][0] = 5;
+    R[0][1] = 0;
 
-  R[1][0] = 0;
-  R[1][1] = 1;
+    R[1][0] = 0;
+    R[1][1] = 1;
 
-  pos = 0;
+    pos = 0;
 
-  kalmanFilterJ_SC.setFixed(A, H, Q, R, B);
+    kalmanFilterJ_SC.setFixed(A, H, Q, R, B);
 
-  init = false;
+    init = false;
 
 }
 
-bool Kalman_SC::isInitialized() const{
-  return init;
+bool Kalman_SC::isInitialized() const {
+    return init;
 }
 
 
-void Kalman_SC::setInitial(double X, double Y){
+void Kalman_SC::setInitial(double X, double Y) {
 
-  P0[0][0] = 10;
-  P0[0][1] = 0;
+    P0[0][0] = 10;
+    P0[0][1] = 0;
 
-  P0[1][0] = 0;
-  P0[1][1] = 10;
+    P0[1][0] = 0;
+    P0[1][1] = 10;
 
-  X0[0] = X;
-  X0[1] = Y;
+    X0[0] = X;
+    X0[1] = Y;
 
-  pos = X;
+    pos = X;
 
-  kalmanFilterJ_SC.setInitial(X0, P0);
+    kalmanFilterJ_SC.setInitial(X0, P0);
 
-  init = true;
+    init = true;
 }
 
-void Kalman_SC::setT(double T){
+void Kalman_SC::setT(double T) {
 
-  A[0][0] = 1;
-  A[0][1] = T;
+    A[0][0] = 1;
+    A[0][1] = T;
 
-  A[1][0] = 0;
-  A[1][1] = 1;
+    A[1][0] = 0;
+    A[1][1] = 1;
 
 
-  B[0][0] = 0.5*T*T;
-  B[1][0] = T;
+    B[0][0] = 0.5 * T * T;
+    B[1][0] = T;
 
-  kalmanFilterJ_SC.setA(A);
-  kalmanFilterJ_SC.setB(B);
+    kalmanFilterJ_SC.setA(A);
+    kalmanFilterJ_SC.setB(B);
 }
 
-void Kalman_SC::setConfidence(double CX, double CY){
+void Kalman_SC::setConfidence(double CX, double CY) {
 
-  R[0][0] = CX;
-  R[0][1] = 0;
+    R[0][0] = CX;
+    R[0][1] = 0;
 
-  R[1][0] = 0;
-  R[1][1] = CY;
+    R[1][0] = 0;
+    R[1][1] = CY;
 
-  kalmanFilterJ_SC.setR(R);
+    kalmanFilterJ_SC.setR(R);
 }
 
-void Kalman_SC::getDeltaPos(double T, double X, double Y, double CX, double CY, double * Delta){
+void Kalman_SC::getDeltaPos(double T, double X, double Y, double CX, double CY, double *Delta) {
 
     setT(T);
-    setConfidence(CX,CY);
+    setConfidence(CX, CY);
 
     X0[0] = X;
     X0[1] = Y;
@@ -121,10 +122,10 @@ void Kalman_SC::getDeltaPos(double T, double X, double Y, double CX, double CY, 
 }
 
 
-void Kalman_SC::getDeltaPos(double T, double X, double Y, double AX, double AY, double CX, double CY, double * Delta){
+void Kalman_SC::getDeltaPos(double T, double X, double Y, double AX, double AY, double CX, double CY, double *Delta) {
 
     setT(T);
-    setConfidence(CX,CY);
+    setConfidence(CX, CY);
 
     pos = pos + X;
 

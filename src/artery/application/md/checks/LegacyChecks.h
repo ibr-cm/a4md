@@ -97,9 +97,6 @@ namespace artery {
         double KalmanSpeedConsistencyCheck(const Position &currentSpeed, const Position &oldSpeed,
                                            double &currentSpeedConfidence, const Position &currentAcceleration,
                                            double &deltaTime);
-
-//        InterTest MultipleIntersectionCheck(NodeTable * detectedNodes,
-//                                            BasicSafetyMessage * bsm);
     };
 } // namespace artery
 #endif

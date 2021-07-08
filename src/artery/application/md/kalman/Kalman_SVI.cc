@@ -37,9 +37,9 @@ Kalman_SVI::Kalman_SVI() {
     A[3][2] = 0;
     A[3][3] = 1;
 
-    B[0][0] = pow(T,2.0f) / 2.0f;
+    B[0][0] = pow(T, 2.0f) / 2.0f;
     B[1][0] = T;
-    B[2][0] = pow(T,2.0f) / 2.0f;
+    B[2][0] = pow(T, 2.0f) / 2.0f;
     B[3][0] = T;
 
     double H[KLM_N_SVI][KLM_N_SVI];
@@ -204,9 +204,9 @@ void Kalman_SVI::setT(double T) {
     A[3][2] = 0;
     A[3][3] = 1;
 
-    B[0][0] = pow(T,2.0f) / 2.0f;
+    B[0][0] = pow(T, 2.0f) / 2.0f;
     B[1][0] = T;
-    B[2][0] = pow(T,2.0f) / 2.0f;
+    B[2][0] = pow(T, 2.0f) / 2.0f;
     B[3][0] = T;
 
     kalmanFilterJ_SVI.setA(A);
