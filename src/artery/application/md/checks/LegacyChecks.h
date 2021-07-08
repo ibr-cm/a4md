@@ -28,11 +28,6 @@ namespace artery {
         CheckResult *checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position>& receiverVehicleOutline, TrackedObjectsFilterRange &envModObjects,
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr);
 
-        static Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary& simulationBoundary, std::shared_ptr<const traci::API> traciAPI);
-
-        static Position getVector(const double &value, const double &angle);
-
-        static double getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position);
     private:
 
         static bool staticInitializationComplete;

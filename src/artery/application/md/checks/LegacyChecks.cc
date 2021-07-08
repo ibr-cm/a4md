@@ -13,28 +13,6 @@ namespace artery {
 
     using namespace omnetpp;
 
-    double LegacyChecks::getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position){
-        double minRoadDistance = 9999;
-        std::vector<GeometryRtreeValue> laneResults;
-        globalEnvMod->getLaneRTree()->query(
-                boost::geometry::index::nearest(position, 10),
-                std::back_inserter(laneResults));
-        for (const auto &lResult : laneResults) {
-            const auto &lane = globalEnvMod->getLane(lResult.second);
-            minRoadDistance = std::min(minRoadDistance,boost::geometry::distance(position, lane->getShape()) - lane->getWidth() / 2);
-        }
-        std::vector<GeometryRtreeValue> junctionResults;
-        globalEnvMod->getJunctionRTree()->query(
-                boost::geometry::index::nearest(position, 3),
-                std::back_inserter(junctionResults));
-        for (const auto &jResult : junctionResults) {
-            minRoadDistance = std::min(minRoadDistance,boost::geometry::distance(position,
-                                                                                 globalEnvMod->getJunction(
-                                                                                         jResult.second)->getOutline()));
-        }
-        return minRoadDistance;
-    }
-
     double LegacyChecks::ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
                                                     TrackedObjectsFilterRange &envModObjects) {
         Position::value_type deltaDistance = distance(testPosition, myPosition);
@@ -101,7 +79,6 @@ namespace artery {
             }
         }
     }
-
 
     double
     LegacyChecks::PositionSpeedConsistencyCheck(Position &currentPosition, Position &oldPosition, double currentSpeed,
@@ -203,7 +180,9 @@ namespace artery {
     }
 
     double LegacyChecks::PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const {
-        if (senderSpeed < detectionParameters->maxOffroadSpeed || getDistanceToNearestRoad(mGlobalEnvironmentModel,senderPosition) < detectionParameters->maxDistanceFromRoad) {
+        if (senderSpeed < detectionParameters->maxOffroadSpeed ||
+            getDistanceToNearestRoad(mGlobalEnvironmentModel, senderPosition) <
+            detectionParameters->maxDistanceFromRoad) {
             return 1;
         } else {
             return 0;
@@ -271,30 +250,11 @@ namespace artery {
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[2], 2.0)) /
                                    (detectionParameters->kalmanPosRange * currentSemiMajorConfidence * deltaTime);
-                if (isnan(ret_1)) {
-                    ret_1 = 0;
-                }
-
-                if (ret_1 < 0.5) {
-                    ret_1 = 0;
-                } else {
-                    ret_1 = 1;
-                }
 
                 double ret_2 = 1 - sqrt(pow(deltaPosition[1], 2.0) + pow(deltaPosition[3], 2.0)) /
                                    (detectionParameters->kalmanSpeedRange * currentSpeedConfidence * deltaTime);
-                if (isnan(ret_2)) {
-                    ret_2 = 0;
-                }
-
-                if (ret_2 < 0.5) {
-                    ret_2 = 0;
-                } else {
-                    ret_2 = 1;
-                }
-
-                returnValue[0] = ret_1;
-                returnValue[1] = ret_2;
+                returnValue[0] = isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
+                returnValue[1] = isnan(ret_2) || ret_2 < 0.5 ? 0 : 1;
             } else {
                 returnValue[0] = 1;
                 returnValue[1] = 1;
@@ -327,27 +287,10 @@ namespace artery {
                                         curPosConfX, curSpdConfX, deltaPosition);
 
                 double ret_1 = 1 - (deltaPosition[0] / (detectionParameters->kalmanPosRange * curPosConfX * deltaTime));
-                if (isnan(ret_1)) {
-                    ret_1 = 0;
-                }
-
-                if (ret_1 < 0.5) {
-                    ret_1 = 0;
-                } else {
-                    ret_1 = 1;
-                }
                 double ret_2 =
                         1 - (deltaPosition[1] / (detectionParameters->kalmanSpeedRange * curSpdConfX * deltaTime));
-                if (isnan(ret_2)) {
-                    ret_2 = 0;
-                }
-                if (ret_2 < 0.5) {
-                    ret_2 = 0;
-                } else {
-                    ret_2 = 1;
-                }
-                returnValue[0] = ret_1;
-                returnValue[1] = ret_2;
+                returnValue[0] = isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
+                returnValue[1] = isnan(ret_2) || ret_2 < 0.5 ? 0 : 1;
             } else {
                 returnValue[0] = 1;
                 returnValue[1] = 1;
@@ -374,17 +317,7 @@ namespace artery {
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
                                    (4 * detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
-
-                if (isnan(ret_1)) {
-                    ret_1 = 0;
-                }
-                if (ret_1 < 0.5) {
-                    ret_1 = 0;
-                } else {
-                    ret_1 = 1;
-                }
-
-                return ret_1;
+                return isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
             } else {
                 kalmanSI->setInitial(currentPosition.x.value(), currentPosition.y.value());
                 return 1;
@@ -413,17 +346,7 @@ namespace artery {
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
                                    (4 * detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
-                if (isnan(ret_1)) {
-                    ret_1 = 0;
-                }
-
-                if (ret_1 < 0.5) {
-                    ret_1 = 0;
-                } else {
-                    ret_1 = 1;
-                }
-
-                return ret_1;
+                return isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
             } else {
                 kalmanSI->setInitial(currentPosition.x.value(), currentPosition.x.value());
                 return 1;
@@ -449,37 +372,12 @@ namespace artery {
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
                                    (detectionParameters->kalmanSpeedRange * curSpdConf * deltaTime);
-                if (isnan(ret_1)) {
-                    ret_1 = 0;
-                }
-                if (ret_1 < 0.5) {
-                    ret_1 = 0;
-                } else {
-                    ret_1 = 1;
-                }
-
-                return ret_1;
+                return isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
             } else {
                 kalmanVI->setInitial(currentSpeed.x.value(), currentSpeed.y.value());
                 return 1;
             }
         }
-    }
-
-    Position LegacyChecks::convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary& simulationBoundary, std::shared_ptr<const traci::API> traciAPI) {
-        traci::TraCIGeoPosition traciGeoPositionSender = {
-                (double) referencePosition.longitude / 10000000.0,
-                (double) referencePosition.latitude / 10000000.0};
-        return position_cast(simulationBoundary, traciAPI->convert2D(traciGeoPositionSender));
-    }
-
-    Position LegacyChecks::getVector(const double &value, const double &angle) {
-        double x = value * sin(angle * PI / 180);
-        double y = sqrt(pow(value, 2) - pow(x, 2));
-        if (angle > 90 && angle < 270) {
-            y *= -1;
-        }
-        return Position(x, y);
     }
 
     CheckResult *
@@ -490,7 +388,7 @@ namespace artery {
         BasicVehicleContainerHighFrequency_t highFrequencyContainer = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
         Position currentCamPosition = convertCamPosition(
-                currentCam->cam.camParameters.basicContainer.referencePosition,mSimulationBoundary,mTraciAPI);
+                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         const Position &receiverPosition = receiverVDP->position();
         double currentCamSpeed = (double) highFrequencyContainer.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
@@ -508,7 +406,8 @@ namespace artery {
 
         if (lastCamPtr != nullptr) {
             vanetza::asn1::Cam lastCam = *lastCamPtr;
-            Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition,mSimulationBoundary,mTraciAPI);
+            Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition,
+                                                          mSimulationBoundary, mTraciAPI);
             double lastCamSpeed =
                     (double) lastCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
                     100.0;

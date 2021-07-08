@@ -508,7 +508,7 @@ namespace artery {
                         currentHeadingAngle = artery::Angle::from_radian(
                                 (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
                                 10).degree();
-                        originalPosition = LegacyChecks::convertCamPosition(
+                        originalPosition = convertCamPosition(
                                 message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                                 mTraciAPI);
                     }
@@ -522,7 +522,7 @@ namespace artery {
                 double relativeY = offsetDistance * cos(newAngle * PI / 180);
                 Position newPosition = Position(originalPosition.x.value() + relativeX,
                                                 originalPosition.y.value() + relativeY);
-                if (LegacyChecks::getDistanceToNearestRoad(mGlobalEnvironmentModel, newPosition) >
+                if (getDistanceToNearestRoad(mGlobalEnvironmentModel, newPosition) >
                     F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
                     message = vanetza::asn1::Cam();
                     break;

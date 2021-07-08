@@ -3,6 +3,7 @@
 //
 
 #include "DetectedSender.h"
+#include "artery/application/md/util/HelperFunctions.h"
 
 namespace artery {
     DetectedSender::DetectedSender(const std::shared_ptr<const traci::API> &traciAPI,
@@ -13,7 +14,7 @@ namespace artery {
                            &kalmanSVI, &kalmanSVSI, &kalmanSI,
                            &kalmanVI) {
         mStationId = message->header.stationID;
-        Position position = LegacyChecks::convertCamPosition(
+        Position position = convertCamPosition(
                 message->cam.camParameters.basicContainer.referencePosition,
                 traci::Boundary{traciAPI->simulation.getNetBoundary()}, traciAPI);
         double speed =
@@ -22,7 +23,7 @@ namespace artery {
         double heading =
                 (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
                 10.0;
-        Position speedVector = LegacyChecks::getVector(speed, heading);
+        Position speedVector = getVector(speed, heading);
         kalmanSVI.setInitial(position.x.value(), position.y.value(), speedVector.x.value(), speedVector.y.value());
         kalmanSVSI.setInitial(0, speed);
         kalmanSI.setInitial(position.x.value(), position.y.value());
