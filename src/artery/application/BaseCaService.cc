@@ -103,8 +103,8 @@ namespace artery {
 
         semiMajorConfidence = par("semiMajorConfidence");
         semiMinorConfidence = par("semiMinorConfidence");
-        std::cout << "raw semiMajorConfidence: " << semiMajorConfidence << std::endl;
-        std::cout << "raw semiMinorConfidence: " << semiMinorConfidence << std::endl;
+//        std::cout << "raw semiMajorConfidence: " << semiMajorConfidence << std::endl;
+//        std::cout << "raw semiMinorConfidence: " << semiMinorConfidence << std::endl;
         if (semiMajorConfidence >= 4094) {
             semiMajorConfidence = SemiAxisLength_outOfRange;
         }
@@ -118,9 +118,9 @@ namespace artery {
             semiMajorOrientationOffset = 0;
         }
 
-        std::cout << "semiMajorConfidence: " << semiMajorConfidence << std::endl;
-        std::cout << "semiMinorConfidence: " << semiMinorConfidence << std::endl;
-        std::cout << "semiMajorOrientationOffset: " << semiMajorOrientationOffset << std::endl;
+//        std::cout << "semiMajorConfidence: " << semiMajorConfidence << std::endl;
+//        std::cout << "semiMinorConfidence: " << semiMinorConfidence << std::endl;
+//        std::cout << "semiMajorOrientationOffset: " << semiMajorOrientationOffset << std::endl;
 
     }
 
@@ -219,44 +219,17 @@ namespace artery {
         CoopAwareness_t &cam = (*message).cam;
         cam.generationDeltaTime = genDeltaTime * GenerationDeltaTime_oneMilliSec;
         BasicContainer_t &basic = cam.camParameters.basicContainer;
-        HighFrequencyContainer_t &hfc = cam.camParameters.highFrequencyContainer;
-
         basic.stationType = StationType_passengerCar;
-        basic.referencePosition.altitude.altitudeValue = AltitudeValue_unavailable;
-        basic.referencePosition.altitude.altitudeConfidence = AltitudeConfidence_unavailable;
-        if (semiMajorConfidence == SemiAxisLength_outOfRange || semiMinorConfidence == SemiAxisLength_outOfRange) {
-            basic.referencePosition.longitude =
-                    round(mVehicleDataProvider->longitude(), microdegree) * Longitude_oneMicrodegreeEast;
-            basic.referencePosition.latitude =
-                    round(mVehicleDataProvider->latitude(), microdegree) * Latitude_oneMicrodegreeNorth;
-            basic.referencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
-            basic.referencePosition.positionConfidenceEllipse.semiMajorConfidence =
-                    SemiAxisLength_unavailable;
-            basic.referencePosition.positionConfidenceEllipse.semiMinorConfidence =
-                    SemiAxisLength_unavailable;
-        } else {
-            setReferencePositionWithJitter(message);
-        }
+        basic.referencePosition = mVehicleDataProvider->approximateReferencePosition();
 
-
+        HighFrequencyContainer_t &hfc = cam.camParameters.highFrequencyContainer;
         hfc.present = HighFrequencyContainer_PR_basicVehicleContainerHighFrequency;
         BasicVehicleContainerHighFrequency &bvc = hfc.choice.basicVehicleContainerHighFrequency;
-        bvc.heading.headingValue = round(mVehicleDataProvider->heading(), decidegree);
-        bvc.heading.headingConfidence = HeadingConfidence_equalOrWithinOneDegree;
-        bvc.speed.speedValue = buildSpeedValue(mVehicleDataProvider->speed());
-        bvc.speed.speedConfidence = SpeedConfidence_equalOrWithinOneCentimeterPerSec * 3;
+        bvc.heading = mVehicleDataProvider->approximateHeading();
+        bvc.speed = mVehicleDataProvider->approximateSpeed();
         bvc.driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
                              DriveDirection_forward : DriveDirection_backward;
-        const double lonAccelValue =
-                mVehicleDataProvider->acceleration() / vanetza::units::si::meter_per_second_squared;
-        // extreme speed changes can occur when SUMO swaps vehicles between lanes (speed is swapped as well)
-        if (lonAccelValue >= -160.0 && lonAccelValue <= 161.0) {
-            bvc.longitudinalAcceleration.longitudinalAccelerationValue =
-                    lonAccelValue * LongitudinalAccelerationValue_pointOneMeterPerSecSquaredForward;
-        } else {
-            bvc.longitudinalAcceleration.longitudinalAccelerationValue = LongitudinalAccelerationValue_unavailable;
-        }
-        bvc.longitudinalAcceleration.longitudinalAccelerationConfidence = AccelerationConfidence_unavailable;
+        bvc.longitudinalAcceleration = mVehicleDataProvider->approximateAcceleration();
         bvc.curvature.curvatureValue =
                 abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) * 10000.0;
         if (bvc.curvature.curvatureValue >= 1023) {
@@ -282,21 +255,19 @@ namespace artery {
         return message;
     }
 
-    void BaseCaService::setReferencePositionWithJitter(vanetza::asn1::Cam &message) {
-        ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
+    void BaseCaService::setReferencePositionWithJitter(ReferencePosition_t &referencePosition) {
         double semiMajorOrientation = std::fmod(
                 mVehicleDataProvider->heading().value() + semiMajorOrientationOffset, 360);
-        referencePosition->positionConfidenceEllipse.semiMajorOrientation = round(
+        referencePosition.positionConfidenceEllipse.semiMajorOrientation = round(
                 semiMajorOrientation * vanetza::units::degree, decidegree);
-        referencePosition->positionConfidenceEllipse.semiMajorConfidence = (long) semiMajorConfidence * 100;
-        if (referencePosition->positionConfidenceEllipse.semiMajorConfidence > SemiAxisLength_outOfRange) {
-            referencePosition->positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_outOfRange;
+        referencePosition.positionConfidenceEllipse.semiMajorConfidence = (long) semiMajorConfidence * 100;
+        if (referencePosition.positionConfidenceEllipse.semiMajorConfidence > SemiAxisLength_outOfRange) {
+            referencePosition.positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_outOfRange;
         }
-        referencePosition->positionConfidenceEllipse.semiMinorConfidence = (long) semiMinorConfidence * 100;
-        if (referencePosition->positionConfidenceEllipse.semiMinorConfidence > SemiAxisLength_outOfRange) {
-            referencePosition->positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_outOfRange;
+        referencePosition.positionConfidenceEllipse.semiMinorConfidence = (long) semiMinorConfidence * 100;
+        if (referencePosition.positionConfidenceEllipse.semiMinorConfidence > SemiAxisLength_outOfRange) {
+            referencePosition.positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_outOfRange;
         }
-
         double offsetX = sqrt(uniform(0, 1)) * cos(uniform(0, 2 * PI)) * semiMajorConfidence / 2;
         double offsetY = sqrt(uniform(0, 1)) * sin(uniform(0, 2 * PI)) * semiMinorConfidence / 2;
         double currentHeadingAngle = artery::Angle::from_radian(
@@ -312,8 +283,8 @@ namespace artery {
                                         originalPosition.y.value() + relativeY);
         traci::TraCIGeoPosition traciGeoPos = mTraciAPI->convertGeo(
                 position_cast(mSimulationBoundary, newPosition));
-        referencePosition->longitude = (long) (traciGeoPos.longitude * 10000000);
-        referencePosition->latitude = (long) (traciGeoPos.latitude * 10000000);
+        referencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
+        referencePosition.latitude = (long) (traciGeoPos.latitude * 10000000);
     }
 
     void BaseCaService::addLowFrequencyContainer(vanetza::asn1::Cam &message, unsigned pathHistoryLength) {

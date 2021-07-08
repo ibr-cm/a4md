@@ -57,7 +57,7 @@ namespace artery {
         vanetza::asn1::Cam
         createCooperativeAwarenessMessage(uint16_t genDeltaTime);
 
-        void setReferencePositionWithJitter(vanetza::asn1::Cam &message);
+        void setReferencePositionWithJitter(ReferencePosition_t &referencePosition);
 
         void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 

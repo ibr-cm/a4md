@@ -11,25 +11,33 @@
 #include "artery/application/VehicleDataProvider.h"
 #include "artery/traci/VehicleController.h"
 
-namespace artery
-{
+namespace artery {
 
-class VehicleMiddleware : public Middleware
-{
+    class VehicleMiddleware : public Middleware {
     public:
         VehicleMiddleware();
+
         void initialize(int stage) override;
+
         void finish() override;
 
     protected:
-        void initializeStationType(const std::string&);
-        void initializeVehicleController(omnetpp::cPar&);
-        void receiveSignal(omnetpp::cComponent*, omnetpp::simsignal_t, omnetpp::cObject*, omnetpp::cObject*) override;
+        void initializeStationType(const std::string &);
+
+        void initializeVehicleController(omnetpp::cPar &);
+
+        void
+        receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, omnetpp::cObject *, omnetpp::cObject *) override;
 
     private:
-        traci::VehicleController* mVehicleController = nullptr;
+        traci::VehicleController *mVehicleController = nullptr;
         VehicleDataProvider mVehicleDataProvider;
-};
+
+
+        static bool staticInitializationComplete;
+        static std::shared_ptr<const traci::API> mTraciAPI;
+        static traci::Boundary mSimulationBoundary;
+    };
 
 } // namespace artery
 
