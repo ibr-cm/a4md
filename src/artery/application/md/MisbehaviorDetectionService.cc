@@ -1,23 +1,19 @@
 
 #include "artery/application/md/MisbehaviorDetectionService.h"
+#include "artery/application/md/util/HelperFunctions.h"
+#include "artery/application/md/fusion/ThresholdFusion.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
-#include "artery/envmod/EnvironmentModelObject.h"
 #include "artery/traci/VehicleController.h"
 #include <omnetpp/cmessage.h>
 #include <omnetpp/cpacket.h>
 #include <vanetza/asn1/cam.hpp>
-#include "artery/application/md/util/base64.h"
 #include "artery/application/CaService.h"
 #include "artery/application/VehicleDataProvider.h"
 #include "artery/application/md/util/MisbehaviorTypes.h"
-#include "artery/envmod/sensor/Sensor.h"
 #include <inet/common/ModuleAccess.h>
 #include "artery/traci/Cast.h"
 #include "artery/application/md/MisbehaviorCaService.h"
 #include "MisbehaviorReportObject.h"
-#include <boost/math/constants/constants.hpp>
-#include <boost/units/cmath.hpp>
-#include <boost/math/constants/info.hpp>
 #include <bitset>
 
 namespace artery {
@@ -34,7 +30,7 @@ namespace artery {
     std::shared_ptr<const traci::API> MisbehaviorDetectionService::mTraciAPI;
     GlobalEnvironmentModel *MisbehaviorDetectionService::mGlobalEnvironmentModel;
 
-    traci::Boundary MisbehaviorDetectionService::mSimulationBoundary;
+//    traci::Boundary MisbehaviorDetectionService::mSimulationBoundary;
 
     MisbehaviorDetectionService::MisbehaviorDetectionService() {
         curl = curl_easy_init();
@@ -61,9 +57,11 @@ namespace artery {
             staticInitializationComplete = true;
             mGlobalEnvironmentModel = mLocalEnvironmentModel->getGlobalEnvMod();
             mTraciAPI = getFacilities().get_const<traci::VehicleController>().getTraCI();
-            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+//            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
             initializeParameters();
         }
+
+        fusionApplication = new ThresholdFusion(0.5);
     }
 
     void MisbehaviorDetectionService::initializeParameters() {
@@ -148,53 +146,18 @@ namespace artery {
     }
 
 
-    boost::geometry::strategy::transform::matrix_transformer<double, 2, 2>
-    transformVehicle(double length, double width, const Position &pos, Angle alpha) {
-        using namespace boost::geometry::strategy::transform;
-
-        // scale square to vehicle dimensions
-        scale_transformer<double, 2, 2> scaling(length, width);
-        // rotate into driving direction
-        rotate_transformer<boost::geometry::radian, double, 2, 2> rotation(alpha.radian());
-        // move to given front bumper position
-        translate_transformer<double, 2, 2> translation(pos.x.value(), pos.y.value());
-
-        return matrix_transformer<double, 2, 2>{translation.matrix() * rotation.matrix() * scaling.matrix()};
-    }
-
-    std::vector<Position> MisbehaviorDetectionService::getVehicleOutline() {
-        Angle heading = -1.0 * (mVehicleDataProvider->heading() -
-                                0.5 * boost::math::double_constants::pi * boost::units::si::radian);
-        auto transformationMatrix = transformVehicle(mVehicleController->getVehicleType().getLength().value(),
-                                                     mVehicleController->getVehicleType().getWidth().value(),
-                                                     mVehicleDataProvider->position(),
-                                                     heading);
-        std::vector<Position> squareOutline = {
-                Position(0.0, 0.5), // front left
-                Position(0.0, -0.5), // front right
-                Position(-1.0, -0.5), // back right
-                Position(-1.0, 0.5) // back left
-        };
-        std::vector<Position> vehicleOutline;
-        boost::geometry::transform(squareOutline, vehicleOutline, transformationMatrix);
-        return vehicleOutline;
-
-    }
-
-
     void MisbehaviorDetectionService::receiveSignal(cComponent *source, simsignal_t signal, cObject *c_obj, cObject *) {
         Enter_Method("receiveSignal");
         if (signal == scSignalCamReceived) {
-//            return;
             auto *ca = dynamic_cast<CaObject *>(c_obj);
             vanetza::asn1::Cam message = ca->asn1();
             uint32_t senderStationId = message->header.stationID;
 
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
-                std::vector<Position> vehicleOutline = getVehicleOutline();
-//                std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
-//                          << message->cam.generationDeltaTime << std::endl;
+                std::vector<Position> vehicleOutline = getVehicleOutline(mVehicleDataProvider,mVehicleController);
+                std::cout << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
+                          << message->cam.generationDeltaTime << std::endl;
 
                 auto &allObjects = mLocalEnvironmentModel->allObjects();
                 TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
@@ -208,44 +171,26 @@ namespace artery {
                                                                                        vehicleOutline,
                                                                                        envModObjects);
 
-//                std::cout << result->toString(0.5) << std::endl;
-                std::string reportId = {std::to_string(message->header.stationID) + "_" +
-                                        std::to_string(simTime().inUnit(SimTimeUnit::SIMTIME_MS))};
-                vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, message);
+                std::cout << result->toString(0.5) << std::endl;
+                DetectionReferenceCAM_t *semanticDetectionReferenceCam = fusionApplication->checkForReport(*result);
+                if(semanticDetectionReferenceCam->detectionLevelCAM != 0){
+                    std::string reportId = {std::to_string(message->header.stationID) + "_" +
+                                            std::to_string(simTime().inUnit(SimTimeUnit::SIMTIME_MS))};
+                    vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, message,
+                                                                                                 semanticDetectionReferenceCam);
 
-                MisbehaviorReportObject obj(std::move(misbehaviorReport));
-                emit(scSignalMisbehaviorAuthorityNewReport, &obj);
-
-//            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
-//                EV_INFO << "Received manipulated CAM!";
-//                EV_INFO << "Received DoS " << simTime().inUnit(SimTimeUnit::SIMTIME_MS) << " delta:  "
-//                        << message->cam.generationDeltaTime << "\n";
-//                vanetza::ByteBuffer byteBuffer = message.encode();
-//                std::string encoded(byteBuffer.begin(), byteBuffer.end());
-//                std::string b64Encoded = base64_encode(reinterpret_cast<const unsigned char *>(encoded.c_str()),
-//                                                       encoded.length(), false);
-//                if (curl) {
-//                    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9981/newCAM");
-//                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, b64Encoded.c_str());
-//                    CURLcode curlResponse = curl_easy_perform(curl);
-//                    if (curlResponse != CURLE_OK) {
-//                        EV_ERROR << "curl_easy_perform() failed: %s\n"
-//                                 << curl_easy_strerror(curlResponse);
-//                    }
-//                }
-//            } else if (senderMisbehaviorType == misbehaviorTypes::Benign) {
-//                EV_INFO << "Received benign CAM!";
-//            } else {
-//                EV_INFO << "Received weird misbehaviorType";
-//            }
-
+                    std::cout << "Sending Report..." << std::endl;
+                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                }
             }
         }
 
     }
 
     vanetza::asn1::MisbehaviorReport
-    MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId, const vanetza::asn1::Cam &cam) {
+    MisbehaviorDetectionService::createMisbehaviorReport(const std::string &reportId, const vanetza::asn1::Cam &cam,
+                                                         DetectionReferenceCAM_t *semanticDetectionReferenceCam) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport;
 
         misbehaviorReport->version = 1;
@@ -271,13 +216,7 @@ namespace artery {
         reportContainer.misbehaviorTypeContainer.present = MisbehaviorTypeContainer_PR_semanticDetection;
         SemanticDetection_t &semanticDetection = reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
         semanticDetection.present = SemanticDetection_PR_semanticDetectionReferenceCAM;
-        semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM = 3;
-        std::bitset<16> semanticDetectionErrorCodeCAM(0);
-        semanticDetectionErrorCodeCAM[0] = true; //set bit for wrong referencePosition
-        std::string encoded = semanticDetectionErrorCodeCAM.to_string();
-        OCTET_STRING_fromBuf(&semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM,
-                             encoded.c_str(), (int) strlen(encoded.c_str()));
-
+        semanticDetection.choice.semanticDetectionReferenceCAM = *semanticDetectionReferenceCam;
 
         if (!misbehaviorReport.validate()) {
             std::cout << "failed validation" << std::endl;
@@ -307,4 +246,4 @@ namespace artery {
         }
     }
 
-}
+} // namespace artery

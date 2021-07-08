@@ -12,6 +12,7 @@
 #include "artery/application/md/util/F2MDParameters.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include <vanetza/asn1/misbehavior_report.hpp>
+#include "artery/application/md/fusion/BaseFusion.h"
 
 namespace artery {
 
@@ -46,9 +47,9 @@ namespace artery {
 
         void initializeParameters();
 
-        std::vector<Position> getVehicleOutline();
-
-        vanetza::asn1::MisbehaviorReport createMisbehaviorReport(const std::string& reportId,const vanetza::asn1::Cam& cam);
+        vanetza::asn1::MisbehaviorReport
+        createMisbehaviorReport(const std::string &reportId, const vanetza::asn1::Cam &cam,
+                                DetectionReferenceCAM_t *semanticDetectionReferenceCam);
 
 
         std::list<std::string> activePoIs;
@@ -60,7 +61,8 @@ namespace artery {
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         const Timer *mTimer = nullptr;
 
-        static traci::Boundary mSimulationBoundary;
+        BaseFusion *fusionApplication;
+//        static traci::Boundary mSimulationBoundary;
         std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> mTraciAPI;
         static bool staticInitializationComplete;

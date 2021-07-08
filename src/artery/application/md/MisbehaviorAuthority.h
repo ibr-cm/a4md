@@ -34,7 +34,6 @@ namespace artery {
         omnetpp::simsignal_t traciCloseSignal;
         omnetpp::simsignal_t MAnewReport;
 
-        omnetpp::cMessage* mSelfMsg;
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
         std::shared_ptr<const traci::API> mTraciAPI;
     };
