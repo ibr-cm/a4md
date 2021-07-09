@@ -7,5 +7,5 @@ module MisbehaviorCar extends artery.envmod.Car
 {
     parameters:
         vanetza[*].dcc.typename = "NoRateControlDccEntity";
-        middleware.updateInterval = 0.01s;
+        middleware.updateInterval = 0.1s;
 }

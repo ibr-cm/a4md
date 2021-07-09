@@ -24,15 +24,19 @@ namespace artery {
                        GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
                        const vanetza::asn1::Cam &message);
 
-        CheckResult *addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,const std::vector<Position>& receiverVehicleOutline,
+        CheckResult *addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
+                                    const std::vector<Position> &receiverVehicleOutline,
                                     TrackedObjectsFilterRange &envModObjects);
 
-        StationID_t getStationId() { return mStationId; };
+        StationID_t getStationId() const { return mStationId; };
+
+        std::vector<CheckResult *> getResults() { return checkResults; };
 
     private:
         LegacyChecks legacyChecks;
 
-        std::list<CheckResult *> checkResults;
+        std::vector<CheckResult *> checkResults;
+
         Position mPosition;
         StationID_t mStationId;
 

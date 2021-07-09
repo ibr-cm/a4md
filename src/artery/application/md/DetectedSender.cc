@@ -46,4 +46,5 @@ namespace artery {
         checkResults.push_back(result);
         return result;
     }
+
 } //namespace artery
