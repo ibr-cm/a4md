@@ -57,8 +57,6 @@ namespace artery {
         vanetza::asn1::Cam
         createCooperativeAwarenessMessage(uint16_t genDeltaTime);
 
-        void setReferencePositionWithJitter(ReferencePosition_t &referencePosition);
-
         void addLowFrequencyContainer(vanetza::asn1::Cam &, unsigned pathHistoryLength = 0);
 
         ChannelNumber mPrimaryChannel = channel::CCH;
@@ -86,9 +84,9 @@ namespace artery {
         bool mFixedRate;
         long mStationId;
 
-        double semiMajorConfidence;
-        double semiMinorConfidence;
-        double semiMajorOrientationOffset;
+//        double semiMajorConfidence;
+//        double semiMinorConfidence;
+//        double semiMajorOrientationOffset;
 
         static bool staticInitializationComplete;
         static std::shared_ptr<const traci::API> mTraciAPI;

@@ -33,12 +33,6 @@ simple MisbehaviorCaService like artery.application.BaseCaService
         // length of path history
         volatile int pathHistoryLength = default(23);
 
-        // values used for position confidence in cm
-        volatile double semiMajorConfidence = default(chi_square(2) / 2);
-        volatile double semiMinorConfidence = default(chi_square(2) / 2);
-
-
-        
         string appName = default("MisbehaviorCaService");
 
         bool CamLocationVisualizer = default(false);

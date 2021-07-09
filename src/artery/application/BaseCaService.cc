@@ -100,28 +100,6 @@ namespace artery {
 
         // look up primary channel for CA
         mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
-
-        semiMajorConfidence = par("semiMajorConfidence");
-        semiMinorConfidence = par("semiMinorConfidence");
-//        std::cout << "raw semiMajorConfidence: " << semiMajorConfidence << std::endl;
-//        std::cout << "raw semiMinorConfidence: " << semiMinorConfidence << std::endl;
-        if (semiMajorConfidence >= 4094) {
-            semiMajorConfidence = SemiAxisLength_outOfRange;
-        }
-        if (semiMinorConfidence > 4094) {
-            semiMinorConfidence = SemiAxisLength_outOfRange;
-        }
-        if (semiMinorConfidence > semiMajorConfidence) {
-            semiMajorOrientationOffset = 90;
-            std::swap(semiMajorConfidence, semiMinorConfidence);
-        } else {
-            semiMajorOrientationOffset = 0;
-        }
-
-//        std::cout << "semiMajorConfidence: " << semiMajorConfidence << std::endl;
-//        std::cout << "semiMinorConfidence: " << semiMinorConfidence << std::endl;
-//        std::cout << "semiMajorOrientationOffset: " << semiMajorOrientationOffset << std::endl;
-
     }
 
     bool BaseCaService::checkTriggeringConditions(const SimTime &T_now) {
@@ -253,38 +231,6 @@ namespace artery {
         }
 
         return message;
-    }
-
-    void BaseCaService::setReferencePositionWithJitter(ReferencePosition_t &referencePosition) {
-        double semiMajorOrientation = std::fmod(
-                mVehicleDataProvider->heading().value() + semiMajorOrientationOffset, 360);
-        referencePosition.positionConfidenceEllipse.semiMajorOrientation = round(
-                semiMajorOrientation * vanetza::units::degree, decidegree);
-        referencePosition.positionConfidenceEllipse.semiMajorConfidence = (long) semiMajorConfidence * 100;
-        if (referencePosition.positionConfidenceEllipse.semiMajorConfidence > SemiAxisLength_outOfRange) {
-            referencePosition.positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_outOfRange;
-        }
-        referencePosition.positionConfidenceEllipse.semiMinorConfidence = (long) semiMinorConfidence * 100;
-        if (referencePosition.positionConfidenceEllipse.semiMinorConfidence > SemiAxisLength_outOfRange) {
-            referencePosition.positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_outOfRange;
-        }
-        double offsetX = sqrt(uniform(0, 1)) * cos(uniform(0, 2 * PI)) * semiMajorConfidence / 2;
-        double offsetY = sqrt(uniform(0, 1)) * sin(uniform(0, 2 * PI)) * semiMinorConfidence / 2;
-        double currentHeadingAngle = artery::Angle::from_radian(
-                mVehicleDataProvider->heading().value()).degree() + semiMajorOrientationOffset;
-        double newAngle = currentHeadingAngle + calculateHeadingAngle(Position(offsetX, offsetY));
-        newAngle = 360 - std::fmod(newAngle, 360);
-
-        double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
-        double relativeX = offsetDistance * sin(newAngle * PI / 180);
-        double relativeY = offsetDistance * cos(newAngle * PI / 180);
-        Position originalPosition = mVehicleDataProvider->position();
-        Position newPosition = Position(originalPosition.x.value() + relativeX,
-                                        originalPosition.y.value() + relativeY);
-        traci::TraCIGeoPosition traciGeoPos = mTraciAPI->convertGeo(
-                position_cast(mSimulationBoundary, newPosition));
-        referencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
-        referencePosition.latitude = (long) (traciGeoPos.latitude * 10000000);
     }
 
     void BaseCaService::addLowFrequencyContainer(vanetza::asn1::Cam &message, unsigned pathHistoryLength) {
