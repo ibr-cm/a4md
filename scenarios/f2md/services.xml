@@ -3,21 +3,20 @@
     <service type="artery.application.CaService">
         <listener port="2001"/>
         <filters operator="and">
-            <type pattern="artery.inet.Person" match="inverse"/>
-            <penetration rate="0.56"/>
+            <type pattern="artery.envmod.Car"/>
         </filters>
     </service>
     <service type="artery.application.md.MisbehaviorCaService">
         <listener port="2001"/>
-        <filters operator="and">
-            <type pattern="artery.inet.Person" match="inverse"/>
-            <service name="CaService" match="inverse"/>
+        <filters>
+            <type pattern="artery.application.md.MisbehaviorCar"/>
         </filters>
     </service>
     <service type="artery.application.md.MisbehaviorDetectionService">
         <listener port="4712"/>
-        <filters>
-            <type pattern="artery.inet.Person" match="inverse"/>
+        <filters operator="or">
+            <type pattern="artery.envmod.Car"/>
+            <type pattern="artery.application.md.MisbehaviorCar"/>
         </filters>
     </service>
 </services>
