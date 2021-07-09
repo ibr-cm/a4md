@@ -231,7 +231,7 @@ namespace artery {
 
         Position newPosition;
         if (mReferencePosition.positionConfidenceEllipse.semiMajorConfidence != SemiAxisLength_unavailable ||
-            mReferencePosition.positionConfidenceEllipse.semiMinorConfidence != SemiAxisLength_unavailable){
+            mReferencePosition.positionConfidenceEllipse.semiMinorConfidence != SemiAxisLength_unavailable) {
             mReferencePosition.positionConfidenceEllipse.semiMajorOrientation =
                     (mHeading.headingValue + semiMajorOrientationOffset) % 3600;
             double offsetX = sqrt(uniform(rng, 0, 1)) * cos(uniform(rng, 0, 2 * PI)) *
@@ -247,7 +247,7 @@ namespace artery {
             double relativeY = offsetDistance * cos(newAngle * PI / 180);
             Position originalPosition = mVehicleKinematics.position;
             newPosition = Position(originalPosition.x.value() + relativeX,
-                                            originalPosition.y.value() + relativeY);
+                                   originalPosition.y.value() + relativeY);
             traci::TraCIGeoPosition traciGeoPos = traciAPI->convertGeo(
                     position_cast(simulationBoundary, newPosition));
             mReferencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
@@ -288,12 +288,14 @@ namespace artery {
         if (semiMajorConfidence == SemiAxisLength_unavailable) {
             mReferencePosition.positionConfidenceEllipse.semiMajorConfidence = SemiAxisLength_unavailable;
         } else {
-            mReferencePosition.positionConfidenceEllipse.semiMajorConfidence = std::max((long) 0, std::min((long) 4093,
+            mReferencePosition.positionConfidenceEllipse.semiMajorConfidence = std::max((long) 1, std::min((long) 4093,
                                                                                                            (long) semiMajorConfidence));
             if (mReferencePosition.positionConfidenceEllipse.semiMinorConfidence != SemiAxisLength_unavailable &&
                 mReferencePosition.positionConfidenceEllipse.semiMinorConfidence >
                 mReferencePosition.positionConfidenceEllipse.semiMajorConfidence) {
                 semiMajorOrientationOffset = 900;
+                std::swap(mReferencePosition.positionConfidenceEllipse.semiMajorConfidence,
+                          mReferencePosition.positionConfidenceEllipse.semiMinorConfidence);
             } else {
                 semiMajorOrientationOffset = 0;
             }
@@ -304,12 +306,15 @@ namespace artery {
         if (semiMinorConfidence == SemiAxisLength_unavailable) {
             mReferencePosition.positionConfidenceEllipse.semiMinorConfidence = SemiAxisLength_unavailable;
         } else {
-            mReferencePosition.positionConfidenceEllipse.semiMinorConfidence = std::max((long) 0, std::min((long) 4093,
+            mReferencePosition.positionConfidenceEllipse.semiMinorConfidence = std::max((long) 1, std::min((long) 4093,
                                                                                                            (long) semiMinorConfidence));
             if (mReferencePosition.positionConfidenceEllipse.semiMajorConfidence != SemiAxisLength_unavailable &&
                 mReferencePosition.positionConfidenceEllipse.semiMinorConfidence >
                 mReferencePosition.positionConfidenceEllipse.semiMajorConfidence) {
                 semiMajorOrientationOffset = 900;
+                std::swap(mReferencePosition.positionConfidenceEllipse.semiMajorConfidence,
+                          mReferencePosition.positionConfidenceEllipse.semiMinorConfidence);
+
             } else {
                 semiMajorOrientationOffset = 0;
             }
@@ -329,12 +334,16 @@ namespace artery {
         if (speedConfidence == SpeedConfidence_unavailable) {
             mSpeed.speedConfidence = SpeedConfidence_unavailable;
         } else {
-            mSpeed.speedConfidence = std::max((long) 0, std::min((long) 125, (long) speedConfidence));
+            mSpeed.speedConfidence = std::max((long) 1, std::min((long) 125, (long) speedConfidence));
         }
     }
 
     void VehicleDataProvider::setHeadingConfidence(HeadingConfidence_t headingConfidence) {
-        mHeading.headingConfidence = headingConfidence;
+        if(headingConfidence == HeadingConfidence_unavailable){
+            mHeading.headingConfidence = HeadingConfidence_unavailable;
+        } else {
+            mHeading.headingConfidence = std::max((long) 1, std::min((long) 125, (long) headingConfidence));
+        }
     }
 
     void VehicleDataProvider::setLongitudinalAccelerationConfidence(
@@ -342,7 +351,7 @@ namespace artery {
         if (longitudinalAccelerationConfidence == AccelerationConfidence_unavailable) {
             mLongitudinalAcceleration.longitudinalAccelerationConfidence = AccelerationConfidence_unavailable;
         } else {
-            mLongitudinalAcceleration.longitudinalAccelerationConfidence = std::max((long) 0, std::min((long) 0,
+            mLongitudinalAcceleration.longitudinalAccelerationConfidence = std::max((long) 1, std::min((long) 0,
                                                                                                        (long) longitudinalAccelerationConfidence));
         }
     }

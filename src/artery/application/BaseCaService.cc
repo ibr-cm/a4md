@@ -230,6 +230,14 @@ namespace artery {
             throw cRuntimeError("Invalid High Frequency CAM: %s", error.c_str());
         }
 
+//        const vanetza::units::Duration delta{
+//                (simTime()).inUnit(SIMTIME_MS) * boost::units::si::milli * boost::units::si::seconds
+//        };
+//
+//        if (delta >= 1721.974 * boost::units::si::seconds) {
+//            std::cout << "hi" << std::endl;
+//        }
+
         return message;
     }
 
@@ -248,7 +256,6 @@ namespace artery {
         assert(nullptr != bvc.exteriorLights.buf);
         bvc.exteriorLights.size = 1;
         bvc.exteriorLights.buf[0] |= 1 << (7 - ExteriorLights_daytimeRunningLightsOn);
-
         for (unsigned i = 0; i < pathHistoryLength; ++i) {
             auto *pathPoint = vanetza::asn1::allocate<PathPoint>();
             pathPoint->pathDeltaTime = vanetza::asn1::allocate<PathDeltaTime_t>();
