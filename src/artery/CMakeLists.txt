@@ -78,6 +78,7 @@ add_library(core SHARED
     application/md/util/base64.cc
     application/md/util/HelperFunctions.cc
     application/md/checks/LegacyChecks.cc
+    application/md/checks/CatchChecks.cc
     application/md/fusion/BaseFusion.cc
     application/md/fusion/ThresholdFusion.cc
     application/md/kalman/Kalman_SC.cc

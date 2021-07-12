@@ -234,13 +234,15 @@ namespace artery {
             mReferencePosition.positionConfidenceEllipse.semiMinorConfidence != SemiAxisLength_unavailable) {
             mReferencePosition.positionConfidenceEllipse.semiMajorOrientation =
                     (mHeading.headingValue + semiMajorOrientationOffset) % 3600;
-            double offsetX = sqrt(uniform(rng, 0, 1)) * cos(uniform(rng, 0, 2 * PI)) *
+
+            double phi = uniform(rng, 0, 2 * PI);
+            double offsetX = sqrt(uniform(rng, 0, 1)) * cos(phi) *
                              (double) mReferencePosition.positionConfidenceEllipse.semiMajorConfidence / 200;
-            double offsetY = sqrt(uniform(rng, 0, 1)) * sin(uniform(rng, 0, 2 * PI)) *
+            double offsetY = sqrt(uniform(rng, 0, 1)) * sin(phi) *
                              (double) mReferencePosition.positionConfidenceEllipse.semiMinorConfidence / 200;
             double newAngle = (double) mReferencePosition.positionConfidenceEllipse.semiMajorOrientation / 10 +
                               calculateHeadingAngle(Position(offsetX, offsetY));
-            newAngle = 360 - std::fmod(newAngle, 360);
+            newAngle = std::fmod(360 + newAngle, 360);
 
             double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
             double relativeX = offsetDistance * sin(newAngle * PI / 180);
@@ -339,7 +341,7 @@ namespace artery {
     }
 
     void VehicleDataProvider::setHeadingConfidence(HeadingConfidence_t headingConfidence) {
-        if(headingConfidence == HeadingConfidence_unavailable){
+        if (headingConfidence == HeadingConfidence_unavailable) {
             mHeading.headingConfidence = HeadingConfidence_unavailable;
         } else {
             mHeading.headingConfidence = std::max((long) 1, std::min((long) 125, (long) headingConfidence));

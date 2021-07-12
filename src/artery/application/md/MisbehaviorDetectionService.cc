@@ -166,9 +166,7 @@ namespace artery {
 
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
-                std::vector<Position> vehicleOutline = getVehicleOutline(mVehicleDataProvider, mVehicleController);
-                std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
-                          << message->cam.generationDeltaTime << std::endl;
+                std::vector<Position> mVehicleOutline = getVehicleOutline(mVehicleDataProvider, mVehicleController);
 
                 auto &allObjects = mLocalEnvironmentModel->allObjects();
                 TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
@@ -179,83 +177,139 @@ namespace artery {
                 }
                 CheckResult *result = detectedSenders[senderStationId]->addAndCheckCam(message,
                                                                                        mVehicleDataProvider,
-                                                                                       vehicleOutline,
+                                                                                       mVehicleOutline,
                                                                                        envModObjects);
 
-                std::cout << result->toString(0.5) << std::endl;
-                DetectionReferenceCAM_t *semanticDetectionReferenceCam = fusionApplication->checkForReport(*result);
-                if (semanticDetectionReferenceCam->detectionLevelCAM != 0) {
-                    std::string reportId = {std::to_string(message->header.stationID) + "_" +
-                                            std::to_string(simTime().inUnit(SimTimeUnit::SIMTIME_MS))};
-                    vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, message,
-                                                                                                 semanticDetectionReferenceCam);
+                if (result->intersection == 0) {
+                    std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
+                              << message->cam.generationDeltaTime << std::endl;
+                    std::cout << result->toString(0.5) << std::endl;
+                    DetectionReferenceCAM_t *semanticDetectionReferenceCam = fusionApplication->checkForReport(*result);
+                    if (semanticDetectionReferenceCam->detectionLevelCAM != 0) {
+                        std::string reportId = {std::to_string(message->header.stationID) + "_" +
+                                                std::to_string(simTime().inUnit(SimTimeUnit::SIMTIME_MS))};
+                        vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, message,
+                                                                                                     semanticDetectionReferenceCam);
 
-                    switch (semanticDetectionReferenceCam->detectionLevelCAM) {
-                        case 1: {
-                            auto *senderInfoContainer = new SenderInfoContainer_t();
-                            senderInfoContainer->stationType = static_cast<StationType_t>(mVehicleDataProvider->getStationType());
-                            senderInfoContainer->referencePosition = mVehicleDataProvider->approximateReferencePosition();
-                            senderInfoContainer->heading = mVehicleDataProvider->approximateHeading();
-                            senderInfoContainer->speed = mVehicleDataProvider->approximateSpeed();
-                            senderInfoContainer->driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
-                                                                  DriveDirection_forward : DriveDirection_backward;
-                            senderInfoContainer->vehicleLength.vehicleLengthValue = (long) (
-                                    mVehicleController->getLength().value() * 10);
-                            senderInfoContainer->vehicleLength.vehicleLengthConfidenceIndication = VehicleLengthConfidenceIndication_noTrailerPresent;
-                            senderInfoContainer->vehicleWidth = (long) (mVehicleController->getWidth().value() * 10);
-                            senderInfoContainer->longitudinalAcceleration = mVehicleDataProvider->approximateAcceleration();
-
-                            senderInfoContainer->curvature.curvatureConfidence = CurvatureConfidence_unavailable;
-                            senderInfoContainer->curvature.curvatureValue = (long) (
-                                    abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) *
-                                    10000.0);
-                            if (senderInfoContainer->curvature.curvatureValue >= 1023) {
-                                senderInfoContainer->curvature.curvatureValue = 1023;
+                        switch (semanticDetectionReferenceCam->detectionLevelCAM) {
+                            case 1: {
+                                break;
                             }
-
-                            senderInfoContainer->yawRate.yawRateValue = (long)
-                                    ((double) round(mVehicleDataProvider->yaw_rate(), degree_per_second) *
-                                     YawRateValue_degSec_000_01ToLeft * 100.0);
-                            if (senderInfoContainer->yawRate.yawRateValue < -32766 ||
-                                senderInfoContainer->yawRate.yawRateValue > 32766) {
-                                senderInfoContainer->yawRate.yawRateValue = YawRateValue_unavailable;
+                            case 2: {
+                                std::vector<CheckResult *> results = detectedSenders[senderStationId]->getResults();
+                                if (results.size() > 1) {
+                                    misbehaviorReport->reportContainer.evidenceContainer = new EvidenceContainer_t();
+                                    auto *reportedMessageContainer = new MessageEvidenceContainer_t();
+                                    misbehaviorReport->reportContainer.evidenceContainer->reportedMessageContainer = reportedMessageContainer;
+                                    std::cout << results.size() - 1 << std::endl;
+                                    for (auto it = results.rbegin(); it != results.rend(); it++) {
+                                        if (it == results.rbegin()) {
+                                            continue;
+                                        }
+                                        auto *singleMessageContainer = new EtsiTs103097Data_t();
+                                        singleMessageContainer->content = new Ieee1609Dot2Content_t();
+                                        singleMessageContainer->content->present = Ieee1609Dot2Content_PR_unsecuredData;
+                                        OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
+                                                             (const char *) &(*it)->cam,
+                                                             (int) (*it)->cam.size());
+                                        ASN_SEQUENCE_ADD(reportedMessageContainer, singleMessageContainer);
+                                    }
+                                }
+                                break;
                             }
-                            senderInfoContainer->yawRate.yawRateConfidence = YawRateConfidence_unavailable;
-                            auto *evidenceContainer = new EvidenceContainer_t();
-                            evidenceContainer->senderInfoContainer = senderInfoContainer;
-                            misbehaviorReport->reportContainer.evidenceContainer = evidenceContainer;
-                            break;
-                        }
-                        case 2: {
-                            std::vector<CheckResult *> results = detectedSenders[senderStationId]->getResults();
-                            if (results.size() > 1) {
-                                misbehaviorReport->reportContainer.evidenceContainer = new EvidenceContainer_t();
-                                auto *messageEvidenceContainer = new MessageEvidenceContainer_t();
-                                misbehaviorReport->reportContainer.evidenceContainer->reportedMessageContainer = messageEvidenceContainer;
-                                std::cout << results.size() - 1 << std::endl;
-                                for (auto it = results.rbegin(); it != results.rend(); it++) {
-                                    if (it == results.rbegin()) {
+                            case 3: {
+                                std::vector<Position> senderOutline;
+                                std::vector<StationID_t> stationIdsWithOverlap;
+                                for (const auto &object : envModObjects) {
+                                    std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
+                                    if (obj_ptr.expired()) {
                                         continue;
                                     }
+                                    std::shared_ptr<EnvironmentModelObject> envModObject = obj_ptr.lock();
+                                    if (envModObject->getVehicleData().getStationId() == senderStationId) {
+                                        senderOutline = envModObject->getOutline();
+                                        break;
+                                    }
+                                }
+                                if (senderOutline.empty()) {
+                                    throw cRuntimeError("senderOutline empty");
+                                } else {
+                                    if (boost::geometry::intersects(senderOutline, mVehicleOutline)) {
+                                        return;
+                                    } else {
+                                        for (const auto &object : envModObjects) {
+                                            std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
+                                            if (obj_ptr.expired()) {
+                                                continue;
+                                            } else {
+                                                std::shared_ptr<EnvironmentModelObject> envModObject = obj_ptr.lock();
+                                                if (envModObject->getVehicleData().getStationId() != senderStationId &&
+                                                    boost::geometry::intersects(senderOutline,
+                                                                                envModObject->getOutline())) {
+                                                    stationIdsWithOverlap.emplace_back(
+                                                            envModObject->getVehicleData().getStationId());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                misbehaviorReport->reportContainer.evidenceContainer = new EvidenceContainer_t();
+                                auto *neighbourMessageContainer = new MessageEvidenceContainer_t();
+                                misbehaviorReport->reportContainer.evidenceContainer->neighbourMessageContainer = neighbourMessageContainer;
+                                for (auto stationId : stationIdsWithOverlap) {
                                     auto *singleMessageContainer = new EtsiTs103097Data_t();
                                     singleMessageContainer->content = new Ieee1609Dot2Content_t();
                                     singleMessageContainer->content->present = Ieee1609Dot2Content_PR_unsecuredData;
+                                    std::vector<CheckResult *> results = detectedSenders[stationId]->getResults();
+                                    vanetza::asn1::Cam &cam = (*results.rbegin())->cam;
                                     OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
-                                                         (const char *) &(*it)->cam,
-                                                         (int) (*it)->cam.size());
-                                    ASN_SEQUENCE_ADD(messageEvidenceContainer, singleMessageContainer);
+                                                         (const char *) &cam,
+                                                         (int) cam.size());
+                                    ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
                                 }
+                                break;
                             }
-                            break;
+                            case 4: {
+                                auto *senderInfoContainer = new SenderInfoContainer_t();
+                                senderInfoContainer->stationType = static_cast<StationType_t>(mVehicleDataProvider->getStationType());
+                                senderInfoContainer->referencePosition = mVehicleDataProvider->approximateReferencePosition();
+                                senderInfoContainer->heading = mVehicleDataProvider->approximateHeading();
+                                senderInfoContainer->speed = mVehicleDataProvider->approximateSpeed();
+                                senderInfoContainer->driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
+                                                                      DriveDirection_forward : DriveDirection_backward;
+                                senderInfoContainer->vehicleLength.vehicleLengthValue = (long) (
+                                        mVehicleController->getLength().value() * 10);
+                                senderInfoContainer->vehicleLength.vehicleLengthConfidenceIndication = VehicleLengthConfidenceIndication_noTrailerPresent;
+                                senderInfoContainer->vehicleWidth = (long) (mVehicleController->getWidth().value() *
+                                                                            10);
+                                senderInfoContainer->longitudinalAcceleration = mVehicleDataProvider->approximateAcceleration();
+
+                                senderInfoContainer->curvature.curvatureConfidence = CurvatureConfidence_unavailable;
+                                senderInfoContainer->curvature.curvatureValue = (long) (
+                                        abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) *
+                                        10000.0);
+                                if (senderInfoContainer->curvature.curvatureValue >= 1023) {
+                                    senderInfoContainer->curvature.curvatureValue = 1023;
+                                }
+
+                                senderInfoContainer->yawRate.yawRateValue = (long)
+                                        ((double) round(mVehicleDataProvider->yaw_rate(), degree_per_second) *
+                                         YawRateValue_degSec_000_01ToLeft * 100.0);
+                                if (senderInfoContainer->yawRate.yawRateValue < -32766 ||
+                                    senderInfoContainer->yawRate.yawRateValue > 32766) {
+                                    senderInfoContainer->yawRate.yawRateValue = YawRateValue_unavailable;
+                                }
+                                senderInfoContainer->yawRate.yawRateConfidence = YawRateConfidence_unavailable;
+                                auto *evidenceContainer = new EvidenceContainer_t();
+                                evidenceContainer->senderInfoContainer = senderInfoContainer;
+                                misbehaviorReport->reportContainer.evidenceContainer = evidenceContainer;
+                                break;
+                            }
                         }
-                        case 3:
-                            break;
-                        case 4:
-                            break;
+                        std::cout << "Sending Report..." << std::endl;
+                        MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                        emit(scSignalMisbehaviorAuthorityNewReport, &obj);
                     }
-                    std::cout << "Sending Report..." << std::endl;
-                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
-                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
                 }
             }
         }

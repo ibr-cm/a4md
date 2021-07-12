@@ -64,6 +64,9 @@ namespace artery {
         } else if (checkResult.positionPlausibility < threshold) {
             semanticDetectionErrorCodeCAM[0] = true;
             detectionLevelCam = 3;
+        }else if (checkResult.intersection < threshold){
+            semanticDetectionErrorCodeCAM[0] = true;
+            detectionLevelCam = 3;
         } else if (checkResult.proximityPlausibility < threshold) {
             semanticDetectionErrorCodeCAM[0] = true;
             detectionLevelCam = 4;
