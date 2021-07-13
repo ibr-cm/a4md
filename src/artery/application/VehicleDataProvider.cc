@@ -236,13 +236,14 @@ namespace artery {
                     (mHeading.headingValue + semiMajorOrientationOffset) % 3600;
 
             double phi = uniform(rng, 0, 2 * PI);
-            double offsetX = sqrt(uniform(rng, 0, 1)) * cos(phi) *
-                             (double) mReferencePosition.positionConfidenceEllipse.semiMajorConfidence / 200;
-            double offsetY = sqrt(uniform(rng, 0, 1)) * sin(phi) *
-                             (double) mReferencePosition.positionConfidenceEllipse.semiMinorConfidence / 200;
+            double rho = sqrt(uniform(rng, 0, 1));
+            double offsetX =
+                    rho * cos(phi) * (double) mReferencePosition.positionConfidenceEllipse.semiMajorConfidence / 200;
+            double offsetY =
+                    rho * sin(phi) * (double) mReferencePosition.positionConfidenceEllipse.semiMinorConfidence / 200;
             double newAngle = (double) mReferencePosition.positionConfidenceEllipse.semiMajorOrientation / 10 +
                               calculateHeadingAngle(Position(offsetX, offsetY));
-            newAngle = std::fmod(360 + newAngle, 360);
+            newAngle = 360 - std::fmod(newAngle, 360);
 
             double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
             double relativeX = offsetDistance * sin(newAngle * PI / 180);
