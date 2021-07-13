@@ -6,16 +6,16 @@
 #include <artery/traci/Cast.h>
 #include <omnetpp.h>
 
-namespace artery{
+namespace artery {
 
     double calculateHeadingAngle(const Position &position) {
         double angle = atan2(-position.y.value(), position.x.value()) * 180 / PI;
         return angle;
     }
 
-    std::string ia5stringToString (IA5String_t ia5String){
-        char *tmp = new char[ia5String.size+1]();
-        snprintf(tmp,ia5String.size+1,"%s",(char*) ia5String.buf);
+    std::string ia5stringToString(IA5String_t ia5String) {
+        char *tmp = new char[ia5String.size + 1]();
+        snprintf(tmp, ia5String.size + 1, "%s", (char *) ia5String.buf);
         return std::string(tmp);
     }
 
@@ -33,7 +33,8 @@ namespace artery{
         return matrix_transformer<double, 2, 2>{translation.matrix() * rotation.matrix() * scaling.matrix()};
     }
 
-    std::vector<Position> getVehicleOutline(const VehicleDataProvider *vehicleDataProvider, const traci::VehicleController *vehicleController) {
+    std::vector<Position> getVehicleOutline(const VehicleDataProvider *vehicleDataProvider,
+                                            const traci::VehicleController *vehicleController) {
         Angle heading = -1.0 * (vehicleDataProvider->heading() -
                                 0.5 * boost::math::double_constants::pi * boost::units::si::radian);
         auto transformationMatrix = transformVehicle(vehicleController->getVehicleType().getLength().value(),
@@ -51,7 +52,23 @@ namespace artery{
         return vehicleOutline;
     }
 
-    double getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position){
+    std::vector<Position>
+    getVehicleOutline(const Position &position, const Angle &heading, const double &length, const double &width) {
+        Angle alpha = -1.0 * (vanetza::units::Angle::from_value(heading.radian()) -
+                              0.5 * boost::math::double_constants::pi * boost::units::si::radian);
+        auto transformationMatrix = transformVehicle(length, width, position, alpha);
+        std::vector<Position> squareOutline = {
+                Position(0.0, 0.5), // front left
+                Position(0.0, -0.5), // front right
+                Position(-1.0, -0.5), // back right
+                Position(-1.0, 0.5) // back left
+        };
+        std::vector<Position> vehicleOutline;
+        boost::geometry::transform(squareOutline, vehicleOutline, transformationMatrix);
+        return vehicleOutline;
+    }
+
+    double getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position) {
         double minRoadDistance = 9999;
         std::vector<GeometryRtreeValue> laneResults;
         globalEnvMod->getLaneRTree()->query(
@@ -59,16 +76,17 @@ namespace artery{
                 std::back_inserter(laneResults));
         for (const auto &lResult : laneResults) {
             const auto &lane = globalEnvMod->getLane(lResult.second);
-            minRoadDistance = std::min(minRoadDistance,boost::geometry::distance(position, lane->getShape()) - lane->getWidth() / 2);
+            minRoadDistance = std::min(minRoadDistance,
+                                       boost::geometry::distance(position, lane->getShape()) - lane->getWidth() / 2);
         }
         std::vector<GeometryRtreeValue> junctionResults;
         globalEnvMod->getJunctionRTree()->query(
                 boost::geometry::index::nearest(position, 3),
                 std::back_inserter(junctionResults));
         for (const auto &jResult : junctionResults) {
-            minRoadDistance = std::min(minRoadDistance,boost::geometry::distance(position,
-                                                                                 globalEnvMod->getJunction(
-                                                                                         jResult.second)->getOutline()));
+            minRoadDistance = std::min(minRoadDistance, boost::geometry::distance(position,
+                                                                                  globalEnvMod->getJunction(
+                                                                                          jResult.second)->getOutline()));
         }
         return minRoadDistance;
     }
@@ -83,7 +101,8 @@ namespace artery{
         return Position(x, y);
     }
 
-    Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary& simulationBoundary, const std::shared_ptr<const traci::API>& traciAPI) {
+    Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary &simulationBoundary,
+                                const std::shared_ptr<const traci::API> &traciAPI) {
         traci::TraCIGeoPosition traciGeoPositionSender = {
                 (double) referencePosition.longitude / 10000000.0,
                 (double) referencePosition.latitude / 10000000.0};

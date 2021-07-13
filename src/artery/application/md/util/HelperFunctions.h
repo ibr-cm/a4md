@@ -26,11 +26,15 @@ namespace artery {
     std::vector<Position> getVehicleOutline(const VehicleDataProvider *vehicleDataProvider,
                                             const traci::VehicleController *vehicleController);
 
+    std::vector<Position>
+    getVehicleOutline(const Position &position, const Angle &heading, const double &length, const double &width);
+
     double getDistanceToNearestRoad(GlobalEnvironmentModel *globalEnvMod, const Position &position);
 
     Position getVector(const double &value, const double &angle);
 
-    Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary& simulationBoundary, const std::shared_ptr<const traci::API>& traciAPI);
+    Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary &simulationBoundary,
+                                const std::shared_ptr<const traci::API> &traciAPI);
 
 }
 

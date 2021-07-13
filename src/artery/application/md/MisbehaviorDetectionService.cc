@@ -49,6 +49,9 @@ namespace artery {
 
     MisbehaviorDetectionService::~MisbehaviorDetectionService() {
         curl_easy_cleanup(curl);
+        for(auto it : detectedSenders){
+            it.second->clear();
+        }
 
 //        while (!activePoIs.empty()) {
 //            traciPoiScope->remove(activePoIs.front());
@@ -164,12 +167,27 @@ namespace artery {
             vanetza::asn1::Cam message = ca->asn1();
             uint32_t senderStationId = message->header.stationID;
 
+//            std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
+//                      << message->cam.generationDeltaTime << std::endl;
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(senderStationId);
             if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
                 std::vector<Position> mVehicleOutline = getVehicleOutline(mVehicleDataProvider, mVehicleController);
 
                 auto &allObjects = mLocalEnvironmentModel->allObjects();
                 TrackedObjectsFilterRange envModObjects = filterBySensorCategory(allObjects, "CA");
+                std::vector<vanetza::asn1::Cam *> relevantCams;
+                for (auto it : detectedSenders) {
+                    auto detectedSender = it.second;
+                    if (detectedSender->getStationId() != senderStationId) {
+                        vanetza::asn1::Cam &latestCam = detectedSender->getResults().back()->cam;
+                        uint16_t oldTime = latestCam->cam.generationDeltaTime;
+                        uint16_t currentTime = countTaiMilliseconds(mTimer->getCurrentTime());
+                        if (currentTime - oldTime <
+                            (long) (F2MDParameters::detectionParameters.maxCamFrequency * 1000)) {
+                            relevantCams.emplace_back(&latestCam);
+                        }
+                    }
+                }
                 if (detectedSenders.find(senderStationId) == detectedSenders.end()) {
                     detectedSenders[senderStationId] = new DetectedSender(mTraciAPI, mGlobalEnvironmentModel,
                                                                           &F2MDParameters::detectionParameters,
@@ -178,9 +196,9 @@ namespace artery {
                 CheckResult *result = detectedSenders[senderStationId]->addAndCheckCam(message,
                                                                                        mVehicleDataProvider,
                                                                                        mVehicleOutline,
-                                                                                       envModObjects);
+                                                                                       envModObjects, relevantCams);
 
-                if (result->intersection == 0) {
+                if (result->intersection == 15) {
                     std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
                               << message->cam.generationDeltaTime << std::endl;
                     std::cout << result->toString(0.5) << std::endl;

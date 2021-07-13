@@ -34,13 +34,15 @@ namespace artery {
     CheckResult *
     DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
                                    const std::vector<Position> &receiverVehicleOutline,
-                                   TrackedObjectsFilterRange &envModObjects) {
+                                   TrackedObjectsFilterRange &envModObjects,
+                                   const std::vector<vanetza::asn1::Cam *> &relevantCams) {
         CheckResult *result;
         if (!checkResults.empty()) {
             result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline, envModObjects, message,
-                                           &checkResults.back()->cam);
+                                           &checkResults.back()->cam, relevantCams);
         } else {
-            result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline, envModObjects, message, nullptr);
+            result = legacyChecks.checkCAM(receiverVDP, receiverVehicleOutline, envModObjects, message, nullptr,
+                                           relevantCams);
         }
         result->cam = message;
         checkResults.push_back(result);

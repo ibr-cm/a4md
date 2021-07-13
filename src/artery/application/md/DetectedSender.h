@@ -26,7 +26,8 @@ namespace artery {
 
         CheckResult *addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
                                     const std::vector<Position> &receiverVehicleOutline,
-                                    TrackedObjectsFilterRange &envModObjects);
+                                    TrackedObjectsFilterRange &envModObjects,
+                                    const std::vector<vanetza::asn1::Cam *> &relevantCams);
 
         StationID_t getStationId() const { return mStationId; };
 

@@ -1,5 +1,4 @@
 #include "LegacyChecks.h"
-
 #include <utility>
 #include <artery/traci/Cast.h>
 #include "artery/envmod/sensor/Sensor.h"
@@ -10,6 +9,7 @@ namespace artery {
     GlobalEnvironmentModel *LegacyChecks::mGlobalEnvironmentModel;
     std::shared_ptr<const traci::API> LegacyChecks::mTraciAPI;
     traci::Boundary LegacyChecks::mSimulationBoundary;
+    int LegacyChecks::counter;
 
     using namespace omnetpp;
 
@@ -132,44 +132,30 @@ namespace artery {
 
     double
     LegacyChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
-                                    const StationID_t &senderStationId,
-                                    TrackedObjectsFilterRange &envModObjects) {
-        std::vector<Position> senderOutline;
-        for (const auto &object : envModObjects) {
-            std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
-            if (obj_ptr.expired()) {
-                continue;
-            }
-            std::shared_ptr<EnvironmentModelObject> envModObject = obj_ptr.lock();
-            if (envModObject->getVehicleData().getStationId() == senderStationId) {
-                senderOutline = envModObject->getOutline();
-                break;
-            }
+                                    const vector<vanetza::asn1::Cam *> &relevantCams, const Position &senderPosition,
+                                    const double &senderLength, const double &senderWidth,
+                                    const double &senderHeading) {
+        std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
+                                                                senderLength, senderWidth);
+        if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
+            return 0;
         }
-        if (senderOutline.empty()) {
-            return 1;
-        } else {
-            if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
+        for (auto cam : relevantCams) {
+            CamParameters_t &camParameters = (*cam)->cam.camParameters;
+            BasicVehicleContainerHighFrequency_t &hfc = camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+            Position position = convertCamPosition(camParameters.basicContainer.referencePosition,
+                                                   mSimulationBoundary, mTraciAPI);
+            double heading = (double) hfc.heading.headingValue / 10;
+            double length = (double) hfc.vehicleLength.vehicleLengthValue / 10;
+            double width = (double) hfc.vehicleWidth / 10;
+            std::vector<Position> outline = getVehicleOutline(position, Angle::from_degree(heading), length, width);
+            if (boost::geometry::intersects(senderOutline, outline)) {
                 return 0;
-            } else {
-                for (const auto &object : envModObjects) {
-                    std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
-                    if (obj_ptr.expired()) {
-                        continue;
-                    } else {
-                        std::shared_ptr<EnvironmentModelObject> envModObject = obj_ptr.lock();
-                        if (envModObject->getVehicleData().getStationId() != senderStationId &&
-                            boost::geometry::intersects(senderOutline, envModObject->getOutline())) {
-                            return 0;
-                        }
-                    }
-                }
-                return 1;
             }
         }
+        return 1;
 
     }
-
 
     double LegacyChecks::SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const {
         if (distance(senderPosition, receiverPosition).value() > detectionParameters->maxSuddenAppearanceRange) {
@@ -382,20 +368,22 @@ namespace artery {
 
     CheckResult *
     LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                           TrackedObjectsFilterRange &envModObjects,
-                           const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr) {
+                           TrackedObjectsFilterRange &envModObjects, const vanetza::asn1::Cam &currentCam,
+                           const vanetza::asn1::Cam *lastCamPtr,
+                           const std::vector<vanetza::asn1::Cam *> &relevantCams) {
 
-        BasicVehicleContainerHighFrequency_t highFrequencyContainer = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+        BasicVehicleContainerHighFrequency_t hfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
         Position currentCamPosition = convertCamPosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         const Position &receiverPosition = receiverVDP->position();
-        double currentCamSpeed = (double) highFrequencyContainer.speed.speedValue / 100.0;
-        double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
+        double currentCamSpeed = (double) hfc.speed.speedValue / 100.0;
+        double currentCamSpeedConfidence = (double) hfc.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
-                (double) highFrequencyContainer.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
-        double currentCamHeading = angle_cast(
-                traci::TraCIAngle((double) highFrequencyContainer.heading.headingValue / 10.0)).value.value();
+                (double) hfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
+        double currentCamHeading = (double) hfc.heading.headingValue / 10;
+        double currentCamVehicleLength = (double) hfc.vehicleLength.vehicleLengthValue / 10;
+        double currentCamVehicleWidth = (double) hfc.vehicleWidth / 10;
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
         auto *result = new CheckResult;
@@ -426,7 +414,7 @@ namespace artery {
                                                                                    currentCamSpeed, lastCamSpeed,
                                                                                    camDeltaTime);
             result->positionHeadingConsistency = PositionHeadingConsistencyCheck(
-                    highFrequencyContainer.heading.headingValue,
+                    hfc.heading.headingValue,
                     currentCamPosition, lastCamPosition, camDeltaTime, currentCamSpeed);
 
             double returnValue[2];
@@ -460,8 +448,9 @@ namespace artery {
                                                                                    currentCamAccelerationVector,
                                                                                    camDeltaTime);
             result->frequency = FrequencyCheck(currentCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
-            result->intersection = IntersectionCheck(receiverVehicleOutline, currentCam->header.stationID,
-                                                     envModObjects);
+            result->intersection = IntersectionCheck(receiverVehicleOutline, relevantCams, currentCamPosition,
+                                                     currentCamVehicleLength, currentCamVehicleWidth,
+                                                     currentCamHeading);
         } else {
             result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
         }
