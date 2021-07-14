@@ -103,13 +103,14 @@ namespace artery {
         double kalmanSpeedRange;
     };
 
+    struct ReportParameters {
+        int evidenceContainerMaxCamCount;
+    };
+
     struct MiscParameters {
         // CAM Location Visualizer (PoI)
         bool CamLocationVisualizer;
         int CamLocationVisualizerMaxLength;
-        int objectAccessHelperGridSize;
-
-
     };
 
     class F2MDParameters {
@@ -119,6 +120,7 @@ namespace artery {
         static AttackParameters attackParameters;
         static DetectionParameters detectionParameters;
         static MiscParameters miscParameters;
+        static ReportParameters reportParameters;
 
     };
 } // namespace artery

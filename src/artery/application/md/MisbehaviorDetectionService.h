@@ -51,6 +51,9 @@ namespace artery {
         createMisbehaviorReport(const std::string &reportId, const vanetza::asn1::Cam &cam,
                                 DetectionReferenceCAM_t *semanticDetectionReferenceCam);
 
+        void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
+
+        std::vector<vanetza::asn1::Cam *> getSurroundingCamObjects(StationID_t senderStationId);
 
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;
@@ -62,7 +65,7 @@ namespace artery {
         const Timer *mTimer = nullptr;
 
         BaseFusion *fusionApplication;
-//        static traci::Boundary mSimulationBoundary;
+        static traci::Boundary mSimulationBoundary;
         std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> mTraciAPI;
         static bool staticInitializationComplete;

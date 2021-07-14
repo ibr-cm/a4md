@@ -9,27 +9,24 @@ namespace artery {
     GlobalEnvironmentModel *LegacyChecks::mGlobalEnvironmentModel;
     std::shared_ptr<const traci::API> LegacyChecks::mTraciAPI;
     traci::Boundary LegacyChecks::mSimulationBoundary;
-    int LegacyChecks::counter;
 
     using namespace omnetpp;
 
-    double LegacyChecks::ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
-                                                    TrackedObjectsFilterRange &envModObjects) {
-        Position::value_type deltaDistance = distance(testPosition, myPosition);
+    double LegacyChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
+                                                    const vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+        Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
         double deltaAngle = calculateHeadingAngle(
-                Position(testPosition.x - myPosition.x, testPosition.y - myPosition.y));
-
+                Position(senderPosition.x - receiverPosition.x, senderPosition.y - receiverPosition.y));
         if (deltaDistance.value() < detectionParameters->maxProximityRangeL) {
             if (deltaDistance.value() < detectionParameters->maxProximityRangeW * 2 ||
                 (deltaAngle < 90 && deltaDistance.value() <
                                     (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
-                for (const auto &object: envModObjects) {
-                    std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
-                    if (obj_ptr.expired()) continue; /*< objects remain in tracking briefly after leaving simulation */
-                    const auto &vd = obj_ptr.lock()->getVehicleData();
-                    Position::value_type currentDistance = distance(testPosition, vd.position());
+                for (auto cam : surroundingCamObjects) {
+                    Position::value_type currentDistance = distance(senderPosition, convertCamPosition(
+                            (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
+                            mTraciAPI));
                     if (currentDistance < minimumDistance) {
                         minimumDistance = currentDistance;
                     }
@@ -80,29 +77,9 @@ namespace artery {
         }
     }
 
-    double
-    LegacyChecks::PositionSpeedConsistencyCheck(Position &currentPosition, Position &oldPosition, double currentSpeed,
-                                                double oldSpeed, double deltaTime) const {
-        if (deltaTime < detectionParameters->maxTimeDelta) {
-            Position::value_type deltaDistance = distance(currentPosition, oldPosition);
-            double theoreticalSpeed = deltaDistance.value() / (double) deltaTime;
-            if (std::max(currentSpeed, oldSpeed) - theoreticalSpeed >
-                (detectionParameters->maxPlausibleDeceleration + detectionParameters->maxMgtRng) * (double) deltaTime) {
-                return 0;
-            } else {
-                if (theoreticalSpeed - std::min(currentSpeed, oldSpeed) >
-                    (detectionParameters->maxPlausibleAcceleration + detectionParameters->maxMgtRng) *
-                    (double) deltaTime) {
-                    return 0;
-                }
-            }
-        }
-        return 1;
-    }
-
-    double LegacyChecks::PositionSpeedMaxConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                                          double currentSpeed, double oldSpeed,
-                                                          double deltaTime) const {
+    double LegacyChecks::PositionSpeedConsistencyCheck(Position &currentPosition, Position &oldPosition,
+                                                       double currentSpeed, double oldSpeed,
+                                                       double deltaTime) const {
         if (deltaTime < detectionParameters->maxTimeDelta) {
             double deltaDistance = distance(currentPosition, oldPosition).value();
             double currentMinimumSpeed = std::min(currentSpeed, oldSpeed);
@@ -117,6 +94,27 @@ namespace artery {
             if ((deltaDistance - minimumDistance + addonMgtRange) < 0 ||
                 (maximumDistance - deltaDistance + detectionParameters->maxMgtRngUp) < 0) {
                 return 0;
+            }
+        }
+        return 1;
+    }
+
+    double
+    LegacyChecks::PositionSpeedMaxConsistencyCheck(Position &currentPosition, Position &oldPosition,
+                                                   double currentSpeed,
+                                                   double oldSpeed, double deltaTime) const {
+        if (deltaTime < detectionParameters->maxTimeDelta) {
+            Position::value_type deltaDistance = distance(currentPosition, oldPosition);
+            double theoreticalSpeed = deltaDistance.value() / deltaTime;
+            if (std::max(currentSpeed, oldSpeed) - theoreticalSpeed >
+                (detectionParameters->maxPlausibleDeceleration + detectionParameters->maxMgtRng) * (double) deltaTime) {
+                return 0;
+            } else {
+                if (theoreticalSpeed - std::min(currentSpeed, oldSpeed) >
+                    (detectionParameters->maxPlausibleAcceleration + detectionParameters->maxMgtRng) *
+                    (double) deltaTime) {
+                    return 0;
+                }
             }
         }
         return 1;
@@ -141,14 +139,7 @@ namespace artery {
             return 0;
         }
         for (auto cam : relevantCams) {
-            CamParameters_t &camParameters = (*cam)->cam.camParameters;
-            BasicVehicleContainerHighFrequency_t &hfc = camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
-            Position position = convertCamPosition(camParameters.basicContainer.referencePosition,
-                                                   mSimulationBoundary, mTraciAPI);
-            double heading = (double) hfc.heading.headingValue / 10;
-            double length = (double) hfc.vehicleLength.vehicleLengthValue / 10;
-            double width = (double) hfc.vehicleWidth / 10;
-            std::vector<Position> outline = getVehicleOutline(position, Angle::from_degree(heading), length, width);
+            std::vector<Position> outline = getVehicleOutline((*cam), mSimulationBoundary, mTraciAPI);
             if (boost::geometry::intersects(senderOutline, outline)) {
                 return 0;
             }
@@ -185,22 +176,24 @@ namespace artery {
 
 
     double
-    LegacyChecks::PositionHeadingConsistencyCheck(const HeadingValue_t &currentHeading, Position &currentPosition,
+    LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
                                                   Position &oldPosition,
                                                   double deltaTime, double currentSpeed) const {
         if (deltaTime < detectionParameters->positionHeadingTime) {
             if (distance(currentPosition, oldPosition).value() < 1 || currentSpeed < 1) {
                 return 1;
             }
-
-            double currentHeadingAngle = ((double) currentHeading) / 10.0;
-            double positionAngle = calculateHeadingAngle(
-                    Position(currentPosition.x - oldPosition.x, currentPosition.y - oldPosition.y));
-            double angleDelta = fabs(currentHeadingAngle - positionAngle);
-            if (angleDelta > 180) {
-                angleDelta = 360 - angleDelta;
-            }
-            if (angleDelta > detectionParameters->maxHeadingChange) {
+            libsumo::TraCIPosition currentPositionTraci = position_cast(mSimulationBoundary, currentPosition);
+            libsumo::TraCIPosition oldPositionTraci = position_cast(mSimulationBoundary, oldPosition);
+            Position deltaPosition = Position(currentPositionTraci.x - oldPositionTraci.x,
+                                              currentPositionTraci.y - oldPositionTraci.y);
+            // add 90 degree for traci offset
+            double positionAngle = std::fmod(calculateHeadingAngle(deltaPosition) + 90, 360);
+            double deltaHeading = calculateHeadingDifference(currentHeading, positionAngle);
+            drawTraciPoi(currentPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+                         mTraciAPI);
+            drawTraciPoi(oldPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary, mTraciAPI);
+            if (deltaHeading > detectionParameters->maxHeadingChange) {
                 return 0;
             }
         }
@@ -368,9 +361,8 @@ namespace artery {
 
     CheckResult *
     LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                           TrackedObjectsFilterRange &envModObjects, const vanetza::asn1::Cam &currentCam,
-                           const vanetza::asn1::Cam *lastCamPtr,
-                           const std::vector<vanetza::asn1::Cam *> &relevantCams) {
+                           const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                           const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
 
         BasicVehicleContainerHighFrequency_t hfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
@@ -389,7 +381,8 @@ namespace artery {
         auto *result = new CheckResult;
         result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
         result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
-        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition, envModObjects);
+        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
+                                                                   surroundingCamObjects);
         result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
 
         if (lastCamPtr != nullptr) {
@@ -414,7 +407,7 @@ namespace artery {
                                                                                    currentCamSpeed, lastCamSpeed,
                                                                                    camDeltaTime);
             result->positionHeadingConsistency = PositionHeadingConsistencyCheck(
-                    hfc.heading.headingValue,
+                    currentCamHeading,
                     currentCamPosition, lastCamPosition, camDeltaTime, currentCamSpeed);
 
             double returnValue[2];
@@ -448,7 +441,7 @@ namespace artery {
                                                                                    currentCamAccelerationVector,
                                                                                    camDeltaTime);
             result->frequency = FrequencyCheck(currentCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
-            result->intersection = IntersectionCheck(receiverVehicleOutline, relevantCams, currentCamPosition,
+            result->intersection = IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
                                                      currentCamVehicleLength, currentCamVehicleWidth,
                                                      currentCamHeading);
         } else {
@@ -471,6 +464,5 @@ namespace artery {
             mTraciAPI = std::move(traciAPI);
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
         }
-
     }
 }

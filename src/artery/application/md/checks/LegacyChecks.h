@@ -27,8 +27,8 @@ namespace artery {
 
         CheckResult *
         checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                 TrackedObjectsFilterRange &envModObjects, const vanetza::asn1::Cam &currentCam,
-                 const vanetza::asn1::Cam *lastCamPtr, const std::vector<vanetza::asn1::Cam *> &relevantCams);
+                 const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                 const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects);
 
     private:
 
@@ -43,8 +43,8 @@ namespace artery {
         Kalman_SI *kalmanSI;
         Kalman_SI *kalmanVI;
 
-        double ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
-                                          TrackedObjectsFilterRange &envModObjects);
+        double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
+                                          const vector<vanetza::asn1::Cam *> &surroundingCamObjects);
 
         double RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const;
 
@@ -73,7 +73,7 @@ namespace artery {
 
 
         double
-        PositionHeadingConsistencyCheck(const HeadingValue_t &currentHeading, Position &currentPosition,
+        PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
                                         Position &oldPosition,
                                         double deltaTime, double currentSpeed) const;
 

@@ -6,9 +6,12 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         @signal[misbehaviorAuthority.newReport](type=MisbehaviorReportObject);
         string appName = default("MisbehaviorDetectionService");
 
+        // ### detection parameters
+        // in meters per second
         double maxPlausibleSpeed = default(60);
         double maxPlausibleAcceleration = default(10);
         double maxPlausibleDeceleration = default(10);
+
         double maxPlausibleRange = default(1500);
 
         double maxProximityRangeL = default(30);
@@ -33,5 +36,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double kalmanPosRange = default(1.0);
         double kalmanSpeedRange = default(4.0);
 
-        int objectAccessHelperGridSize = default(10);
+        // ### report parameters
+        int evidenceContainerMaxCamCount = default(5);
+
 }
