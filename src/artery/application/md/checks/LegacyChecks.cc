@@ -1,19 +1,14 @@
 #include "LegacyChecks.h"
 #include <utility>
 #include <artery/traci/Cast.h>
-#include "artery/envmod/sensor/Sensor.h"
 #include "artery/application/md/util/HelperFunctions.h"
 
 namespace artery {
-    bool LegacyChecks::staticInitializationComplete = false;
-    GlobalEnvironmentModel *LegacyChecks::mGlobalEnvironmentModel;
-    std::shared_ptr<const traci::API> LegacyChecks::mTraciAPI;
-    traci::Boundary LegacyChecks::mSimulationBoundary;
 
     using namespace omnetpp;
 
     double LegacyChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                                    const vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+                                                    const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
         Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
         double deltaAngle = calculateHeadingAngle(
                 Position(senderPosition.x - receiverPosition.x, senderPosition.y - receiverPosition.y));
@@ -51,9 +46,9 @@ namespace artery {
     }
 
     double
-    LegacyChecks::PositionConsistencyCheck(Position &senderPosition, const Position &receiverPosition,
+    LegacyChecks::PositionConsistencyCheck(Position &currentPosition, const Position &lastPosition,
                                            double time) const {
-        if (distance(senderPosition, receiverPosition).value() < detectionParameters->maxPlausibleSpeed * time) {
+        if (distance(currentPosition, lastPosition).value() < detectionParameters->maxPlausibleSpeed * time) {
             return 1;
         } else {
             return 0;
@@ -130,7 +125,8 @@ namespace artery {
 
     double
     LegacyChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
-                                    const vector<vanetza::asn1::Cam *> &relevantCams, const Position &senderPosition,
+                                    const std::vector<vanetza::asn1::Cam *> &relevantCams,
+                                    const Position &senderPosition,
                                     const double &senderLength, const double &senderWidth,
                                     const double &senderHeading) {
         std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
@@ -174,7 +170,6 @@ namespace artery {
         }
     }
 
-
     double
     LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
                                                   Position &oldPosition,
@@ -198,165 +193,6 @@ namespace artery {
             }
         }
         return 1;
-    }
-
-    void LegacyChecks::KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
-                                                           const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                           const Position &currentSpeed,
-                                                           const Position &currentAcceleration,
-                                                           double currentSpeedConfidence,
-                                                           double &deltaTime, double *returnValue) const {
-        if (!kalmanSVI->isInitialized()) {
-            returnValue[0] = 1;
-            returnValue[1] = 1;
-        } else {
-            if (deltaTime < detectionParameters->maxKalmanTime) {
-                double deltaPosition[4];
-
-                double currentSemiMajorConfidence = std::max(
-                        (double) currentPositionConfidence.semiMajorConfidence / 100.0,
-                        detectionParameters->kalmanMinPosRange);
-                double currentSemiMinorConfidence = std::max(
-                        (double) currentPositionConfidence.semiMinorConfidence / 100.0,
-                        detectionParameters->kalmanMinPosRange);
-                currentSpeedConfidence = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
-
-                kalmanSVI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
-                                       currentSpeed.x.value(), currentSpeed.y.value(), currentAcceleration.x.value(),
-                                       currentAcceleration.y.value(), currentSemiMajorConfidence,
-                                       currentSemiMinorConfidence,
-                                       currentSpeedConfidence, currentSpeedConfidence, deltaPosition);
-
-                double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[2], 2.0)) /
-                                   (detectionParameters->kalmanPosRange * currentSemiMajorConfidence * deltaTime);
-
-                double ret_2 = 1 - sqrt(pow(deltaPosition[1], 2.0) + pow(deltaPosition[3], 2.0)) /
-                                   (detectionParameters->kalmanSpeedRange * currentSpeedConfidence * deltaTime);
-                returnValue[0] = isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
-                returnValue[1] = isnan(ret_2) || ret_2 < 0.5 ? 0 : 1;
-            } else {
-                returnValue[0] = 1;
-                returnValue[1] = 1;
-                kalmanSVI->setInitial(currentPosition.x.value(), currentPosition.y.value(), currentSpeed.x.value(),
-                                      currentSpeed.y.value());
-            }
-        }
-    }
-
-
-    void LegacyChecks::KalmanPositionSpeedScalarConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                                                 const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                                 double &currentSpeed, double &currentAcceleration,
-                                                                 double &currentSpeedConfidence, double &deltaTime,
-                                                                 double *returnValue) {
-        if (!kalmanSVSI->isInitialized()) {
-            returnValue[0] = 1;
-            returnValue[1] = 1;
-        } else {
-            if (deltaTime < detectionParameters->maxKalmanTime) {
-                double deltaPosition[2];
-
-                double deltaDistance = distance(currentPosition, oldPosition).value();
-                double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-                double curSpdConfX = std::max(currentSpeedConfidence, detectionParameters->kalmanSpeedRange);
-
-                kalmanSVSI->getDeltaPos(deltaTime, deltaDistance, currentSpeed, currentAcceleration,
-                                        currentAcceleration,
-                                        curPosConfX, curSpdConfX, deltaPosition);
-
-                double ret_1 = 1 - (deltaPosition[0] / (detectionParameters->kalmanPosRange * curPosConfX * deltaTime));
-                double ret_2 =
-                        1 - (deltaPosition[1] / (detectionParameters->kalmanSpeedRange * curSpdConfX * deltaTime));
-                returnValue[0] = isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
-                returnValue[1] = isnan(ret_2) || ret_2 < 0.5 ? 0 : 1;
-            } else {
-                returnValue[0] = 1;
-                returnValue[1] = 1;
-                kalmanSVSI->setInitial(0, currentSpeed);
-            }
-        }
-    }
-
-    double LegacyChecks::KalmanPositionConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                                        const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                        double &deltaTime) {
-        if (!kalmanSI->isInit()) {
-            return 1;
-        } else {
-            if (deltaTime < detectionParameters->maxKalmanTime) {
-                double deltaPosition[2];
-                double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-                double curPosConfY = std::max((double) currentPositionConfidence.semiMinorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-
-                kalmanSI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
-                                      curPosConfX, curPosConfY, deltaPosition);
-
-                double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
-                                   (4 * detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
-                return isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
-            } else {
-                kalmanSI->setInitial(currentPosition.x.value(), currentPosition.y.value());
-                return 1;
-            }
-        }
-    }
-
-    double
-    LegacyChecks::KalmanPositionAccConsistencyCheck(const Position &currentPosition, const Position &currentSpeed,
-                                                    const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                    double &deltaTime) {
-        if (!kalmanSI->isInit()) {
-            return 1;
-        } else {
-            if (deltaTime < detectionParameters->maxKalmanTime) {
-                double deltaPosition[2];
-                double curPosConfX = std::max((double) currentPositionConfidence.semiMajorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-                double curPosConfY = std::max((double) currentPositionConfidence.semiMinorConfidence,
-                                              detectionParameters->kalmanMinPosRange);
-
-                kalmanSI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
-                                      currentSpeed.x.value(),
-                                      currentSpeed.y.value(),
-                                      curPosConfX, curPosConfY, deltaPosition);
-
-                double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
-                                   (4 * detectionParameters->kalmanPosRange * curPosConfX * deltaTime);
-                return isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
-            } else {
-                kalmanSI->setInitial(currentPosition.x.value(), currentPosition.x.value());
-                return 1;
-            }
-        }
-    }
-
-    double
-    LegacyChecks::KalmanSpeedConsistencyCheck(const Position &currentSpeed, const Position &oldSpeed,
-                                              double &currentSpeedConfidence, const Position &currentAcceleration,
-                                              double &deltaTime) {
-        if (!kalmanVI->isInit()) {
-            return 1;
-        } else {
-            if (deltaTime < detectionParameters->maxKalmanTime) {
-                double deltaPosition[2];
-
-                double curSpdConf = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
-
-                kalmanVI->getDeltaPos(deltaTime, currentSpeed.x.value(), currentSpeed.y.value(),
-                                      currentAcceleration.x.value(),
-                                      currentAcceleration.y.value(), curSpdConf, curSpdConf, deltaPosition);
-
-                double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[1], 2.0)) /
-                                   (detectionParameters->kalmanSpeedRange * curSpdConf * deltaTime);
-                return isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
-            } else {
-                kalmanVI->setInitial(currentSpeed.x.value(), currentSpeed.y.value());
-                return 1;
-            }
-        }
     }
 
     CheckResult *
@@ -451,18 +287,9 @@ namespace artery {
     }
 
     LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI,
-                               GlobalEnvironmentModel *globalEnvironmentModel,
-                               DetectionParameters *detectionParameters,
-                               Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
-                               Kalman_SI *kalmanSI, Kalman_SI *kalmanVI) :
-            detectionParameters(detectionParameters),
-            kalmanSVI(kalmanSVI), kalmanSVSI(kalmanSVSI),
-            kalmanSI(kalmanSI), kalmanVI(kalmanVI) {
-        if (!staticInitializationComplete) {
-            staticInitializationComplete = true;
-            mGlobalEnvironmentModel = globalEnvironmentModel;
-            mTraciAPI = std::move(traciAPI);
-            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
-        }
+                               GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
+                               Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI, Kalman_SI *kalmanSI, Kalman_SI *kalmanVI)
+            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, kalmanSVI, kalmanSVSI,
+                         kalmanSI, kalmanVI) {
     }
 }

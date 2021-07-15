@@ -8,9 +8,9 @@
 
 #include <list>
 #include <vanetza/asn1/cam.hpp>
-#include <artery/application/md/kalman/Kalman_SVI.h>
-#include <artery/application/md/kalman/Kalman_SC.h>
-#include <artery/application/md/kalman/Kalman_SI.h>
+#include <artery/application/md/checks/kalman/Kalman_SVI.h>
+#include <artery/application/md/checks/kalman/Kalman_SC.h>
+#include <artery/application/md/checks/kalman/Kalman_SI.h>
 #include <artery/application/md/checks/CheckResult.h>
 #include <artery/traci/VehicleController.h>
 #include <artery/application/md/util/F2MDParameters.h>
