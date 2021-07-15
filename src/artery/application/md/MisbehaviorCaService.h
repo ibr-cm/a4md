@@ -64,6 +64,7 @@ namespace artery {
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
         std::map<uint32_t, std::queue<vanetza::asn1::Cam>> receivedMessages;
         std::list<std::string> activePoIs;
+        std::list<std::string> activePolys;
 
         long AttackConstantPositionLatitudeMicrodegrees;
         long AttackConstantPositionLongitudeMicrodegrees;
@@ -80,6 +81,7 @@ namespace artery {
         int attackGridSybilCurrentVehicleIndex;
         double attackGridSybilLastHeadingAngle;
         std::string lastPoiId;
+        std::string lastPolyId;
 
 
     };

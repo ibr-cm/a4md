@@ -41,7 +41,7 @@ namespace artery {
         static std::shared_ptr<const traci::API> mTraciAPI;
         DetectionParameters *detectionParameters;
 
-//        std::vector<std::string> lastPolyIds;
+//        std::vector<std::string> lastPolyIdsForDebug;
         Kalman_SVI *kalmanSVI;
         Kalman_SC *kalmanSVSI;
         Kalman_SI *kalmanSI;
@@ -49,6 +49,8 @@ namespace artery {
 
         double ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
                                           TrackedObjectsFilterRange &envModObjects);
+
+        double RangePlausibilityCheck(const ReferencePosition_t &senderReferencePosition, const ReferencePosition_t &receiverReferencePosition);
     };
 } // namespace artery
 

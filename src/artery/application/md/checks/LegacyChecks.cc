@@ -104,8 +104,8 @@ namespace artery {
                                                    double currentSpeed,
                                                    double oldSpeed, double deltaTime) const {
         if (deltaTime < detectionParameters->maxTimeDelta) {
-            Position::value_type deltaDistance = distance(currentPosition, oldPosition);
-            double theoreticalSpeed = deltaDistance.value() / deltaTime;
+            double deltaDistance = distance(currentPosition, oldPosition).value();
+            double theoreticalSpeed = deltaDistance / deltaTime;
             if (std::max(currentSpeed, oldSpeed) - theoreticalSpeed >
                 (detectionParameters->maxPlausibleDeceleration + detectionParameters->maxMgtRng) * (double) deltaTime) {
                 return 0;
@@ -190,9 +190,6 @@ namespace artery {
             // add 90 degree for traci offset
             double positionAngle = std::fmod(calculateHeadingAngle(deltaPosition) + 90, 360);
             double deltaHeading = calculateHeadingDifference(currentHeading, positionAngle);
-            drawTraciPoi(currentPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
-                         mTraciAPI);
-            drawTraciPoi(oldPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary, mTraciAPI);
             if (deltaHeading > detectionParameters->maxHeadingChange) {
                 return 0;
             }

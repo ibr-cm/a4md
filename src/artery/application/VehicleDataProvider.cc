@@ -196,7 +196,7 @@ namespace artery {
         using namespace vanetza::units::si;
         using boost::units::isnan;
 
-        long actualSpeed = (long) (dynamics.speed.value() * 10);
+        long actualSpeed = (long) (dynamics.speed.value() * 100);
         if (mSpeed.speedConfidence != SpeedConfidence_unavailable) {
             long speedConfidence = mSpeed.speedConfidence;
             mSpeed.speedValue = intuniform(rng, std::max(0, (int) (actualSpeed - speedConfidence)),
