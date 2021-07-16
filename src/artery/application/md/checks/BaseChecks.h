@@ -33,6 +33,8 @@ namespace artery {
         static std::shared_ptr<const traci::API> mTraciAPI;
         DetectionParameters *detectionParameters;
 
+        BaseChecks::FrequencyCheck(long newTime, long oldTime) const;
+
         void KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
                                                  const PosConfidenceEllipse_t &currentPositionConfidence,
                                                  const Position &currentSpeed, const Position &currentAcceleration,

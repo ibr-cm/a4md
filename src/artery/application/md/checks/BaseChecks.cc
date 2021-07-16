@@ -13,6 +13,15 @@ namespace artery {
 
     using namespace omnetpp;
 
+    double BaseChecks::FrequencyCheck(long newTime, long oldTime) const {
+        if (newTime - oldTime > (long) (detectionParameters->maxCamFrequency * 1000)) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+
     void BaseChecks::KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
                                                          const PosConfidenceEllipse_t &currentPositionConfidence,
                                                          const Position &currentSpeed,

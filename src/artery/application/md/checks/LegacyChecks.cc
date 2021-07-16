@@ -162,13 +162,6 @@ namespace artery {
         }
     }
 
-    double LegacyChecks::FrequencyCheck(long newTime, long oldTime) const {
-        if (newTime - oldTime > (long) (detectionParameters->maxCamFrequency * 1000)) {
-            return 0;
-        } else {
-            return 1;
-        }
-    }
 
     double
     LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,

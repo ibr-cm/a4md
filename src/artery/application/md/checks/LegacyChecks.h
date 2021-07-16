@@ -45,8 +45,7 @@ namespace artery {
 
         double PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const;
 
-        double FrequencyCheck(long newTime, long oldTime) const;
-
+//        double FrequencyCheck(long newTime, long oldTime) const;
 
         double
         PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,

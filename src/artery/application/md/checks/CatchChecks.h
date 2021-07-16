@@ -44,6 +44,20 @@ namespace artery {
                               const double &oldSpeedConfidence, const double &deltaTime);
 
         double SpeedPlausibilityCheck(const double &currentSpeed, const double &currentSpeedConfidence);
+
+        double PositionHeadingConsistencyCheckOld(const double &currentHeading,
+                                                               const double &currentHeadingConfidence,
+                                                               const Position &currentPosition,
+                                                               const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                               const Position &oldPosition,
+                                                               const PosConfidenceEllipse_t &oldPositionConfidence,
+                                                               const double &currentSpeed,
+                                                               const double &currentSpeedConfidence,
+                                                               const double &deltaTime);
+
+        double PositionPlausibilityCheck(const Position &senderPosition,
+                                         const PosConfidenceEllipse_t &senderPositionConfidence,
+                                         const double &senderSpeed, const double &senderSpeedConfidence);
     };
 } // namespace artery
 

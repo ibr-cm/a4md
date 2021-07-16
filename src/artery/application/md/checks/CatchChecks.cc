@@ -70,8 +70,8 @@ namespace artery {
                   int pointCount) {
         std::vector<Position> ellipseOutline;
         for (int i = 0; i < pointCount; i++) {
-            double borderX = cos(2 * PI / pointCount * i) * semiMajorLength / 2;
-            double borderY = sin(2 * PI / pointCount * i) * semiMinorLength / 2;
+            double borderX = cos(2 * PI / pointCount * i) * semiMajorLength;
+            double borderY = sin(2 * PI / pointCount * i) * semiMinorLength;
             double newAngle = semiMajorOrientation + atan2(-borderY, borderX) * 180 / PI;
 //        newAngle = 360 - std::fmod(newAngle, 360);
             newAngle = std::fmod(newAngle, 360);
@@ -180,6 +180,120 @@ namespace artery {
                (2 * currentSpeedConfidence);
     }
 
+    double calculateCircleAreaWithoutSegment(double radius, double distance, bool distanceIsFromCenter) {
+        if (!distanceIsFromCenter) {
+            distance = distance - radius;
+        }
+        double angle = acos(std::min(distance / radius, 1.0)) * 2;
+        double area = 0.5 * pow(radius, 2) * (angle - sin(angle));
+        return PI * pow(radius, 2) - area;
+    }
+
+    double calculateNormedCircleAreaWithoutSegment(double radius, double distance, bool distanceIsFromCenter) {
+        return calculateCircleAreaWithoutSegment(radius, distance, false) / (PI * pow(radius, 2));
+    }
+
+    double CatchChecks::PositionHeadingConsistencyCheckOld(const double &currentHeading,
+                                                           const double &currentHeadingConfidence,
+                                                           const Position &currentPosition,
+                                                           const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                           const Position &oldPosition,
+                                                           const PosConfidenceEllipse_t &oldPositionConfidence,
+                                                           const double &currentSpeed,
+                                                           const double &currentSpeedConfidence,
+                                                           const double &deltaTime) {
+        double deltaDistance = distance(currentPosition, oldPosition).value();
+        if (deltaTime < detectionParameters->positionHeadingTime ||
+            deltaDistance < 1 ||
+            currentSpeed - currentSpeedConfidence < 1) {
+            return 1;
+        } else {
+            libsumo::TraCIPosition currentPositionTraci = position_cast(mSimulationBoundary, currentPosition);
+            libsumo::TraCIPosition oldPositionTraci = position_cast(mSimulationBoundary, oldPosition);
+            Position deltaPosition = Position(currentPositionTraci.x - oldPositionTraci.x,
+                                              currentPositionTraci.y - oldPositionTraci.y);
+            // add 90 degree for traci offset
+            double positionAngle = std::fmod(calculateHeadingAngle(deltaPosition) + 90, 360);
+            double deltaAngle = calculateHeadingDifference(currentHeading, positionAngle);
+            if (deltaAngle > 180) {
+                deltaAngle = 360 - deltaAngle;
+            }
+
+            double angleLow = std::max(deltaAngle - currentHeadingConfidence, 0.0);
+            double angleHigh = std::min(deltaAngle + currentHeadingConfidence, 180.0);
+            double xLow = deltaDistance * cos(angleLow * PI / 180);
+            double xHigh = deltaDistance * cos(angleHigh * PI / 180);
+
+            double currentFactorLow = 1;
+            if (currentPositionConfidence.semiMajorConfidence == 0) {
+                currentFactorLow = angleLow < detectionParameters->maxHeadingChange ? 1 : 0;
+            } else {
+                currentFactorLow = calculateNormedCircleAreaWithoutSegment(
+                        (double) currentPositionConfidence.semiMajorConfidence / 100, xLow, true);
+            }
+
+            double oldFactorLow = 1;
+            if (oldPositionConfidence.semiMajorConfidence == 0) {
+                oldFactorLow = angleLow < detectionParameters->maxHeadingChange ? 1 : 0;
+            } else {
+                oldFactorLow = calculateNormedCircleAreaWithoutSegment(
+                        (double) oldPositionConfidence.semiMajorConfidence / 100, -xLow, true);
+            }
+
+
+            double currentFactorHigh = 1;
+            if (currentPositionConfidence.semiMajorConfidence == 0) {
+                currentFactorHigh = angleHigh < detectionParameters->maxHeadingChange ? 1 : 0;
+            } else {
+                currentFactorHigh = calculateNormedCircleAreaWithoutSegment(
+                        (double) currentPositionConfidence.semiMajorConfidence / 100, xHigh, true);
+            }
+
+            double oldFactorHigh = 1;
+            if (oldPositionConfidence.semiMajorConfidence == 0) {
+                oldFactorHigh = angleHigh < detectionParameters->maxHeadingChange ? 1 : 0;
+            } else {
+                oldFactorHigh = calculateNormedCircleAreaWithoutSegment(
+                        (double) oldPositionConfidence.semiMajorConfidence / 100, -xHigh, true);
+            }
+            return (currentFactorLow + oldFactorLow + currentFactorHigh + oldFactorHigh);
+        }
+    }
+
+    double CatchChecks::PositionPlausibilityCheck(const Position &senderPosition,
+                                                  const PosConfidenceEllipse_t &senderPositionConfidence,
+                                                  const double &senderSpeed, const double &senderSpeedConfidence) {
+        if (std::max(senderSpeed - senderSpeedConfidence, 0.0) < detectionParameters->maxOffroadSpeed) {
+            return 1;
+        }
+        int iterationCount = 5;
+        double semiMajorConfidence = (double) senderPositionConfidence.semiMajorConfidence / 100;
+        double semiMinorConfidence = (double) senderPositionConfidence.semiMinorConfidence / 100;
+        double semiMajorOrientation = (double) senderPositionConfidence.semiMajorOrientation / 10;
+        double semiMajorMultiplicator = semiMajorConfidence / iterationCount;
+        double semiMinorMultiplicator = semiMinorConfidence / iterationCount;
+        int totalCount = 0;
+        int failedCount = 0;
+        for (int radius = radius; radius <= iterationCount; radius++) {
+            int pointCount = int(pow(3 * radius, 1.3));
+            for(int i = 0; i < pointCount; i++){
+                double borderX = cos(2 * PI / pointCount * i) * semiMajorMultiplicator * i;
+                double borderY = sin(2 * PI / pointCount * i) * semiMinorMultiplicator * i;
+                double newAngle = semiMajorOrientation + atan2(-borderY, borderX) * 180 / PI;
+                newAngle = std::fmod(newAngle, 360);
+
+                double offsetDistance = sqrt(pow(borderX, 2) + pow(borderY, 2));
+                double relativeX = offsetDistance * sin(newAngle * PI / 180);
+                double relativeY = offsetDistance * cos(newAngle * PI / 180);
+                Position p(senderPosition.x.value() + relativeX, senderPosition.y.value() + relativeY);
+                if(getDistanceToNearestRoad(mGlobalEnvironmentModel,p) > detectionParameters->maxDistanceFromRoad){
+                    failedCount++;
+                }
+                totalCount++;
+            }
+        }
+
+    }
 
     CheckResult *
     CatchChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
