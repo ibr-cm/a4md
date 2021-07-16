@@ -86,6 +86,38 @@ namespace artery {
                (2 * currentSpeedConfidence);
     }
 
+
+
+    double CatchChecks::PositionSpeedMaxConsistencyCheck(const Position &currentPosition,
+                                                         const PosConfidenceEllipse_t &currentConfidenceEllipse,
+                                                         const Position &oldPosition,
+                                                         const PosConfidenceEllipse_t &oldConfidenceEllipse,
+                                                         double currentSpeed, double currentSpeedConfidence,
+                                                         double oldSpeed, double oldSpeedConfidence,
+                                                         double deltaTime) {
+        if (deltaTime > detectionParameters->maxTimeDelta) {
+            return 1;
+        }
+        double deltaDistance = distance(currentPosition, oldPosition).value();
+        double theoreticalSpeed = deltaDistance / deltaTime;
+        double maxSpeed = std::max(currentSpeed, oldSpeed);
+        double minSpeed = std::min(currentSpeed, oldSpeed);
+
+        double currentRange =
+                ((double) currentConfidenceEllipse.semiMajorConfidence / 100) / deltaTime + currentSpeedConfidence;
+        double oldRange = ((double) oldConfidenceEllipse.semiMajorConfidence / 100) / deltaTime + oldSpeedConfidence;
+
+        double maxFactor = oneSidedCircleSegmentFactor(maxSpeed - theoreticalSpeed, currentRange, oldRange,
+                                                       (detectionParameters->maxPlausibleDeceleration +
+                                                        detectionParameters->maxMgtRng) * deltaTime);
+
+        double minFactor = oneSidedCircleSegmentFactor(theoreticalSpeed - minSpeed, currentRange, oldRange,
+                                                       (detectionParameters->maxPlausibleAcceleration +
+                                                        detectionParameters->maxMgtRng) * deltaTime);
+        return std::min(minFactor, maxFactor);
+    }
+
+
     double CatchChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
                                           const std::vector<vanetza::asn1::Cam *> &relevantCams,
                                           const Position &senderPosition, const double &senderLength,

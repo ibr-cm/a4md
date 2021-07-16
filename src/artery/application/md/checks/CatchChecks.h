@@ -69,6 +69,14 @@ namespace artery {
                           const std::vector<vanetza::asn1::Cam *> &relevantCams,
                           const Position &senderPosition, const double &senderLength,
                           const double &senderWidth, const double &senderHeading, const double &deltaTime);
+
+        double
+        PositionSpeedMaxConsistencyCheck(const Position &currentPosition,
+                                         const PosConfidenceEllipse_t &currentPositionConfidence,
+                                         const Position &oldPosition,
+                                         const PosConfidenceEllipse_t &oldConfidenceEllipse,
+                                         double currentSpeed, double currentSpeedConfidence, double oldSpeed,
+                                         double oldSpeedConfidence, double deltaTime);
     };
 } // namespace artery
 

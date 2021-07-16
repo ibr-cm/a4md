@@ -285,4 +285,55 @@ namespace artery {
         return (intersectionArea) / std::min(area1,area2);
     }
 
+    double oneSidedCircleSegmentFactor(double d, double r1, double r2, double range) {
+
+        if (d < 0 || range > d + r1 + r2) {
+            return 1;
+        } else if (range < d - r1 - r2) {
+            return 0;
+        } else {
+            double d1 = (pow(r1, 2) + pow(d, 2) - pow(r2, 2)) / (2 * d);
+            double d2 = (pow(r2, 2) + pow(d, 2) - pow(r1, 2)) / (2 * d);
+            if ((d1 + r1) < range / 2 && (d2 + r2) > range / 2) {
+                d2 = d2 - (range / 2 - (d1 + r1));
+                d1 = d1 + (range / 2 - (d1 + r1));
+            } else if ((d2 + r2) < range / 2 && (d1 + r1) > range / 2) {
+                d1 = d1 - (range / 2 - (d2 + r2));
+                d2 = d2 + (range / 2 - (d2 + r2));
+            }
+            if (r1 <= 0) {
+                if (range / 2 >= d1) {
+                    double intD2 = (range / 2) - (d2 - r2);
+                    double area2 = calculateCircleAreaWithoutSegment(r2, intD2, false);
+
+                    double factor = (area2) / (PI * r2 * r2);
+                    return factor;
+                } else {
+                    return 0;
+                }
+            } else if (r2 <= 0) {
+                if (range / 2 >= d2) {
+                    double intD1 = (range / 2) - (d1 - r1);
+                    double area1 = calculateCircleAreaWithoutSegment(r1, intD1, false);
+
+                    double factor = (area1) / (PI * r1 * r1);
+                    return factor;
+                } else {
+                    return 0;
+                }
+            } else {
+
+                double intD1 = (range / 2) - (d1 - r1);
+                double intD2 = (range / 2) - (d2 - r2);
+
+                double area1 = calculateCircleAreaWithoutSegment(r1, intD1, false);
+                double area2 = calculateCircleAreaWithoutSegment(r2, intD2, false);
+
+                double factor = (area1 + area2) / (PI * pow(r1, 2) + PI * pow(r2, 2));
+
+                return factor;
+            }
+        }
+    }
+
 }
