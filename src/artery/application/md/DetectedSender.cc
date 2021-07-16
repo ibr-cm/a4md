@@ -10,24 +10,8 @@ namespace artery {
                                    GlobalEnvironmentModel *globalEnvironmentModel,
                                    DetectionParameters *detectionParameters,
                                    const vanetza::asn1::Cam &message)
-            : legacyChecks(traciAPI, globalEnvironmentModel, detectionParameters,
-                           &kalmanSVI, &kalmanSVSI, &kalmanSI,
-                           &kalmanVI) {
+            : legacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, message) {
         mStationId = message->header.stationID;
-        Position position = convertCamPosition(
-                message->cam.camParameters.basicContainer.referencePosition,
-                traci::Boundary{traciAPI->simulation.getNetBoundary()}, traciAPI);
-        double speed =
-                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
-                100.0;
-        double heading =
-                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
-                10.0;
-        Position speedVector = getVector(speed, heading);
-        kalmanSVI.setInitial(position.x.value(), position.y.value(), speedVector.x.value(), speedVector.y.value());
-        kalmanSVSI.setInitial(0, speed);
-        kalmanSI.setInitial(position.x.value(), position.y.value());
-        kalmanVI.setInitial(speedVector.x.value(), speedVector.y.value());
     }
 
 

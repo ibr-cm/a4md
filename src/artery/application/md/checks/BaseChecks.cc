@@ -3,6 +3,7 @@
 //
 
 #include "BaseChecks.h"
+#include "artery/application/md/util/HelperFunctions.h"
 
 namespace artery {
     bool BaseChecks::staticInitializationComplete = false;
@@ -174,16 +175,30 @@ namespace artery {
     BaseChecks::BaseChecks(std::shared_ptr<const traci::API> traciAPI,
                            GlobalEnvironmentModel *globalEnvironmentModel,
                            DetectionParameters *detectionParameters,
-                           Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
-                           Kalman_SI *kalmanSI, Kalman_SI *kalmanVI) :
-            detectionParameters(detectionParameters),
-            kalmanSVI(kalmanSVI), kalmanSVSI(kalmanSVSI),
-            kalmanSI(kalmanSI), kalmanVI(kalmanVI) {
+                           const vanetza::asn1::Cam &message) :
+            detectionParameters(detectionParameters) {
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
             mGlobalEnvironmentModel = globalEnvironmentModel;
             mTraciAPI = std::move(traciAPI);
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
         }
+        Position position = convertCamPosition(
+                message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+        double speed =
+                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
+                100.0;
+        double heading =
+                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
+                10.0;
+        Position speedVector = getVector(speed, heading);
+        kalmanSVI = new Kalman_SVI();
+        kalmanSVSI = new Kalman_SC();
+        kalmanSI = new Kalman_SI();
+        kalmanVI = new Kalman_SI();
+        kalmanSVI->setInitial(position.x.value(), position.y.value(), speedVector.x.value(), speedVector.y.value());
+        kalmanSVSI->setInitial(0, speed);
+        kalmanSI->setInitial(position.x.value(), position.y.value());
+        kalmanVI->setInitial(speedVector.x.value(), speedVector.y.value());
     }
 } // namespace artery

@@ -286,10 +286,9 @@ namespace artery {
         return result;
     }
 
-    LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI,
-                               GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
-                               Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI, Kalman_SI *kalmanSI, Kalman_SI *kalmanVI)
-            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, kalmanSVI, kalmanSVSI,
-                         kalmanSI, kalmanVI) {
+    LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                               DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message)
+            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, message) {
+
     }
 }

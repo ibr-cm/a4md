@@ -10,9 +10,8 @@ namespace artery {
     public:
         LegacyChecks() = delete;
 
-        LegacyChecks(std::shared_ptr<const traci::API> traciAPI,
-                     GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
-                     Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI, Kalman_SI *kalmanSI, Kalman_SI *kalmanVI);
+        LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                     DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
 
         CheckResult *
         checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,

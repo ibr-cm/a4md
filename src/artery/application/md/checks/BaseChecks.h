@@ -22,12 +22,11 @@ namespace artery {
 
     class BaseChecks {
     public:
-        BaseChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                   DetectionParameters *detectionParameters,
-                   Kalman_SVI *kalmanSVI, Kalman_SC *kalmanSVSI,
-                   Kalman_SI *kalmanSI, Kalman_SI *kalmanVI);
 
     protected:
+        BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                   DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
+
         static bool staticInitializationComplete;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         static traci::Boundary mSimulationBoundary;

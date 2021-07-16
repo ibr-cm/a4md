@@ -82,15 +82,15 @@ add_library(core SHARED
     application/md/checks/BaseChecks.cc
     application/md/fusion/BaseFusion.cc
     application/md/fusion/ThresholdFusion.cc
-        application/md/checks/kalman/Kalman_SC.cc
-        application/md/checks/kalman/Kalman_SI.cc
-        application/md/checks/kalman/Kalman_SVI.cc
-        application/md/checks/kalman/KalmanFilterJ_SC.cc
-        application/md/checks/kalman/KalmanFilterJ_SI.cc
-        application/md/checks/kalman/KalmanFilterJ_SVI.cc
-        application/md/checks/kalman/MatrixOp_SC.cc
-        application/md/checks/kalman/MatrixOp_SI.cc
-        application/md/checks/kalman/MatrixOp_SVI.cc
+    application/md/checks/kalman/Kalman_SC.cc
+    application/md/checks/kalman/Kalman_SI.cc
+    application/md/checks/kalman/Kalman_SVI.cc
+    application/md/checks/kalman/KalmanFilterJ_SC.cc
+    application/md/checks/kalman/KalmanFilterJ_SI.cc
+    application/md/checks/kalman/KalmanFilterJ_SVI.cc
+    application/md/checks/kalman/MatrixOp_SC.cc
+    application/md/checks/kalman/MatrixOp_SI.cc
+    application/md/checks/kalman/MatrixOp_SVI.cc
     application/md/DetectedSender.cc
         )
 find_package(CURL REQUIRED)

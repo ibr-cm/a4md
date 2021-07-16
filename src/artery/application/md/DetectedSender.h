@@ -39,12 +39,6 @@ namespace artery {
 
         Position mPosition;
         StationID_t mStationId;
-
-        Kalman_SVI kalmanSVI;
-        Kalman_SC kalmanSVSI;
-        Kalman_SI kalmanSI;
-        Kalman_SI kalmanVI;
-
     };
 
 } //namespace artery
