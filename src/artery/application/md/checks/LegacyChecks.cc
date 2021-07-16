@@ -126,9 +126,8 @@ namespace artery {
     double
     LegacyChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
                                     const std::vector<vanetza::asn1::Cam *> &relevantCams,
-                                    const Position &senderPosition,
-                                    const double &senderLength, const double &senderWidth,
-                                    const double &senderHeading) {
+                                    const Position &senderPosition, const double &senderLength,
+                                    const double &senderWidth, const double &senderHeading, const double &deltaTime) {
         std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
                                                                 senderLength, senderWidth);
         if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
@@ -136,9 +135,10 @@ namespace artery {
         }
         for (auto cam : relevantCams) {
             std::vector<Position> outline = getVehicleOutline((*cam), mSimulationBoundary, mTraciAPI);
-            if (boost::geometry::intersects(senderOutline, outline)) {
-                return 0;
-            }
+            double factor = intersectionFactor(senderOutline, outline) *
+                            ((detectionParameters->maxIntersectionDeltaTime - deltaTime) /
+                             detectionParameters->maxIntersectionDeltaTime);
+            return factor > 0.5 ? 0 : 1;
         }
         return 1;
 
@@ -272,7 +272,7 @@ namespace artery {
             result->frequency = FrequencyCheck(currentCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
             result->intersection = IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
                                                      currentCamVehicleLength, currentCamVehicleWidth,
-                                                     currentCamHeading);
+                                                     currentCamHeading, camDeltaTime);
         } else {
             result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
         }

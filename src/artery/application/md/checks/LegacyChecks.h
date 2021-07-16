@@ -37,9 +37,9 @@ namespace artery {
         double SpeedPlausibilityCheck(double speed) const;
 
         double IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
-                                 const vector<vanetza::asn1::Cam *> &relevantCams, const Position &senderPosition,
-                                 const double &senderLength, const double &senderWidth,
-                                 const double &senderHeading);
+                                 const std::vector<vanetza::asn1::Cam *> &relevantCams,
+                                 const Position &senderPosition, const double &senderLength,
+                                 const double &senderWidth, const double &senderHeading, const double &deltaTime);
 
         double SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const;
 

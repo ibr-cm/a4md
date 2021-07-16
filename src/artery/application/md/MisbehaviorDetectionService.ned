@@ -28,6 +28,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double maxDistanceFromRoad = default(5);
         double positionHeadingTime = default(1.1);
         double maxHeadingChange = default(90);
+        double maxIntersectionDeltaTime = default(2.0);
 
         double maxKalmanTime = default(3.1);
         double kalmanMinPosRange = default(4.0);

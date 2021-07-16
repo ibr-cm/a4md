@@ -58,6 +58,17 @@ namespace artery {
         double PositionPlausibilityCheck(const Position &senderPosition,
                                          const PosConfidenceEllipse_t &senderPositionConfidence,
                                          const double &senderSpeed, const double &senderSpeedConfidence);
+
+        double
+        SuddenAppearanceCheck(const Position &senderPosition, const PosConfidenceEllipse_t &senderConfidenceEllipse,
+                              const Position &receiverPosition,
+                              const PosConfidenceEllipse_t &receiverConfidenceEllipse);
+
+        double
+        IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
+                          const std::vector<vanetza::asn1::Cam *> &relevantCams,
+                          const Position &senderPosition, const double &senderLength,
+                          const double &senderWidth, const double &senderHeading, const double &deltaTime);
     };
 } // namespace artery
 

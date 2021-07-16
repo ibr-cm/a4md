@@ -95,6 +95,7 @@ namespace artery {
         F2MDParameters::detectionParameters.maxDistanceFromRoad = par("maxDistanceFromRoad");
         F2MDParameters::detectionParameters.positionHeadingTime = par("positionHeadingTime");
         F2MDParameters::detectionParameters.maxHeadingChange = par("maxHeadingChange");
+        F2MDParameters::detectionParameters.maxIntersectionDeltaTime = par("maxIntersectionDeltaTime");
 
         F2MDParameters::detectionParameters.maxKalmanTime = par("maxKalmanTime");
         F2MDParameters::detectionParameters.kalmanMinPosRange = par("kalmanMinPosRange");

@@ -94,6 +94,7 @@ namespace artery {
         double maxDistanceFromRoad;
         double positionHeadingTime;
         double maxHeadingChange;
+        double maxIntersectionDeltaTime;
 
         double maxKalmanTime;
         double kalmanMinPosRange;
