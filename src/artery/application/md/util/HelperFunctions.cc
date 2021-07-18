@@ -336,4 +336,56 @@ namespace artery {
         }
     }
 
+    void calculateMaxMinDist(double curSpeed, double oldspeed, double time,
+                             double MAX_PLAUSIBLE_ACCEL, double MAX_PLAUSIBLE_DECEL,
+                             double MAX_PLAUSIBLE_SPEED, double *returnDistance) {
+
+        if (curSpeed < 0) {
+            curSpeed = 0;
+        }
+        if (oldspeed < 0) {
+            oldspeed = 0;
+        }
+
+        double deltaV = curSpeed - oldspeed;
+
+        double T_1 = (deltaV + time * MAX_PLAUSIBLE_DECEL)
+                     / (MAX_PLAUSIBLE_ACCEL + MAX_PLAUSIBLE_DECEL);
+        double T_2 = time - T_1;
+
+        double maxSpeed = MAX_PLAUSIBLE_ACCEL * T_1 + oldspeed;
+        double maxDistance = 0;
+        if (maxSpeed > MAX_PLAUSIBLE_SPEED) {
+            double newT_1 = (MAX_PLAUSIBLE_SPEED - oldspeed)
+                            / MAX_PLAUSIBLE_ACCEL;
+            double newT_2 = (MAX_PLAUSIBLE_SPEED - curSpeed)
+                            / MAX_PLAUSIBLE_DECEL;
+            maxDistance = oldspeed * newT_1
+                          + 0.5 * MAX_PLAUSIBLE_ACCEL * newT_1 * newT_1
+                          + maxSpeed * newT_2
+                          - 0.5 * MAX_PLAUSIBLE_DECEL * newT_2 * newT_2
+                          + MAX_PLAUSIBLE_SPEED * (time - newT_1 - newT_2);
+        } else {
+            maxDistance = oldspeed * T_1 + 0.5 * MAX_PLAUSIBLE_ACCEL * T_1 * T_1
+                          + maxSpeed * T_2 - 0.5 * MAX_PLAUSIBLE_DECEL * T_2 * T_2;
+        }
+
+        double minSpeed = -MAX_PLAUSIBLE_DECEL * T_2 + oldspeed;
+        double minDistance = 0;
+        if (minSpeed < 0) {
+            double newT_1 = curSpeed / MAX_PLAUSIBLE_ACCEL;
+            double newT_2 = oldspeed / MAX_PLAUSIBLE_DECEL;
+
+            minDistance = oldspeed * newT_2
+                          - 0.5 * MAX_PLAUSIBLE_DECEL * newT_2 * newT_2
+                          + 0.5 * MAX_PLAUSIBLE_ACCEL * newT_1 * newT_1;
+        } else {
+            minDistance = oldspeed * T_2 - 0.5 * MAX_PLAUSIBLE_DECEL * T_2 * T_2
+                          + minSpeed * T_1 + 0.5 * MAX_PLAUSIBLE_ACCEL * T_1 * T_1;
+        }
+
+        returnDistance[0] = minDistance;
+        returnDistance[1] = maxDistance;
+    }
+
 }

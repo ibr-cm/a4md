@@ -71,6 +71,10 @@ namespace artery {
     double intersectionFactor(const std::vector<Position> &polygon1, const std::vector<Position> &polygon2);
 
     double oneSidedCircleSegmentFactor(double d, double r1, double r2, double range);
+
+    calculateMaxMinDist(double curSpeed, double oldspeed, double time,
+                        double MAX_PLAUSIBLE_ACCEL, double MAX_PLAUSIBLE_DECEL,
+                        double MAX_PLAUSIBLE_SPEED, double *returnDistance);
 }
 
 #endif //ARTERY_HELPERFUNCTIONS_H

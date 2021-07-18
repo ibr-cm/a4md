@@ -77,6 +77,14 @@ namespace artery {
                                          const PosConfidenceEllipse_t &oldConfidenceEllipse,
                                          double currentSpeed, double currentSpeedConfidence, double oldSpeed,
                                          double oldSpeedConfidence, double deltaTime);
+
+        PositionSpeedConsistencyCheck(const Position &currentPosition,
+                                      const PosConfidenceEllipse_t &currentConfidenceEllipse,
+                                      const Position &oldPosition,
+                                      const PosConfidenceEllipse_t &oldConfidenceEllipse,
+                                      double currentSpeed, double currentSpeedConfidence,
+                                      double oldSpeed, double oldSpeedConfidence,
+                                      double deltaTime);
     };
 } // namespace artery
 

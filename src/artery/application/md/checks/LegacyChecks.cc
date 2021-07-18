@@ -77,13 +77,13 @@ namespace artery {
                                                        double deltaTime) const {
         if (deltaTime < detectionParameters->maxTimeDelta) {
             double deltaDistance = distance(currentPosition, oldPosition).value();
-            double currentMinimumSpeed = std::min(currentSpeed, oldSpeed);
+            double minimumSpeed = std::min(currentSpeed, oldSpeed);
             double minimumDistance =
                     oldSpeed * deltaTime - 0.5 * detectionParameters->maxPlausibleDeceleration * pow(deltaTime, 2);
             double maximumDistance =
                     oldSpeed * deltaTime + 0.5 * detectionParameters->maxPlausibleAcceleration * pow(deltaTime, 2);
-            double addonMgtRange = detectionParameters->maxMgtRngDown + 0.3571 * currentMinimumSpeed -
-                                   0.01694 * pow(currentMinimumSpeed, 2);
+            double addonMgtRange = detectionParameters->maxMgtRngDown + 0.3571 * minimumSpeed -
+                                   0.01694 * pow(minimumSpeed, 2);
             addonMgtRange = (addonMgtRange < 0) ? 0 : addonMgtRange;
 
             if ((deltaDistance - minimumDistance + addonMgtRange) < 0 ||

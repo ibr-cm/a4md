@@ -86,7 +86,68 @@ namespace artery {
                (2 * currentSpeedConfidence);
     }
 
+    double CatchChecks::PositionSpeedConsistencyCheck(const Position &currentPosition,
+                                                      const PosConfidenceEllipse_t &currentConfidenceEllipse,
+                                                      const Position &oldPosition,
+                                                      const PosConfidenceEllipse_t &oldConfidenceEllipse,
+                                                      double currentSpeed, double currentSpeedConfidence,
+                                                      double oldSpeed, double oldSpeedConfidence,
+                                                      double deltaTime) {
+        if (deltaTime > detectionParameters->maxTimeDelta) {
+            return 1;
+        }
+        double deltaDistance = distance(currentPosition, oldPosition).value();
 
+        double currentTest1 = currentSpeed + currentSpeedConfidence;
+        double oldTest1 = oldSpeed - oldSpeedConfidence;
+
+        double currentTest2 = currentSpeed - currentSpeedConfidence;
+        double oldTest2 = oldSpeed + oldSpeedConfidence;
+
+        if (currentTest2 < oldTest2) {
+            currentTest2 = (currentSpeed + oldSpeed) / 2;
+            oldTest2 = (currentSpeed + oldSpeed) / 2;
+        }
+
+        double returnDistance1[2];
+        calculateMaxMinDist(currentTest1, oldTest1, deltaTime, detectionParameters->maxPlausibleAcceleration,
+                            detectionParameters->maxPlausibleDeceleration, detectionParameters->maxPlausibleSpeed,
+                            returnDistance1);
+
+        double factorMin1 = 1 - confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition,
+                                                           oldConfidenceEllipse, returnDistance1[0]);
+        double factorMax1 = oneSidedCircleSegmentFactor(deltaDistance,
+                                                        (double) currentConfidenceEllipse.semiMajorConfidence / 100,
+                                                        (double) oldConfidenceEllipse.semiMinorConfidence / 100,
+                                                        returnDistance1[1] + detectionParameters->maxMgtRngUp);
+
+        double returnDistance2[2];
+        calculateMaxMinDist(currentTest2, oldTest2, deltaTime, detectionParameters->maxPlausibleAcceleration,
+                            detectionParameters->maxPlausibleDeceleration, detectionParameters->maxPlausibleSpeed,
+                            returnDistance2);
+        double factorMin2 = 1 - confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition,
+                                                           oldConfidenceEllipse, returnDistance2[0]);
+        double factorMax2 = oneSidedCircleSegmentFactor(deltaDistance,
+                                                        (double) currentConfidenceEllipse.semiMajorConfidence / 100,
+                                                        (double) oldConfidenceEllipse.semiMinorConfidence / 100,
+                                                        returnDistance2[1] + detectionParameters->maxMgtRngUp);
+
+        double returnDistance0[2];
+        calculateMaxMinDist(currentSpeed, oldSpeed, deltaTime, detectionParameters->maxPlausibleAcceleration,
+                            detectionParameters->maxPlausibleDeceleration, detectionParameters->maxPlausibleSpeed,
+                            returnDistance0);
+        double factorMin0 = 1 - confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition,
+                                                           oldConfidenceEllipse, returnDistance0[0]);
+        double factorMax0 = oneSidedCircleSegmentFactor(deltaDistance,
+                                                        (double) currentConfidenceEllipse.semiMajorConfidence / 100,
+                                                        (double) oldConfidenceEllipse.semiMinorConfidence / 100,
+                                                        returnDistance0[1] + detectionParameters->maxMgtRngUp);
+
+        double factorMin = (factorMin0 + factorMin1 + factorMin2) / 3;
+        double factorMax = (factorMax0 + factorMax1 + factorMax2) / 3;
+        return std::min(factorMin, factorMax);
+
+    }
 
     double CatchChecks::PositionSpeedMaxConsistencyCheck(const Position &currentPosition,
                                                          const PosConfidenceEllipse_t &currentConfidenceEllipse,
