@@ -19,6 +19,10 @@ namespace artery {
                  const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects);
 
     private:
+        double PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const;
+
+        double SpeedPlausibilityCheck(double speed) const;
+
         double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
                                           const vector<vanetza::asn1::Cam *> &surroundingCamObjects);
 
@@ -34,7 +38,8 @@ namespace artery {
         double PositionSpeedMaxConsistencyCheck(Position &currentPosition, Position &oldPosition,
                                                 double currentSpeed, double oldSpeed, double deltaTime) const;
 
-        double SpeedPlausibilityCheck(double speed) const;
+        double PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
+                                               Position &oldPosition, double deltaTime, double currentSpeed) const;
 
         double IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
                                  const std::vector<vanetza::asn1::Cam *> &relevantCams,
@@ -43,14 +48,6 @@ namespace artery {
 
         double SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const;
 
-        double PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const;
-
-//        double FrequencyCheck(long newTime, long oldTime) const;
-
-        double
-        PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
-                                        Position &oldPosition,
-                                        double deltaTime, double currentSpeed) const;
 
     };
 } // namespace artery

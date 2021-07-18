@@ -7,6 +7,24 @@ namespace artery {
 
     using namespace omnetpp;
 
+    double LegacyChecks::PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const {
+        if (senderSpeed < detectionParameters->maxOffroadSpeed ||
+            getDistanceToNearestRoad(mGlobalEnvironmentModel, senderPosition) <
+            detectionParameters->maxDistanceFromRoad) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    double LegacyChecks::SpeedPlausibilityCheck(double speed) const {
+        if (fabs(speed) < detectionParameters->maxPlausibleSpeed) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
     double LegacyChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
                                                     const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
         Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
@@ -115,12 +133,29 @@ namespace artery {
         return 1;
     }
 
-    double LegacyChecks::SpeedPlausibilityCheck(double speed) const {
-        if (fabs(speed) < detectionParameters->maxPlausibleSpeed) {
-            return 1;
-        } else {
-            return 0;
+    double
+    LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
+                                                  Position &oldPosition,
+                                                  double deltaTime, double currentSpeed) const {
+        if (deltaTime < detectionParameters->positionHeadingTime) {
+            if (distance(currentPosition, oldPosition).value() < 1 || currentSpeed < 1) {
+                return 1;
+            }
+            libsumo::TraCIPosition currentPositionTraci = position_cast(mSimulationBoundary, currentPosition);
+            libsumo::TraCIPosition oldPositionTraci = position_cast(mSimulationBoundary, oldPosition);
+            Position deltaPosition = Position(currentPositionTraci.x - oldPositionTraci.x,
+                                              currentPositionTraci.y - oldPositionTraci.y);
+            // add 90 degree for traci offset
+            double positionAngle = std::fmod(calculateHeadingAngle(deltaPosition) + 90, 360);
+            double deltaHeading = calculateHeadingDifference(currentHeading, positionAngle);
+            drawTraciPoi(currentPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+                         mTraciAPI);
+            drawTraciPoi(oldPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary, mTraciAPI);
+            if (deltaHeading > detectionParameters->maxHeadingChange) {
+                return 0;
+            }
         }
+        return 1;
     }
 
     double
@@ -150,42 +185,6 @@ namespace artery {
         } else {
             return 0;
         }
-    }
-
-    double LegacyChecks::PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const {
-        if (senderSpeed < detectionParameters->maxOffroadSpeed ||
-            getDistanceToNearestRoad(mGlobalEnvironmentModel, senderPosition) <
-            detectionParameters->maxDistanceFromRoad) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
-
-    double
-    LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
-                                                  Position &oldPosition,
-                                                  double deltaTime, double currentSpeed) const {
-        if (deltaTime < detectionParameters->positionHeadingTime) {
-            if (distance(currentPosition, oldPosition).value() < 1 || currentSpeed < 1) {
-                return 1;
-            }
-            libsumo::TraCIPosition currentPositionTraci = position_cast(mSimulationBoundary, currentPosition);
-            libsumo::TraCIPosition oldPositionTraci = position_cast(mSimulationBoundary, oldPosition);
-            Position deltaPosition = Position(currentPositionTraci.x - oldPositionTraci.x,
-                                              currentPositionTraci.y - oldPositionTraci.y);
-            // add 90 degree for traci offset
-            double positionAngle = std::fmod(calculateHeadingAngle(deltaPosition) + 90, 360);
-            double deltaHeading = calculateHeadingDifference(currentHeading, positionAngle);
-            drawTraciPoi(currentPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
-                         mTraciAPI);
-            drawTraciPoi(oldPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary, mTraciAPI);
-            if (deltaHeading > detectionParameters->maxHeadingChange) {
-                return 0;
-            }
-        }
-        return 1;
     }
 
     CheckResult *

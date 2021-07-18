@@ -12,6 +12,45 @@ namespace artery {
     using namespace omnetpp;
 
 
+
+    double CatchChecks::PositionPlausibilityCheck(const Position &senderPosition,
+                                                  const PosConfidenceEllipse_t &senderPositionConfidence,
+                                                  const double &senderSpeed, const double &senderSpeedConfidence) {
+        if (std::max(senderSpeed - senderSpeedConfidence, 0.0) < detectionParameters->maxOffroadSpeed) {
+            return 1;
+        }
+        int iterationCount = 5;
+        double semiMajorConfidence = (double) senderPositionConfidence.semiMajorConfidence / 100;
+        double semiMinorConfidence = (double) senderPositionConfidence.semiMinorConfidence / 100;
+        double semiMajorOrientation = (double) senderPositionConfidence.semiMajorOrientation / 10;
+        double semiMajorMultiplicator = semiMajorConfidence / iterationCount;
+        double semiMinorMultiplicator = semiMinorConfidence / iterationCount;
+        int totalCount = 0;
+        int failedCount = 0;
+        for (int radius = radius; radius <= iterationCount; radius++) {
+            int pointCount = int(pow(3 * radius, 1.3));
+            for (int i = 0; i < pointCount; i++) {
+                double borderX = cos(2 * PI / pointCount * i) * semiMajorMultiplicator * i;
+                double borderY = sin(2 * PI / pointCount * i) * semiMinorMultiplicator * i;
+                double newAngle = semiMajorOrientation + atan2(-borderY, borderX) * 180 / PI;
+                newAngle = std::fmod(newAngle, 360);
+
+                double offsetDistance = sqrt(pow(borderX, 2) + pow(borderY, 2));
+                double relativeX = offsetDistance * sin(newAngle * PI / 180);
+                double relativeY = offsetDistance * cos(newAngle * PI / 180);
+                Position p(senderPosition.x.value() + relativeX, senderPosition.y.value() + relativeY);
+                if (getDistanceToNearestRoad(mGlobalEnvironmentModel, p) > detectionParameters->maxDistanceFromRoad) {
+                    failedCount++;
+                }
+                totalCount++;
+            }
+        }
+    }
+
+    double CatchChecks::SpeedPlausibilityCheck(const double &currentSpeed, const double &currentSpeedConfidence) {
+        return (detectionParameters->maxPlausibleSpeed - currentSpeed + currentSpeedConfidence) /
+               (2 * currentSpeedConfidence);
+    }
     double CatchChecks::ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
                                                    TrackedObjectsFilterRange &envModObjects) {
         Position::value_type deltaDistance = distance(testPosition, myPosition);
@@ -81,10 +120,6 @@ namespace artery {
         }
     }
 
-    double CatchChecks::SpeedPlausibilityCheck(const double &currentSpeed, const double &currentSpeedConfidence) {
-        return (detectionParameters->maxPlausibleSpeed - currentSpeed + currentSpeedConfidence) /
-               (2 * currentSpeedConfidence);
-    }
 
     double CatchChecks::PositionSpeedConsistencyCheck(const Position &currentPosition,
                                                       const PosConfidenceEllipse_t &currentConfidenceEllipse,
@@ -178,87 +213,15 @@ namespace artery {
         return std::min(minFactor, maxFactor);
     }
 
-
-    double CatchChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
-                                          const std::vector<vanetza::asn1::Cam *> &relevantCams,
-                                          const Position &senderPosition, const double &senderLength,
-                                          const double &senderWidth, const double &senderHeading,
-                                          const double &deltaTime) {
-        std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
-                                                                senderLength, senderWidth);
-        int totalCount = 1;
-        double intersectionSum = 1.01 - (intersectionFactor(senderOutline, receiverVehicleOutline) *
-                                         ((detectionParameters->maxIntersectionDeltaTime - deltaTime) /
-                                          detectionParameters->maxIntersectionDeltaTime));
-        for (auto cam : relevantCams) {
-            std::vector<Position> outline = getVehicleOutline((*cam), mSimulationBoundary, mTraciAPI);
-            totalCount++;
-            intersectionSum += intersectionFactor(senderOutline, outline);
-        }
-        return intersectionSum / totalCount;
-    }
-
-    double CatchChecks::SuddenAppearanceCheck(const Position &senderPosition,
-                                              const PosConfidenceEllipse_t &senderConfidenceEllipse,
-                                              const Position &receiverPosition,
-                                              const PosConfidenceEllipse_t &receiverConfidenceEllipse) {
-        double deltaDistance = distance(senderPosition, receiverPosition).value();
-
-        double receiverMaxRadius = detectionParameters->maxSuddenAppearanceRange +
-                                   (double) receiverConfidenceEllipse.semiMajorConfidence / 100;
-        if (senderConfidenceEllipse.semiMajorConfidence == 0 && receiverMaxRadius < deltaDistance) {
-            return 0;
-        }
-        std::vector<Position> receiverCircle = createCircle(receiverPosition, receiverMaxRadius, 36);
-        std::vector<Position> senderEllipse = createEllipse(senderPosition, senderConfidenceEllipse);
-        double area = getIntersectionArea(receiverCircle, senderEllipse);
-        return 1 - (area / PI * pow((double) senderConfidenceEllipse.semiMajorConfidence / 100, 2.0));
-    }
-
-    double CatchChecks::PositionPlausibilityCheck(const Position &senderPosition,
-                                                  const PosConfidenceEllipse_t &senderPositionConfidence,
-                                                  const double &senderSpeed, const double &senderSpeedConfidence) {
-        if (std::max(senderSpeed - senderSpeedConfidence, 0.0) < detectionParameters->maxOffroadSpeed) {
-            return 1;
-        }
-        int iterationCount = 5;
-        double semiMajorConfidence = (double) senderPositionConfidence.semiMajorConfidence / 100;
-        double semiMinorConfidence = (double) senderPositionConfidence.semiMinorConfidence / 100;
-        double semiMajorOrientation = (double) senderPositionConfidence.semiMajorOrientation / 10;
-        double semiMajorMultiplicator = semiMajorConfidence / iterationCount;
-        double semiMinorMultiplicator = semiMinorConfidence / iterationCount;
-        int totalCount = 0;
-        int failedCount = 0;
-        for (int radius = radius; radius <= iterationCount; radius++) {
-            int pointCount = int(pow(3 * radius, 1.3));
-            for (int i = 0; i < pointCount; i++) {
-                double borderX = cos(2 * PI / pointCount * i) * semiMajorMultiplicator * i;
-                double borderY = sin(2 * PI / pointCount * i) * semiMinorMultiplicator * i;
-                double newAngle = semiMajorOrientation + atan2(-borderY, borderX) * 180 / PI;
-                newAngle = std::fmod(newAngle, 360);
-
-                double offsetDistance = sqrt(pow(borderX, 2) + pow(borderY, 2));
-                double relativeX = offsetDistance * sin(newAngle * PI / 180);
-                double relativeY = offsetDistance * cos(newAngle * PI / 180);
-                Position p(senderPosition.x.value() + relativeX, senderPosition.y.value() + relativeY);
-                if (getDistanceToNearestRoad(mGlobalEnvironmentModel, p) > detectionParameters->maxDistanceFromRoad) {
-                    failedCount++;
-                }
-                totalCount++;
-            }
-        }
-    }
-
-
-    double CatchChecks::PositionHeadingConsistencyCheckOld(const double &currentHeading,
-                                                           const double &currentHeadingConfidence,
-                                                           const Position &currentPosition,
-                                                           const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                           const Position &oldPosition,
-                                                           const PosConfidenceEllipse_t &oldPositionConfidence,
-                                                           const double &currentSpeed,
-                                                           const double &currentSpeedConfidence,
-                                                           const double &deltaTime) {
+    double CatchChecks::PositionHeadingConsistencyCheck(const double &currentHeading,
+                                                        const double &currentHeadingConfidence,
+                                                        const Position &currentPosition,
+                                                        const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                        const Position &oldPosition,
+                                                        const PosConfidenceEllipse_t &oldPositionConfidence,
+                                                        const double &currentSpeed,
+                                                        const double &currentSpeedConfidence,
+                                                        const double &deltaTime) {
         double deltaDistance = distance(currentPosition, oldPosition).value();
         if (deltaTime < detectionParameters->positionHeadingTime ||
             deltaDistance < 1 ||
@@ -316,6 +279,44 @@ namespace artery {
             return (currentFactorLow + oldFactorLow + currentFactorHigh + oldFactorHigh);
         }
     }
+
+    double CatchChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
+                                          const std::vector<vanetza::asn1::Cam *> &relevantCams,
+                                          const Position &senderPosition, const double &senderLength,
+                                          const double &senderWidth, const double &senderHeading,
+                                          const double &deltaTime) {
+        std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
+                                                                senderLength, senderWidth);
+        int totalCount = 1;
+        double intersectionSum = 1.01 - (intersectionFactor(senderOutline, receiverVehicleOutline) *
+                                         ((detectionParameters->maxIntersectionDeltaTime - deltaTime) /
+                                          detectionParameters->maxIntersectionDeltaTime));
+        for (auto cam : relevantCams) {
+            std::vector<Position> outline = getVehicleOutline((*cam), mSimulationBoundary, mTraciAPI);
+            totalCount++;
+            intersectionSum += intersectionFactor(senderOutline, outline);
+        }
+        return intersectionSum / totalCount;
+    }
+
+    double CatchChecks::SuddenAppearanceCheck(const Position &senderPosition,
+                                              const PosConfidenceEllipse_t &senderConfidenceEllipse,
+                                              const Position &receiverPosition,
+                                              const PosConfidenceEllipse_t &receiverConfidenceEllipse) {
+        double deltaDistance = distance(senderPosition, receiverPosition).value();
+
+        double receiverMaxRadius = detectionParameters->maxSuddenAppearanceRange +
+                                   (double) receiverConfidenceEllipse.semiMajorConfidence / 100;
+        if (senderConfidenceEllipse.semiMajorConfidence == 0 && receiverMaxRadius < deltaDistance) {
+            return 0;
+        }
+        std::vector<Position> receiverCircle = createCircle(receiverPosition, receiverMaxRadius, 36);
+        std::vector<Position> senderEllipse = createEllipse(senderPosition, senderConfidenceEllipse);
+        double area = getIntersectionArea(receiverCircle, senderEllipse);
+        return 1 - (area / PI * pow((double) senderConfidenceEllipse.semiMajorConfidence / 100, 2.0));
+    }
+
+
 
 
     CheckResult *
