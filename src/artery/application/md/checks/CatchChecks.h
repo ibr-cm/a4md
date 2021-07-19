@@ -9,7 +9,6 @@
 
 namespace artery {
 
-
     class CatchChecks : public BaseChecks {
     public:
         CatchChecks() = delete;
@@ -17,10 +16,10 @@ namespace artery {
         CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                     DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
 
-        CheckResult *
-        checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                 const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-                 const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects);
+        CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
+                              const std::vector<Position> &receiverVehicleOutline,
+                              const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                              const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) override;
 
     private:
         double PositionPlausibilityCheck(const Position &senderPosition,
@@ -72,16 +71,14 @@ namespace artery {
                                                const double &currentSpeed, const double &currentSpeedConfidence,
                                                const double &deltaTime);
 
-        double
-        IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
-                          const std::vector<vanetza::asn1::Cam *> &relevantCams,
-                          const Position &senderPosition, const double &senderLength,
-                          const double &senderWidth, const double &senderHeading, const double &deltaTime);
+        double IntersectionCheck(const std::vector<Position> &receiverEllipse,
+                                 const std::vector<vanetza::asn1::Cam *> &relevantCams,
+                                 const std::vector<Position> &senderEllipse, const double &deltaTime);
 
-        double
-        SuddenAppearanceCheck(const Position &senderPosition, const PosConfidenceEllipse_t &senderConfidenceEllipse,
-                              const Position &receiverPosition,
-                              const PosConfidenceEllipse_t &receiverConfidenceEllipse);
+        double SuddenAppearanceCheck(const Position &senderPosition,
+                                     const PosConfidenceEllipse_t &senderConfidenceEllipse,
+                                     const Position &receiverPosition,
+                                     const PosConfidenceEllipse_t &receiverConfidenceEllipse);
 
     };
 } // namespace artery

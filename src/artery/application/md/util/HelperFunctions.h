@@ -39,8 +39,8 @@ namespace artery {
 
     Position getVector(const double &value, const double &angle);
 
-    Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary &simulationBoundary,
-                                const std::shared_ptr<const traci::API> &traciAPI);
+    Position convertReferencePosition(const ReferencePosition_t &referencePosition, const traci::Boundary &simulationBoundary,
+                                      const std::shared_ptr<const traci::API> &traciAPI);
 
     void drawTraciPolygon(std::vector<Position> outline, const std::string &id, const libsumo::TraCIColor &color,
                           const traci::Boundary &simulationBoundary,
@@ -78,9 +78,11 @@ namespace artery {
 
     double oneSidedCircleSegmentFactor(double d, double r1, double r2, double range);
 
-    calculateMaxMinDist(double curSpeed, double oldspeed, double time,
+    void calculateMaxMinDist(double curSpeed, double oldspeed, double time,
                         double MAX_PLAUSIBLE_ACCEL, double MAX_PLAUSIBLE_DECEL,
                         double MAX_PLAUSIBLE_SPEED, double *returnDistance);
+
+    double segmentSegmentFactor(double d, double r1, double r2, double range);
 }
 
 #endif //ARTERY_HELPERFUNCTIONS_H

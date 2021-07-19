@@ -7,6 +7,8 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         string appName = default("MisbehaviorDetectionService");
 
         // ### detection parameters
+        int checkType = default(0);
+
         // in meters per second
         double maxPlausibleSpeed = default(60);
         double maxPlausibleAcceleration = default(10);

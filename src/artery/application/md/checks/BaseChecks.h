@@ -23,11 +23,15 @@ namespace artery {
 
     class BaseChecks {
     public:
-
-    protected:
         BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                    DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
 
+        virtual CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
+                                      const std::vector<Position> &receiverVehicleOutline,
+                                      const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                                      const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) = 0;
+
+    protected:
         static bool staticInitializationComplete;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         static traci::Boundary mSimulationBoundary;
@@ -43,7 +47,7 @@ namespace artery {
         Position lastCamSpeedVector;
 
 
-        double BaseChecks::FrequencyCheck(const double &deltaTime) const;
+        double FrequencyCheck(const double &deltaTime) const;
 
         void KalmanChecks(const Position &currentCamPosition,
                           const PosConfidenceEllipse_t &currentCamPositionConfidence,

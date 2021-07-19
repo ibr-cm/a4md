@@ -215,6 +215,7 @@ namespace artery {
             sendCam(T_now);
         }
     }
+
     void
     MisbehaviorCaService::indicate(const vanetza::btp::DataIndication &ind, std::unique_ptr<vanetza::UpPacket> packet) {
         Enter_Method("indicate");
@@ -508,7 +509,7 @@ namespace artery {
                         currentHeadingAngle = artery::Angle::from_radian(
                                 (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
                                 10).degree();
-                        originalPosition = convertCamPosition(
+                        originalPosition = convertReferencePosition(
                                 message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                                 mTraciAPI);
                     }
@@ -575,8 +576,10 @@ namespace artery {
 
                 attackGridSybilCurrentVehicleIndex = ++attackGridSybilCurrentVehicleIndex % attackGridSybilVehicleCount;
                 message->header.stationID = mPseudonyms.front();
+//                message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+//                        mTimer->getTimeFor(mVehicleDataProvider->updated()));
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-                        mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                        mTimer->getCurrentTime());
                 mPseudonyms.push(mPseudonyms.front());
                 mPseudonyms.pop();
                 break;
@@ -711,18 +714,25 @@ namespace artery {
                                                    libsumo::TraCIColor(0, 255, 162, 255)};
         libsumo::TraCIColor color = libsumo::TraCIColor(255, 0, 255, 255);
         int maxActivePoIs = F2MDParameters::miscParameters.CamLocationVisualizerMaxLength;
+        std::string poiId = {
+                mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
+                std::to_string((uint16_t) countTaiMilliseconds(mTimer->getCurrentTime()))};
         if (mAttackType == attackTypes::GridSybil && attackGridSybilVehicleCount <= 5) {
             color = colors[(attackGridSybilCurrentVehicleIndex + (attackGridSybilVehicleCount - 1)) %
                            attackGridSybilVehicleCount];
             maxActivePoIs = attackGridSybilVehicleCount;
+            poiId = {mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
+                     std::to_string((uint16_t) countTaiMilliseconds(
+                             mTimer->getCurrentTime()))};
         }
         traci::TraCIGeoPosition traciGeoPosition = {
                 (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
                 (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
         traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
-        std::string poiId = {
-                mVehicleController->getVehicleId() + "_CAM_" + std::to_string(cam->header.stationID) + "_" +
-                std::to_string(cam->cam.generationDeltaTime)};
+        if (mAttackType == attackTypes::GridSybil) {
+        } else {
+
+        }
         mTraciAPI->poi.add(poiId, traciPosition.x, traciPosition.y, color,
                            poiId, 5, "", 0,
                            0, 0);

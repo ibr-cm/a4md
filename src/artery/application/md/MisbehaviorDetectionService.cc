@@ -76,6 +76,8 @@ namespace artery {
     }
 
     void MisbehaviorDetectionService::initializeParameters() {
+
+        F2MDParameters::detectionParameters.checkType = par("checkType");
         F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
         F2MDParameters::detectionParameters.maxPlausibleAcceleration = par("maxPlausibleAcceleration");
         F2MDParameters::detectionParameters.maxPlausibleDeceleration = par("maxPlausibleDeceleration");
@@ -116,10 +118,6 @@ namespace artery {
     void MisbehaviorDetectionService::indicate(const vanetza::btp::DataIndication &ind, cPacket *packet,
                                                const NetworkInterface &net) {
         Enter_Method("indicate");
-
-        EV_INFO << "packet indication on channel " << net.channel << "with byte length" << packet->getByteLength()
-                << "\n";
-
         delete (packet);
     }
 
@@ -134,14 +132,7 @@ namespace artery {
                 (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
                 (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
         traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
-        std::string poiId = std::to_string(cam->header.stationID);
-        poiId += idPrefix;
-        poiId += "_CAM_";
-        poiId += std::to_string(cam->header.messageID);
-        poiId += "-";
-        poiId += std::to_string(cam->cam.generationDeltaTime);
-        poiId += "-";
-        poiId += std::to_string(counter++);
+        std::string poiId = {std::to_string(cam->header.stationID)+ idPrefix+"_CAM_"+std::to_string(cam->header.messageID) + "-" + std::to_string(cam->cam.generationDeltaTime) + "-" + std::to_string(counter++)};
         mTraciAPI->poi.add(poiId, traciPosition.x, traciPosition.y, color,
                            poiId, 5, "", 0,
                            0, 0);

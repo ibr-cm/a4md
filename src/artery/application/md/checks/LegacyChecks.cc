@@ -7,7 +7,7 @@ namespace artery {
 
     using namespace omnetpp;
 
-    double LegacyChecks::PositionPlausibilityCheck(Position &senderPosition, double senderSpeed) const {
+    double LegacyChecks::PositionPlausibilityCheck(const Position &senderPosition, const double &senderSpeed) const {
         if (senderSpeed < detectionParameters->maxOffroadSpeed ||
             getDistanceToNearestRoad(mGlobalEnvironmentModel, senderPosition) <
             detectionParameters->maxDistanceFromRoad) {
@@ -17,7 +17,7 @@ namespace artery {
         }
     }
 
-    double LegacyChecks::SpeedPlausibilityCheck(double speed) const {
+    double LegacyChecks::SpeedPlausibilityCheck(const double &speed) const {
         if (fabs(speed) < detectionParameters->maxPlausibleSpeed) {
             return 1;
         } else {
@@ -37,7 +37,7 @@ namespace artery {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
                 for (auto cam : surroundingCamObjects) {
-                    Position::value_type currentDistance = distance(senderPosition, convertCamPosition(
+                    Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
                             (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                             mTraciAPI));
                     if (currentDistance < minimumDistance) {
@@ -64,7 +64,7 @@ namespace artery {
     }
 
     double
-    LegacyChecks::PositionConsistencyCheck(Position &currentPosition, const Position &lastPosition,
+    LegacyChecks::PositionConsistencyCheck(const Position &currentPosition, const Position &lastPosition,
                                            double time) const {
         if (distance(currentPosition, lastPosition).value() < detectionParameters->maxPlausibleSpeed * time) {
             return 1;
@@ -73,7 +73,8 @@ namespace artery {
         }
     }
 
-    double LegacyChecks::SpeedConsistencyCheck(double currentSpeed, double oldSpeed, double time) const {
+    double
+    LegacyChecks::SpeedConsistencyCheck(const double &currentSpeed, const double &oldSpeed, const double &time) const {
         double deltaSpeed = currentSpeed - oldSpeed;
         if (deltaSpeed > 0) {
             if (deltaSpeed < detectionParameters->maxPlausibleAcceleration * time) {
@@ -90,9 +91,9 @@ namespace artery {
         }
     }
 
-    double LegacyChecks::PositionSpeedConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                                       double currentSpeed, double oldSpeed,
-                                                       double deltaTime) const {
+    double LegacyChecks::PositionSpeedConsistencyCheck(const Position &currentPosition, const Position &oldPosition,
+                                                       const double &currentSpeed, const double &oldSpeed,
+                                                       const double &deltaTime) const {
         if (deltaTime < detectionParameters->maxTimeDelta) {
             double deltaDistance = distance(currentPosition, oldPosition).value();
             double minimumSpeed = std::min(currentSpeed, oldSpeed);
@@ -113,9 +114,9 @@ namespace artery {
     }
 
     double
-    LegacyChecks::PositionSpeedMaxConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                                   double currentSpeed,
-                                                   double oldSpeed, double deltaTime) const {
+    LegacyChecks::PositionSpeedMaxConsistencyCheck(const Position &currentPosition, const Position &oldPosition,
+                                                   const double &currentSpeed,
+                                                   const double &oldSpeed, const double &deltaTime) const {
         if (deltaTime < detectionParameters->maxTimeDelta) {
             Position::value_type deltaDistance = distance(currentPosition, oldPosition);
             double theoreticalSpeed = deltaDistance.value() / deltaTime;
@@ -134,9 +135,9 @@ namespace artery {
     }
 
     double
-    LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, Position &currentPosition,
-                                                  Position &oldPosition,
-                                                  double deltaTime, double currentSpeed) const {
+    LegacyChecks::PositionHeadingConsistencyCheck(const double &currentHeading, const Position &currentPosition,
+                                                  const Position &oldPosition,
+                                                  const double &deltaTime, const double &currentSpeed) const {
         if (deltaTime < detectionParameters->positionHeadingTime) {
             if (distance(currentPosition, oldPosition).value() < 1 || currentSpeed < 1) {
                 return 1;
@@ -148,9 +149,9 @@ namespace artery {
             // add 90 degree for traci offset
             double positionAngle = std::fmod(calculateHeadingAngle(deltaPosition) + 90, 360);
             double deltaHeading = calculateHeadingDifference(currentHeading, positionAngle);
-            drawTraciPoi(currentPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
-                         mTraciAPI);
-            drawTraciPoi(oldPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary, mTraciAPI);
+//            drawTraciPoi(currentPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+//                         mTraciAPI);
+//            drawTraciPoi(oldPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary, mTraciAPI);
             if (deltaHeading > detectionParameters->maxHeadingChange) {
                 return 0;
             }
@@ -179,7 +180,7 @@ namespace artery {
 
     }
 
-    double LegacyChecks::SuddenAppearanceCheck(Position &senderPosition, const Position &receiverPosition) const {
+    double LegacyChecks::SuddenAppearanceCheck(const Position &senderPosition, const Position &receiverPosition) const {
         if (distance(senderPosition, receiverPosition).value() > detectionParameters->maxSuddenAppearanceRange) {
             return 1;
         } else {
@@ -187,18 +188,20 @@ namespace artery {
         }
     }
 
-    CheckResult *
-    LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                           const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-                           const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+    CheckResult *LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP,
+                                        const std::vector<Position> &receiverVehicleOutline,
+                                        const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                                        const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+        const Position &receiverPosition = convertReferencePosition(receiverVDP->approximateReferencePosition(),
+                                                                    mSimulationBoundary, mTraciAPI);
 
-        BasicVehicleContainerHighFrequency_t currentHfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
-
-        Position currentCamPosition = convertCamPosition(
+        Position currentCamPosition = convertReferencePosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
-        PosConfidenceEllipse_t currentCamPositionConfidence = currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
-        const Position &receiverPosition = convertCamPosition(receiverVDP->approximateReferencePosition(),
-                                                              mSimulationBoundary, mTraciAPI);
+        PosConfidenceEllipse_t currentCamPositionConfidence =
+                currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+
+        BasicVehicleContainerHighFrequency_t currentHfc =
+                currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
         double currentCamSpeed = (double) currentHfc.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) currentHfc.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
@@ -208,6 +211,7 @@ namespace artery {
         double currentCamVehicleWidth = (double) currentHfc.vehicleWidth / 10;
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
+
         auto *result = new CheckResult;
         result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
         result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);

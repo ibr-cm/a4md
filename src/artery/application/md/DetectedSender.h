@@ -6,6 +6,7 @@
 #define ARTERY_DETECTEDSENDER_H
 
 
+#include <artery/application/md/checks/BaseChecks.h>
 #include <list>
 #include <vanetza/asn1/cam.hpp>
 #include <artery/application/md/checks/kalman/Kalman_SVI.h>
@@ -14,7 +15,6 @@
 #include <artery/application/md/checks/CheckResult.h>
 #include <artery/traci/VehicleController.h>
 #include <artery/application/md/util/F2MDParameters.h>
-#include <artery/application/md/checks/LegacyChecks.h>
 
 namespace artery {
 
@@ -33,7 +33,7 @@ namespace artery {
         std::vector<CheckResult *> getResults() { return checkResults; };
 
     private:
-        LegacyChecks legacyChecks;
+        BaseChecks *baseChecks;
 
         std::vector<CheckResult *> checkResults;
 

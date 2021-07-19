@@ -9,31 +9,35 @@
  * All rights reserved.
  *******************************************************************************/
 
-#ifndef __VEINS_mbTypes_H_
-#define __VEINS_mbTypes_H_
+#ifndef ARTERY_CHECKTYPES_H
+#define ARTERY_CHECKTYPES_H
 
 #include <iostream>
 
-namespace misbehaviorTypes {
+namespace artery {
 
-enum MisbehaviorTypes {
-    Benign = 0,
-    LocalAttacker,
-    GlobalAttacker,
-    SIZE_OF_ENUM
-};
+    namespace misbehaviorTypes {
 
-static const char* mbNames[] = { "Benign", "LocalAttacker","GlobalAttacker"};
+        enum MisbehaviorTypes {
+            Benign = 0,
+            LocalAttacker,
+            GlobalAttacker,
+            SIZE_OF_ENUM
+        };
 
-static const MisbehaviorTypes intMbs[] = { Benign, LocalAttacker,GlobalAttacker };
+        static const char *mbNames[] = {"Benign", "LocalAttacker", "GlobalAttacker"};
 
-static_assert(sizeof(misbehaviorTypes::mbNames)/sizeof(char*) == misbehaviorTypes::SIZE_OF_ENUM
-        , "sizes dont match");
+        static const MisbehaviorTypes intMbs[] = {Benign, LocalAttacker, GlobalAttacker};
 
-static_assert(sizeof(misbehaviorTypes::intMbs)/sizeof(MisbehaviorTypes) == misbehaviorTypes::SIZE_OF_ENUM
-        , "sizes dont match");
+        static_assert(sizeof(misbehaviorTypes::mbNames) / sizeof(char *) == misbehaviorTypes::SIZE_OF_ENUM,
+                      "sizes dont match");
+
+        static_assert(sizeof(misbehaviorTypes::intMbs) / sizeof(MisbehaviorTypes) == misbehaviorTypes::SIZE_OF_ENUM,
+                      "sizes dont match");
 
 
-}
+    }
+} //namespace artery
+
 
 #endif

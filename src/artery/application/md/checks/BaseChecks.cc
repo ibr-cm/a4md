@@ -24,7 +24,7 @@ namespace artery {
             mTraciAPI = std::move(traciAPI);
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
         }
-        Position position = convertCamPosition(
+        Position position = convertReferencePosition(
                 message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         double speed =
                 (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
@@ -70,19 +70,19 @@ namespace artery {
                 double currentSemiMinorConfidence = std::max(
                         (double) currentPositionConfidence.semiMinorConfidence / 100.0,
                         detectionParameters->kalmanMinPosRange);
-                currentSpeedConfidence = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
+                double currentSpeedConf = std::max(currentSpeedConfidence, detectionParameters->kalmanMinSpeedRange);
 
                 kalmanSVI->getDeltaPos(deltaTime, currentPosition.x.value(), currentPosition.y.value(),
                                        currentSpeed.x.value(), currentSpeed.y.value(), currentAcceleration.x.value(),
                                        currentAcceleration.y.value(), currentSemiMajorConfidence,
                                        currentSemiMinorConfidence,
-                                       currentSpeedConfidence, currentSpeedConfidence, deltaPosition);
+                                       currentSpeedConf, currentSpeedConf, deltaPosition);
 
                 double ret_1 = 1 - sqrt(pow(deltaPosition[0], 2.0) + pow(deltaPosition[2], 2.0)) /
                                    (detectionParameters->kalmanPosRange * currentSemiMajorConfidence * deltaTime);
 
                 double ret_2 = 1 - sqrt(pow(deltaPosition[1], 2.0) + pow(deltaPosition[3], 2.0)) /
-                                   (detectionParameters->kalmanSpeedRange * currentSpeedConfidence * deltaTime);
+                                   (detectionParameters->kalmanSpeedRange * currentSpeedConf * deltaTime);
                 returnValue[0] = isnan(ret_1) || ret_1 < 0.5 ? 0 : 1;
                 returnValue[1] = isnan(ret_2) || ret_2 < 0.5 ? 0 : 1;
             } else {
@@ -242,5 +242,12 @@ namespace artery {
                                                                              currentCamAccelerationVector,
                                                                              camDeltaTime);
     }
+
+//    CheckResult *
+//    BaseChecks::checkCAM(const VehicleDataProvider *receiverVDP, const vector<Position> &receiverVehicleOutline,
+//                         const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+//                         const vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+//        return nullptr;
+//    }
 
 } // namespace artery

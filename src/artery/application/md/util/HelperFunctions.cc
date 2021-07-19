@@ -83,8 +83,8 @@ namespace artery {
                                             const std::shared_ptr<const traci::API> &traciAPI) {
         const CamParameters_t &camParameters = cam->cam.camParameters;
         const BasicVehicleContainerHighFrequency_t &hfc = camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
-        Position position = convertCamPosition(camParameters.basicContainer.referencePosition,
-                                               simulationBoundary, traciAPI);
+        Position position = convertReferencePosition(camParameters.basicContainer.referencePosition,
+                                                     simulationBoundary, traciAPI);
         double heading = (double) hfc.heading.headingValue / 10;
         double length = (double) hfc.vehicleLength.vehicleLengthValue / 10;
         double width = (double) hfc.vehicleWidth / 10;
@@ -135,8 +135,9 @@ namespace artery {
         return Position(x, y);
     }
 
-    Position convertCamPosition(const ReferencePosition_t &referencePosition, const traci::Boundary &simulationBoundary,
-                                const std::shared_ptr<const traci::API> &traciAPI) {
+    Position
+    convertReferencePosition(const ReferencePosition_t &referencePosition, const traci::Boundary &simulationBoundary,
+                             const std::shared_ptr<const traci::API> &traciAPI) {
         traci::TraCIGeoPosition traciGeoPositionSender = {
                 (double) referencePosition.longitude / 10000000.0,
                 (double) referencePosition.latitude / 10000000.0};
@@ -173,8 +174,13 @@ namespace artery {
     }
 
     double calculateCircleAreaWithoutSegment(double radius, double distance, bool distanceIsFromCenter) {
+        if (distance < 0) {
+            return 0;
+        }
         if (!distanceIsFromCenter) {
             distance = distance - radius;
+        } else {
+            distance = fabs(distance);
         }
         double angle = acos(std::min(distance / radius, 1.0)) * 2;
         double area = 0.5 * pow(radius, 2) * (angle - sin(angle));
@@ -182,7 +188,7 @@ namespace artery {
     }
 
     double calculateNormedCircleAreaWithoutSegment(double radius, double distance, bool distanceIsFromCenter) {
-        return calculateCircleAreaWithoutSegment(radius, distance, false) / (PI * pow(radius, 2));
+        return calculateCircleAreaWithoutSegment(radius, distance, distanceIsFromCenter) / (PI * pow(radius, 2));
     }
 
     std::vector<Position> createCircle(const Position &center, double radius, int pointCount) {
@@ -193,7 +199,8 @@ namespace artery {
         boost::geometry::strategy::buffer::side_straight side_strategy;
         boost::geometry::model::multi_polygon<polygon> circleBuffer;
 
-        boost::geometry::buffer(center, circleBuffer,
+        point centerPoint(center.x.value(), center.y.value());
+        boost::geometry::buffer(centerPoint, circleBuffer,
                                 distance_strategy, side_strategy,
                                 join_strategy, end_strategy, circle_strategy);
         std::vector<Position> circleOutline;
@@ -277,9 +284,9 @@ namespace artery {
                                       const PosConfidenceEllipse_t &confidenceEllipse2, double range) {
         std::vector<Position> ellipse1 = createEllipse(position1, confidenceEllipse1);
         std::vector<Position> ellipse2 = createEllipse(position2, confidenceEllipse2);
-        confidenceIntersectionArea(position1, ellipse1, (double) confidenceEllipse1.semiMajorConfidence / 100,
-                                   position2, ellipse2, (double) confidenceEllipse2.semiMajorConfidence / 100,
-                                   range);
+        return confidenceIntersectionArea(position1, ellipse1, (double) confidenceEllipse1.semiMajorConfidence / 100,
+                                          position2, ellipse2, (double) confidenceEllipse2.semiMajorConfidence / 100,
+                                          range);
     }
 
     double intersectionFactor(const std::vector<Position> &polygon1, const std::vector<Position> &polygon2) {
@@ -288,7 +295,7 @@ namespace artery {
 
         double intersectionArea = getIntersectionArea(polygon1, polygon2);
 
-        return (intersectionArea) / std::min(area1, area2);
+        return std::min((intersectionArea) / std::min(area1, area2), 1.0);
     }
 
     double oneSidedCircleSegmentFactor(double d, double r1, double r2, double range) {
@@ -298,14 +305,20 @@ namespace artery {
         } else if (range < d - r1 - r2) {
             return 0;
         } else {
-            double d1 = (pow(r1, 2) + pow(d, 2) - pow(r2, 2)) / (2 * d);
-            double d2 = (pow(r2, 2) + pow(d, 2) - pow(r1, 2)) / (2 * d);
-            if ((d1 + r1) < range / 2 && (d2 + r2) > range / 2) {
-                d2 = d2 - (range / 2 - (d1 + r1));
-                d1 = d1 + (range / 2 - (d1 + r1));
-            } else if ((d2 + r2) < range / 2 && (d1 + r1) > range / 2) {
-                d1 = d1 - (range / 2 - (d2 + r2));
-                d2 = d2 + (range / 2 - (d2 + r2));
+            double d1 = 0;
+            double d2 = 0;
+            if (d > 0) {
+                d1 = (r1 * r1 + d * d - r2 * r2) / (2 * d);
+                d2 = (r2 * r2 + d * d - r1 * r1) / (2 * d);
+                if ((d1 + r1) < range / 2 && (d2 + r2) > range / 2) {
+                    d2 = d2 - (range / 2 - (d1 + r1));
+                    d1 = d1 + (range / 2 - (d1 + r1));
+                }
+
+                if ((d2 + r2) < range / 2 && (d1 + r1) > range / 2) {
+                    d1 = d1 - (range / 2 - (d2 + r2));
+                    d2 = d2 + (range / 2 - (d2 + r2));
+                }
             }
             if (r1 <= 0) {
                 if (range / 2 >= d1) {
@@ -392,6 +405,55 @@ namespace artery {
 
         returnDistance[0] = minDistance;
         returnDistance[1] = maxDistance;
+    }
+
+    double segmentSegmentFactor(double d, double r1, double r2, double range) {
+        if (r1 == 0 && r2 == 0) {
+            if (d > range) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+        double d1 = 0;
+        double d2 = 0;
+        if (d > 0) {
+            d1 = (r1 * r1 + d * d - r2 * r2) / (2 * d);
+            d2 = (r2 * r2 + d * d - r1 * r1) / (2 * d);
+
+            if ((d1 + r1) < range / 2 && (d2 + r2) > range / 2) {
+                d2 = d2 - (range / 2 - (d1 + r1));
+                d1 = d1 + (range / 2 - (d1 + r1));
+            }
+
+            if ((d2 + r2) < range / 2 && (d1 + r1) > range / 2) {
+                d1 = d1 - (range / 2 - (d2 + r2));
+                d2 = d2 + (range / 2 - (d2 + r2));
+            }
+        }
+
+        double overlap1 = 0;
+        double overlap2 = 0;
+
+        double addon = 0;
+
+        if ((d1 - range / 2) < r1) {
+            if ((d1 - range / 2) > -r1) {
+                addon = -(d1 - r1);
+                overlap1 = range / 2 + addon;
+            } else {
+                overlap1 = 2 * r1;
+            }
+        }
+        if ((d2 - range / 2) < r2) {
+            if ((d2 - range / 2) > -r2) {
+                addon = -(d2 - r2);
+                overlap2 = range / 2 + addon;
+            } else {
+                overlap2 = 2 * r2;
+            }
+        }
+        return (overlap1 + overlap2) / (2 * r1 + 2 * r2);
     }
 
 }

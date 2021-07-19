@@ -74,6 +74,8 @@ namespace artery {
     };
 
     struct DetectionParameters {
+        
+        int checkType;
 
         double maxPlausibleSpeed;
         double maxPlausibleAcceleration;

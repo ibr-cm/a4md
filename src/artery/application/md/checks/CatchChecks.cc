@@ -26,7 +26,7 @@ namespace artery {
         double semiMinorMultiplicator = semiMinorConfidence / iterationCount;
         int totalCount = 0;
         int failedCount = 0;
-        for (int radius = radius; radius <= iterationCount; radius++) {
+        for (int radius = 0; radius <= iterationCount; radius++) {
             int pointCount = int(pow(3 * radius, 1.3));
             for (int i = 0; i < pointCount; i++) {
                 double borderX = cos(2 * PI / pointCount * i) * semiMajorMultiplicator * i;
@@ -44,11 +44,20 @@ namespace artery {
                 totalCount++;
             }
         }
+        return 1 - (double) failedCount / totalCount;
     }
 
     double CatchChecks::SpeedPlausibilityCheck(const double &currentSpeed, const double &currentSpeedConfidence) {
-        return (detectionParameters->maxPlausibleSpeed - currentSpeed + currentSpeedConfidence) /
-               (2 * currentSpeedConfidence);
+//        return (detectionParameters->maxPlausibleSpeed - currentSpeed + currentSpeedConfidence) /
+//               (2 * currentSpeedConfidence);
+        if (currentSpeed + currentSpeedConfidence / 2 < detectionParameters->maxPlausibleSpeed) {
+            return 1;
+        } else if (currentSpeed + currentSpeedConfidence / 2 > detectionParameters->maxPlausibleSpeed) {
+            return 0;
+        } else {
+            return (currentSpeedConfidence / 2 + (detectionParameters->maxPlausibleSpeed - currentSpeed)) /
+                   currentSpeedConfidence;
+        }
     }
 
     double CatchChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
@@ -63,7 +72,7 @@ namespace artery {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
                 for (auto cam : surroundingCamObjects) {
-                    Position::value_type currentDistance = distance(senderPosition, convertCamPosition(
+                    Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
                             (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                             mTraciAPI));
                     if (currentDistance < minimumDistance) {
@@ -104,19 +113,24 @@ namespace artery {
     double CatchChecks::SpeedConsistencyCheck(const double &currentSpeed, const double &currentSpeedConfidence,
                                               const double &oldSpeed, const double &oldSpeedConfidence,
                                               const double &deltaTime) {
-        double f_max = (detectionParameters->maxPlausibleAcceleration - currentSpeed + oldSpeedConfidence) /
-                       (4 * oldSpeedConfidence) +
-                       (detectionParameters->maxPlausibleAcceleration - currentSpeed + currentSpeedConfidence) /
-                       (4 * currentSpeedConfidence);
-        double f_min = (currentSpeed - detectionParameters->maxPlausibleDeceleration + oldSpeed) /
-                       (4 * oldSpeedConfidence) +
-                       (currentSpeed - detectionParameters->maxPlausibleDeceleration + currentSpeedConfidence) /
-                       (4 * currentSpeedConfidence);
-        if (currentSpeed > oldSpeed) {
-            return f_max;
-        } else {
-            return f_min;
-        }
+//        double f_max = (detectionParameters->maxPlausibleAcceleration - currentSpeed + oldSpeedConfidence) /
+//                       (4 * oldSpeedConfidence) +
+//                       (detectionParameters->maxPlausibleAcceleration - currentSpeed + currentSpeedConfidence) /
+//                       (4 * currentSpeedConfidence);
+//        double f_min = (currentSpeed - detectionParameters->maxPlausibleDeceleration + oldSpeed) /
+//                       (4 * oldSpeedConfidence) +
+//                       (currentSpeed - detectionParameters->maxPlausibleDeceleration + currentSpeedConfidence) /
+//                       (4 * currentSpeedConfidence);
+//        if (currentSpeed > oldSpeed) {
+//            return f_max;
+//        } else {
+//            return f_min;
+//        }
+        double deltaSpeed = currentSpeed - oldSpeed;
+        double acceleration = deltaSpeed > 0 ? detectionParameters->maxPlausibleAcceleration
+                                             : detectionParameters->maxPlausibleDeceleration;
+        return segmentSegmentFactor(fabs(deltaSpeed), currentSpeedConfidence, oldSpeedConfidence,
+                                    acceleration * deltaTime);
     }
 
     double CatchChecks::PositionSpeedConsistencyCheck(const Position &currentPosition,
@@ -259,7 +273,7 @@ namespace artery {
                 oldFactorLow = angleLow < detectionParameters->maxHeadingChange ? 1 : 0;
             } else {
                 oldFactorLow = calculateNormedCircleAreaWithoutSegment(
-                        (double) oldPositionConfidence.semiMajorConfidence / 100, -xLow, true);
+                        (double) oldPositionConfidence.semiMajorConfidence / 100, xLow, true);
             }
 
 
@@ -276,27 +290,28 @@ namespace artery {
                 oldFactorHigh = angleHigh < detectionParameters->maxHeadingChange ? 1 : 0;
             } else {
                 oldFactorHigh = calculateNormedCircleAreaWithoutSegment(
-                        (double) oldPositionConfidence.semiMajorConfidence / 100, -xHigh, true);
+                        (double) oldPositionConfidence.semiMajorConfidence / 100, xHigh, true);
             }
-            return (currentFactorLow + oldFactorLow + currentFactorHigh + oldFactorHigh);
+            return (currentFactorLow + oldFactorLow + currentFactorHigh + oldFactorHigh) / 4;
         }
     }
 
-    double CatchChecks::IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
+    double CatchChecks::IntersectionCheck(const std::vector<Position> &receiverEllipse,
                                           const std::vector<vanetza::asn1::Cam *> &relevantCams,
-                                          const Position &senderPosition, const double &senderLength,
-                                          const double &senderWidth, const double &senderHeading,
+                                          const std::vector<Position> &senderEllipse,
                                           const double &deltaTime) {
-        std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
-                                                                senderLength, senderWidth);
         int totalCount = 1;
-        double intersectionSum = 1.01 - (intersectionFactor(senderOutline, receiverVehicleOutline) *
-                                         ((detectionParameters->maxIntersectionDeltaTime - deltaTime) /
-                                          detectionParameters->maxIntersectionDeltaTime));
+        double intersectionSum = 1.0 - (intersectionFactor(senderEllipse, receiverEllipse) *
+                                        ((detectionParameters->maxIntersectionDeltaTime - deltaTime) /
+                                         detectionParameters->maxIntersectionDeltaTime));
         for (auto cam : relevantCams) {
-            std::vector<Position> outline = getVehicleOutline((*cam), mSimulationBoundary, mTraciAPI);
+            Position camPosition = convertReferencePosition(
+                    (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+            PosConfidenceEllipse_t camPositionConfidence =
+                    (*cam)->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+            std::vector<Position> camPositionEllipse = createEllipse(camPosition, camPositionConfidence);
             totalCount++;
-            intersectionSum += intersectionFactor(senderOutline, outline);
+            intersectionSum += intersectionFactor(senderEllipse, camPositionEllipse);
         }
         return intersectionSum / totalCount;
     }
@@ -319,37 +334,38 @@ namespace artery {
     }
 
 
-    CheckResult *
-    CatchChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                          const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-                          const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
-
-        BasicVehicleContainerHighFrequency_t currentHfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
-
-        Position currentCamPosition = convertCamPosition(
-                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
-        PosConfidenceEllipse_t currentCamPositionConfidence = currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
-        std::vector<Position> currentCamPositionEllipse = createEllipse(currentCamPosition,
-                                                                        currentCamPositionConfidence);
-        double currentCamEllipseRadius = (double) currentCamPositionConfidence.semiMajorConfidence / 100;
-        const Position &receiverPosition = convertCamPosition(receiverVDP->approximateReferencePosition(),
-                                                              mSimulationBoundary, mTraciAPI);
-        const PosConfidenceEllipse_t &receiverPositionConfidence = receiverVDP->approximateReferencePosition().positionConfidenceEllipse;
+    CheckResult *CatchChecks::checkCAM(const VehicleDataProvider *receiverVDP,
+                                       const std::vector<Position> &receiverVehicleOutline,
+                                       const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                                       const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+        const Position &receiverPosition = convertReferencePosition(receiverVDP->approximateReferencePosition(),
+                                                                    mSimulationBoundary, mTraciAPI);
+        const PosConfidenceEllipse_t &receiverPositionConfidence =
+                receiverVDP->approximateReferencePosition().positionConfidenceEllipse;
         const std::vector<Position> receiverPositionEllipse = createEllipse(receiverPosition,
                                                                             receiverPositionConfidence);
         double receiverEllipseRadius = (double) receiverPositionConfidence.semiMajorConfidence / 100;
+
+        Position currentCamPosition = convertReferencePosition(
+                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+        PosConfidenceEllipse_t currentCamPositionConfidence =
+                currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+        std::vector<Position> currentCamPositionEllipse = createEllipse(currentCamPosition,
+                                                                        currentCamPositionConfidence);
+        double currentCamEllipseRadius = (double) currentCamPositionConfidence.semiMajorConfidence / 100;
+
+        BasicVehicleContainerHighFrequency_t currentHfc =
+                currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
         double currentCamSpeed = (double) currentHfc.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) currentHfc.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
                 (double) currentHfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
         double currentCamHeading = (double) currentHfc.heading.headingValue / 10.0;
         double currentCamHeadingConfidence = (double) currentHfc.heading.headingConfidence / 10.0;
-        double currentCamVehicleLength = (double) currentHfc.vehicleLength.vehicleLengthValue / 10;
-        double currentCamVehicleWidth = (double) currentHfc.vehicleWidth / 10;
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
-        auto *result = new CheckResult;
 
+        auto *result = new CheckResult;
         result->positionPlausibility =
                 PositionPlausibilityCheck(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                                           currentCamSpeedConfidence);
@@ -367,6 +383,12 @@ namespace artery {
                                                      lastCam->cam.generationDeltaTime);
             result->consistencyIsChecked = true;
 
+
+            drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+                         mTraciAPI);
+            drawTraciPoi(lastCamPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary,
+                         mTraciAPI);
+
             result->positionConsistency =
                     PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
                                              lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
@@ -374,6 +396,8 @@ namespace artery {
             result->speedConsistency =
                     SpeedConsistencyCheck(currentCamSpeed, currentCamSpeedConfidence, lastCamSpeed,
                                           lastCamSpeedConfidence, camDeltaTime);
+
+
             result->positionSpeedConsistency =
                     PositionSpeedConsistencyCheck(currentCamPosition, currentCamPositionEllipse,
                                                   currentCamEllipseRadius,
@@ -390,11 +414,17 @@ namespace artery {
                                                     currentCamPositionConfidence, lastCamPosition,
                                                     lastCamPositionConfidence, currentCamSpeed,
                                                     currentCamSpeedConfidence, camDeltaTime);
+            if (result->positionHeadingConsistency < 1) {
+                drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+                             mTraciAPI);
+                drawTraciPoi(lastCamPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary,
+                             mTraciAPI);
+            }
             result->frequency =
                     FrequencyCheck(camDeltaTime);
             result->intersection =
-                    IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
-                                      currentCamVehicleLength, currentCamVehicleWidth, currentCamHeading, camDeltaTime);
+                    IntersectionCheck(receiverPositionEllipse, surroundingCamObjects, currentCamPositionEllipse,
+                                      camDeltaTime);
             KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                          currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
                          currentCamAccelerationVector, currentCamHeading, lastCamPosition,
