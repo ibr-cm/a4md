@@ -59,6 +59,8 @@ namespace artery {
 
     bool operator!=(const Position &, const Position &);
 
+    Position operator-(const Position &, const Position &);
+
     Position::value_type distance(const Position &, const Position &);
 
 

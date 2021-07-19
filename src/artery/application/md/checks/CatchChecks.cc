@@ -12,7 +12,6 @@ namespace artery {
     using namespace omnetpp;
 
 
-
     double CatchChecks::PositionPlausibilityCheck(const Position &senderPosition,
                                                   const PosConfidenceEllipse_t &senderPositionConfidence,
                                                   const double &senderSpeed, const double &senderSpeedConfidence) {
@@ -51,23 +50,22 @@ namespace artery {
         return (detectionParameters->maxPlausibleSpeed - currentSpeed + currentSpeedConfidence) /
                (2 * currentSpeedConfidence);
     }
-    double CatchChecks::ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
-                                                   TrackedObjectsFilterRange &envModObjects) {
-        Position::value_type deltaDistance = distance(testPosition, myPosition);
-        double deltaAngle = calculateHeadingAngle(
-                Position(testPosition.x - myPosition.x, testPosition.y - myPosition.y));
 
+    double CatchChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
+                                                   const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+        Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
+        double deltaAngle = calculateHeadingAngle(
+                Position(senderPosition.x - receiverPosition.x, senderPosition.y - receiverPosition.y));
         if (deltaDistance.value() < detectionParameters->maxProximityRangeL) {
             if (deltaDistance.value() < detectionParameters->maxProximityRangeW * 2 ||
                 (deltaAngle < 90 && deltaDistance.value() <
                                     (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
-                for (const auto &object: envModObjects) {
-                    std::weak_ptr<EnvironmentModelObject> obj_ptr = object.first;
-                    if (obj_ptr.expired()) continue; /*< objects remain in tracking briefly after leaving simulation */
-                    const auto &vd = obj_ptr.lock()->getVehicleData();
-                    Position::value_type currentDistance = distance(testPosition, vd.position());
+                for (auto cam : surroundingCamObjects) {
+                    Position::value_type currentDistance = distance(senderPosition, convertCamPosition(
+                            (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
+                            mTraciAPI));
                     if (currentDistance < minimumDistance) {
                         minimumDistance = currentDistance;
                     }
@@ -82,23 +80,24 @@ namespace artery {
         return 1;
     }
 
-    double CatchChecks::RangePlausibilityCheck(const Position &senderPosition,
-                                               const PosConfidenceEllipse_t &senderConfidenceEllipse,
-                                               const Position &receiverPosition,
-                                               const PosConfidenceEllipse_t &receiverConfidenceEllipse) {
-        return confidenceIntersectionArea(senderPosition, senderConfidenceEllipse, receiverPosition,
-                                          receiverConfidenceEllipse,
+    double
+    CatchChecks::RangePlausibilityCheck(const Position &senderPosition, const std::vector<Position> &senderEllipse,
+                                        const double &senderEllipseRadius,
+                                        const Position &receiverPosition, const std::vector<Position> &receiverEllipse,
+                                        const double &receiverEllipseRadius) {
+        return confidenceIntersectionArea(senderPosition, senderEllipse, senderEllipseRadius,
+                                          receiverPosition, receiverEllipse, receiverEllipseRadius,
                                           detectionParameters->maxPlausibleRange);
     }
 
-
-    double
-    CatchChecks::PositionConsistencyCheck(const Position &currentPosition,
-                                          const PosConfidenceEllipse_t &currentConfidenceEllipse,
-                                          const Position &oldPosition,
-                                          const PosConfidenceEllipse_t &oldConfidenceEllipse,
-                                          double deltaTime) {
-        return confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition, oldConfidenceEllipse,
+    double CatchChecks::PositionConsistencyCheck(const Position &currentPosition,
+                                                 const std::vector<Position> &currentEllipse,
+                                                 const double &currentEllipseRadius,
+                                                 const Position &oldPosition, const std::vector<Position> &oldEllipse,
+                                                 const double &oldEllipseRadius,
+                                                 const double &deltaTime) {
+        return confidenceIntersectionArea(currentPosition, currentEllipse, currentEllipseRadius,
+                                          oldPosition, oldEllipse, oldEllipseRadius,
                                           detectionParameters->maxPlausibleSpeed * deltaTime);
     }
 
@@ -120,14 +119,15 @@ namespace artery {
         }
     }
 
-
     double CatchChecks::PositionSpeedConsistencyCheck(const Position &currentPosition,
-                                                      const PosConfidenceEllipse_t &currentConfidenceEllipse,
+                                                      const std::vector<Position> &currentEllipse,
+                                                      const double &currentEllipseRadius,
                                                       const Position &oldPosition,
-                                                      const PosConfidenceEllipse_t &oldConfidenceEllipse,
-                                                      double currentSpeed, double currentSpeedConfidence,
-                                                      double oldSpeed, double oldSpeedConfidence,
-                                                      double deltaTime) {
+                                                      const std::vector<Position> &oldEllipse,
+                                                      const double &oldEllipseRadius,
+                                                      const double &currentSpeed, const double &currentSpeedConfidence,
+                                                      const double &oldSpeed, const double &oldSpeedConfidence,
+                                                      const double &deltaTime) {
         if (deltaTime > detectionParameters->maxTimeDelta) {
             return 1;
         }
@@ -149,33 +149,34 @@ namespace artery {
                             detectionParameters->maxPlausibleDeceleration, detectionParameters->maxPlausibleSpeed,
                             returnDistance1);
 
-        double factorMin1 = 1 - confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition,
-                                                           oldConfidenceEllipse, returnDistance1[0]);
+        double factorMin1 =
+                1 - confidenceIntersectionArea(currentPosition, currentEllipse, currentEllipseRadius, oldPosition,
+                                               oldEllipse, oldEllipseRadius, returnDistance1[0]);
         double factorMax1 = oneSidedCircleSegmentFactor(deltaDistance,
-                                                        (double) currentConfidenceEllipse.semiMajorConfidence / 100,
-                                                        (double) oldConfidenceEllipse.semiMinorConfidence / 100,
+                                                        currentEllipseRadius,
+                                                        oldEllipseRadius,
                                                         returnDistance1[1] + detectionParameters->maxMgtRngUp);
 
         double returnDistance2[2];
         calculateMaxMinDist(currentTest2, oldTest2, deltaTime, detectionParameters->maxPlausibleAcceleration,
                             detectionParameters->maxPlausibleDeceleration, detectionParameters->maxPlausibleSpeed,
                             returnDistance2);
-        double factorMin2 = 1 - confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition,
-                                                           oldConfidenceEllipse, returnDistance2[0]);
+        double factorMin2 =
+                1 - confidenceIntersectionArea(currentPosition, currentEllipse, currentEllipseRadius, oldPosition,
+                                               oldEllipse, oldEllipseRadius, returnDistance2[0]);
         double factorMax2 = oneSidedCircleSegmentFactor(deltaDistance,
-                                                        (double) currentConfidenceEllipse.semiMajorConfidence / 100,
-                                                        (double) oldConfidenceEllipse.semiMinorConfidence / 100,
+                                                        currentEllipseRadius,
+                                                        oldEllipseRadius,
                                                         returnDistance2[1] + detectionParameters->maxMgtRngUp);
 
         double returnDistance0[2];
         calculateMaxMinDist(currentSpeed, oldSpeed, deltaTime, detectionParameters->maxPlausibleAcceleration,
                             detectionParameters->maxPlausibleDeceleration, detectionParameters->maxPlausibleSpeed,
                             returnDistance0);
-        double factorMin0 = 1 - confidenceIntersectionArea(currentPosition, currentConfidenceEllipse, oldPosition,
-                                                           oldConfidenceEllipse, returnDistance0[0]);
-        double factorMax0 = oneSidedCircleSegmentFactor(deltaDistance,
-                                                        (double) currentConfidenceEllipse.semiMajorConfidence / 100,
-                                                        (double) oldConfidenceEllipse.semiMinorConfidence / 100,
+        double factorMin0 =
+                1 - confidenceIntersectionArea(currentPosition, currentEllipse, currentEllipseRadius, oldPosition,
+                                               oldEllipse, oldEllipseRadius, returnDistance0[0]);
+        double factorMax0 = oneSidedCircleSegmentFactor(deltaDistance, currentEllipseRadius, oldEllipseRadius,
                                                         returnDistance0[1] + detectionParameters->maxMgtRngUp);
 
         double factorMin = (factorMin0 + factorMin1 + factorMin2) / 3;
@@ -185,12 +186,13 @@ namespace artery {
     }
 
     double CatchChecks::PositionSpeedMaxConsistencyCheck(const Position &currentPosition,
-                                                         const PosConfidenceEllipse_t &currentConfidenceEllipse,
+                                                         const PosConfidenceEllipse_t &currentPositionConfidence,
                                                          const Position &oldPosition,
                                                          const PosConfidenceEllipse_t &oldConfidenceEllipse,
-                                                         double currentSpeed, double currentSpeedConfidence,
-                                                         double oldSpeed, double oldSpeedConfidence,
-                                                         double deltaTime) {
+                                                         const double &currentSpeed,
+                                                         const double &currentSpeedConfidence,
+                                                         const double &oldSpeed, const double &oldSpeedConfidence,
+                                                         const double &deltaTime) {
         if (deltaTime > detectionParameters->maxTimeDelta) {
             return 1;
         }
@@ -200,7 +202,7 @@ namespace artery {
         double minSpeed = std::min(currentSpeed, oldSpeed);
 
         double currentRange =
-                ((double) currentConfidenceEllipse.semiMajorConfidence / 100) / deltaTime + currentSpeedConfidence;
+                ((double) currentPositionConfidence.semiMajorConfidence / 100) / deltaTime + currentSpeedConfidence;
         double oldRange = ((double) oldConfidenceEllipse.semiMajorConfidence / 100) / deltaTime + oldSpeedConfidence;
 
         double maxFactor = oneSidedCircleSegmentFactor(maxSpeed - theoreticalSpeed, currentRange, oldRange,
@@ -317,26 +319,98 @@ namespace artery {
     }
 
 
-
-
     CheckResult *
     CatchChecks::checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                          TrackedObjectsFilterRange &envModObjects,
-                          const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr) {
-        BasicVehicleContainerHighFrequency_t highFrequencyContainer = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+                          const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                          const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
+
+        BasicVehicleContainerHighFrequency_t currentHfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
         Position currentCamPosition = convertCamPosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
-        const Position &receiverPosition = receiverVDP->position();
-        double currentCamSpeed = (double) highFrequencyContainer.speed.speedValue / 100.0;
-        double currentCamSpeedConfidence = (double) highFrequencyContainer.speed.speedConfidence / 100.0;
+        PosConfidenceEllipse_t currentCamPositionConfidence = currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+        std::vector<Position> currentCamPositionEllipse = createEllipse(currentCamPosition,
+                                                                        currentCamPositionConfidence);
+        double currentCamEllipseRadius = (double) currentCamPositionConfidence.semiMajorConfidence / 100;
+        const Position &receiverPosition = convertCamPosition(receiverVDP->approximateReferencePosition(),
+                                                              mSimulationBoundary, mTraciAPI);
+        const PosConfidenceEllipse_t &receiverPositionConfidence = receiverVDP->approximateReferencePosition().positionConfidenceEllipse;
+        const std::vector<Position> receiverPositionEllipse = createEllipse(receiverPosition,
+                                                                            receiverPositionConfidence);
+        double receiverEllipseRadius = (double) receiverPositionConfidence.semiMajorConfidence / 100;
+        double currentCamSpeed = (double) currentHfc.speed.speedValue / 100.0;
+        double currentCamSpeedConfidence = (double) currentHfc.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
-                (double) highFrequencyContainer.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
-        double currentCamHeading = angle_cast(
-                traci::TraCIAngle((double) highFrequencyContainer.heading.headingValue / 10.0)).value.value();
+                (double) currentHfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
+        double currentCamHeading = (double) currentHfc.heading.headingValue / 10.0;
+        double currentCamHeadingConfidence = (double) currentHfc.heading.headingConfidence / 10.0;
+        double currentCamVehicleLength = (double) currentHfc.vehicleLength.vehicleLengthValue / 10;
+        double currentCamVehicleWidth = (double) currentHfc.vehicleWidth / 10;
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
         auto *result = new CheckResult;
+
+        result->positionPlausibility =
+                PositionPlausibilityCheck(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
+                                          currentCamSpeedConfidence);
+        result->speedPlausibility =
+                SpeedPlausibilityCheck(currentCamSpeed, currentCamSpeedConfidence);
+        result->proximityPlausibility =
+                ProximityPlausibilityCheck(currentCamPosition, receiverPosition, surroundingCamObjects);
+        result->rangePlausibility =
+                RangePlausibilityCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
+                                       receiverPosition, receiverPositionEllipse, receiverEllipseRadius);
+
+        if (lastCamPtr != nullptr) {
+            vanetza::asn1::Cam lastCam = *lastCamPtr;
+            auto camDeltaTime = (double) (uint16_t) (currentCam->cam.generationDeltaTime -
+                                                     lastCam->cam.generationDeltaTime);
+            result->consistencyIsChecked = true;
+
+            result->positionConsistency =
+                    PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
+                                             lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
+                                             camDeltaTime);
+            result->speedConsistency =
+                    SpeedConsistencyCheck(currentCamSpeed, currentCamSpeedConfidence, lastCamSpeed,
+                                          lastCamSpeedConfidence, camDeltaTime);
+            result->positionSpeedConsistency =
+                    PositionSpeedConsistencyCheck(currentCamPosition, currentCamPositionEllipse,
+                                                  currentCamEllipseRadius,
+                                                  lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
+                                                  currentCamSpeed, currentCamSpeedConfidence,
+                                                  lastCamSpeed, lastCamSpeedConfidence, camDeltaTime);
+            result->positionSpeedMaxConsistency =
+                    PositionSpeedMaxConsistencyCheck(currentCamPosition, currentCamPositionConfidence, lastCamPosition,
+                                                     lastCamPositionConfidence, currentCamSpeed,
+                                                     currentCamSpeedConfidence, lastCamSpeed, lastCamSpeedConfidence,
+                                                     camDeltaTime);
+            result->positionHeadingConsistency =
+                    PositionHeadingConsistencyCheck(currentCamHeading, currentCamHeadingConfidence, currentCamPosition,
+                                                    currentCamPositionConfidence, lastCamPosition,
+                                                    lastCamPositionConfidence, currentCamSpeed,
+                                                    currentCamSpeedConfidence, camDeltaTime);
+            result->frequency =
+                    FrequencyCheck(camDeltaTime);
+            result->intersection =
+                    IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
+                                      currentCamVehicleLength, currentCamVehicleWidth, currentCamHeading, camDeltaTime);
+            KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
+                         currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
+                         currentCamAccelerationVector, currentCamHeading, lastCamPosition,
+                         lastCamSpeedVector, camDeltaTime, result);
+        } else {
+            result->suddenAppearance =
+                    SuddenAppearanceCheck(currentCamPosition, currentCamPositionConfidence, receiverPosition,
+                                          receiverPositionConfidence);
+        }
+        lastCamPosition = currentCamPosition;
+        lastCamPositionConfidence = currentCamPositionConfidence;
+        lastCamPositionEllipse = currentCamPositionEllipse;
+        lastCamEllipseRadius = currentCamEllipseRadius;
+        lastCamSpeed = currentCamSpeed;
+        lastCamSpeedConfidence = currentCamSpeedConfidence;
+        lastCamSpeedVector = currentCamSpeedVector;
         return result;
     }
 

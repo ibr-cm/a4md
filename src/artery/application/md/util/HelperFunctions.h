@@ -63,6 +63,12 @@ namespace artery {
 
     double getIntersectionArea(const std::vector<Position> &polygon1, const std::vector<Position> &polygon2);
 
+    double confidenceIntersectionArea(const Position &position1, const std::vector<Position> &ellipse1,
+                                      const double &ellipse1Radius,
+                                      const Position &position2, const std::vector<Position> &ellipse2,
+                                      const double &ellipse2Radius,
+                                      const double &range);
+
     double confidenceIntersectionArea(const Position &position1,
                                       const PosConfidenceEllipse_t &confidenceEllipse1,
                                       const Position &position2,

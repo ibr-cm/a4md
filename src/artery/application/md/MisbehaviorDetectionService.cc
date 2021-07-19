@@ -168,7 +168,7 @@ namespace artery {
                 vanetza::asn1::Cam &latestCam = detectedSender->getResults().back()->cam;
                 uint16_t oldTime = latestCam->cam.generationDeltaTime;
                 uint16_t currentTime = countTaiMilliseconds(mTimer->getCurrentTime());
-                if (currentTime - oldTime <
+                if ((uint16_t) (currentTime - oldTime) <
                     (long) (F2MDParameters::detectionParameters.maxCamFrequency * 1000)) {
                     surroundingCamObjects.emplace_back(&latestCam);
                 }

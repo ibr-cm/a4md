@@ -215,7 +215,6 @@ namespace artery {
             sendCam(T_now);
         }
     }
-
     void
     MisbehaviorCaService::indicate(const vanetza::btp::DataIndication &ind, std::unique_ptr<vanetza::UpPacket> packet) {
         Enter_Method("indicate");
@@ -448,32 +447,17 @@ namespace artery {
                 break;
             }
             case attackTypes::DoSDisruptive: {
-                if (!receivedMessages.empty()) {
-                    auto it = receivedMessages.begin();
-                    int index = (int) uniform(0, (double) receivedMessages.size());
-                    std::advance(it, index);
-                    if (!it->second.empty()) {
-                        message = it->second.front();
-                        it->second.pop();
-                        message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-                                mTimer->getTimeFor(mVehicleDataProvider->updated()));
-                        message->header.stationID = mVehicleDataProvider->getStationId();
-                    } else {
-                        receivedMessages.erase(it->first);
-                        message = vanetza::asn1::Cam();
-                    }
-//                    auto it = receivedMessages.rbegin();
-//                    if(!it->second.empty()){
-//                        message = it->second.back();
-//                        it->second.pop();
-//                        message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-//                                mTimer->getTimeFor(mVehicleDataProvider->updated()));
-//                        message->header.stationID = mVehicleDataProvider->getStationId();
-//                    }else {
-//                        receivedMessages.erase(it->first);
-//                        message = vanetza::asn1::Cam();
-//                    }
+                auto it = receivedMessages.begin();
+                int index = (int) uniform(0, (double) receivedMessages.size());
+                std::advance(it, index);
+                if (!it->second.empty()) {
+                    message = it->second.front();
+                    it->second.pop();
+                    message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+                            mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                    message->header.stationID = mVehicleDataProvider->getStationId();
                 } else {
+                    receivedMessages.erase(it->first);
                     message = vanetza::asn1::Cam();
                 }
                 break;
@@ -588,58 +572,13 @@ namespace artery {
                     message = vanetza::asn1::Cam();
                     break;
                 }
+
                 attackGridSybilCurrentVehicleIndex = ++attackGridSybilCurrentVehicleIndex % attackGridSybilVehicleCount;
                 message->header.stationID = mPseudonyms.front();
-//                message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-//                        mTimer->getTimeFor(mVehicleDataProvider->updated()));
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-                        mTimer->getCurrentTime());
+                        mTimer->getTimeFor(mVehicleDataProvider->updated()));
                 mPseudonyms.push(mPseudonyms.front());
                 mPseudonyms.pop();
-//                std::vector<Position> ellipseOutline;
-//                PosConfidenceEllipse_t posConfidenceEllipse = message->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
-//
-//
-//                for (int i = 0; i < 50; i++) {
-//                    double borderX = cos(2 * PI / 50 * i) * (double) posConfidenceEllipse.semiMajorConfidence / 20;
-//                    double borderY = sin(2 * PI / 50 * i) * (double) posConfidenceEllipse.semiMinorConfidence / 20;
-//                    double newAngle =(double) posConfidenceEllipse.semiMajorOrientation / 10 +
-//                                     calculateHeadingAngle(Position(borderX, borderY));
-//                    newAngle = 360 - std::fmod(newAngle, 360);
-//
-//
-//                    double offsetDistance = sqrt(pow(borderX, 2) + pow(borderY, 2));
-//                    double relativeX = offsetDistance * sin(newAngle * PI / 180);
-//                    double relativeY = offsetDistance * cos(newAngle * PI / 180);
-//                    Position nPos = Position(newPosition.x.value() + relativeX,
-//                                             newPosition.y.value() + relativeY);
-//                    ellipseOutline.emplace_back(nPos);
-//                }
-//                libsumo::TraCIPositionVector outline;
-//                for (const Position &p : ellipseOutline) {
-//                    outline.value.emplace_back(position_cast(mSimulationBoundary, p));
-//                }
-//                outline.value.emplace_back(position_cast(mSimulationBoundary, ellipseOutline.front()));
-//
-//                std::vector<libsumo::TraCIColor> colors = {libsumo::TraCIColor(255, 0, 255, 255),
-//                                                           libsumo::TraCIColor(207, 255, 0, 255),
-//                                                           libsumo::TraCIColor(255, 155, 155, 255),
-//                                                           libsumo::TraCIColor(0, 140, 255, 255),
-//                                                           libsumo::TraCIColor(0, 255, 162, 255)};
-//                libsumo::TraCIColor color = colors[(attackGridSybilCurrentVehicleIndex + (attackGridSybilVehicleCount - 1)) %
-//                               attackGridSybilVehicleCount];
-//                int maxActivePoIs = attackGridSybilVehicleCount;
-//                std::string id = {
-//                        mVehicleController->getVehicleId() + "_CAM_ellipseOutline_" + std::to_string(message->header.stationID) + "_" +
-//                        std::to_string(message->cam.generationDeltaTime)};
-//                mTraciAPI->polygon.add(id, outline, color, false, "helper", 5);
-//                mTraciAPI->polygon.setLineWidth(id, 1);
-//                activePolys.push_back(id);
-//                if (activePolys.size() > maxActivePoIs) {
-//                    mTraciAPI->polygon.remove(activePolys.front());
-//                    activePolys.pop_front();
-//                }
-//
                 break;
             }
             case attackTypes::DataReplaySybil: {

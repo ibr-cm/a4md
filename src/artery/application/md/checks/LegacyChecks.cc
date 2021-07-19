@@ -192,18 +192,20 @@ namespace artery {
                            const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                            const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
 
-        BasicVehicleContainerHighFrequency_t hfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+        BasicVehicleContainerHighFrequency_t currentHfc = currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
 
         Position currentCamPosition = convertCamPosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
-        const Position &receiverPosition = receiverVDP->position();
-        double currentCamSpeed = (double) hfc.speed.speedValue / 100.0;
-        double currentCamSpeedConfidence = (double) hfc.speed.speedConfidence / 100.0;
+        PosConfidenceEllipse_t currentCamPositionConfidence = currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+        const Position &receiverPosition = convertCamPosition(receiverVDP->approximateReferencePosition(),
+                                                              mSimulationBoundary, mTraciAPI);
+        double currentCamSpeed = (double) currentHfc.speed.speedValue / 100.0;
+        double currentCamSpeedConfidence = (double) currentHfc.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
-                (double) hfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
-        double currentCamHeading = (double) hfc.heading.headingValue / 10;
-        double currentCamVehicleLength = (double) hfc.vehicleLength.vehicleLengthValue / 10;
-        double currentCamVehicleWidth = (double) hfc.vehicleWidth / 10;
+                (double) currentHfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
+        double currentCamHeading = (double) currentHfc.heading.headingValue / 10;
+        double currentCamVehicleLength = (double) currentHfc.vehicleLength.vehicleLengthValue / 10;
+        double currentCamVehicleWidth = (double) currentHfc.vehicleWidth / 10;
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
         auto *result = new CheckResult;
@@ -215,66 +217,36 @@ namespace artery {
 
         if (lastCamPtr != nullptr) {
             vanetza::asn1::Cam lastCam = *lastCamPtr;
-            Position lastCamPosition = convertCamPosition(lastCam->cam.camParameters.basicContainer.referencePosition,
-                                                          mSimulationBoundary, mTraciAPI);
-            double lastCamSpeed =
-                    (double) lastCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
-                    100.0;
-            auto camDeltaTime = (double) (currentCam->cam.generationDeltaTime - lastCam->cam.generationDeltaTime);
-            if (lastCam->cam.generationDeltaTime > currentCam->cam.generationDeltaTime) {
-                camDeltaTime += 65536;
-            }
-            camDeltaTime /= 1000;
+            auto camDeltaTime = (double) (uint16_t) (currentCam->cam.generationDeltaTime -
+                                                     lastCam->cam.generationDeltaTime);
             result->consistencyIsChecked = true;
+
             result->positionConsistency = PositionConsistencyCheck(currentCamPosition, lastCamPosition, camDeltaTime);
             result->speedConsistency = SpeedConsistencyCheck(currentCamSpeed, lastCamSpeed, camDeltaTime);
-            result->positionSpeedConsistency = PositionSpeedConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                                             currentCamSpeed, lastCamSpeed,
-                                                                             camDeltaTime);
-            result->positionSpeedMaxConsistency = PositionSpeedMaxConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                                                   currentCamSpeed, lastCamSpeed,
-                                                                                   camDeltaTime);
-            result->positionHeadingConsistency = PositionHeadingConsistencyCheck(
-                    currentCamHeading,
-                    currentCamPosition, lastCamPosition, camDeltaTime, currentCamSpeed);
-
-            double returnValue[2];
-            KalmanPositionSpeedConsistencyCheck(currentCamPosition,
-                                                currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                currentCamSpeedVector,
-                                                getVector(currentCamAcceleration, currentCamHeading),
-                                                currentCamSpeedConfidence, camDeltaTime, returnValue);
-            result->kalmanPositionSpeedConsistencyPosition = returnValue[0];
-            result->kalmanPositionSpeedConsistencySpeed = returnValue[1];
-            KalmanPositionSpeedScalarConsistencyCheck(currentCamPosition, lastCamPosition,
-                                                      currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                      currentCamSpeed, currentCamAcceleration,
-                                                      currentCamSpeedConfidence,
-                                                      camDeltaTime, returnValue);
-            result->kalmanPositionSpeedScalarConsistencyPosition = returnValue[0];
-            result->kalmanPositionSpeedScalarConsistencySpeed = returnValue[1];
-            result->kalmanPositionConsistencyConfidence = KalmanPositionConsistencyCheck(currentCamPosition,
-                                                                                         lastCamPosition,
-                                                                                         currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                                                         camDeltaTime);
-            result->kalmanPositionAccelerationConsistencySpeed = KalmanPositionAccConsistencyCheck(currentCamPosition,
-                                                                                                   currentCamSpeedVector,
-                                                                                                   currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse,
-                                                                                                   camDeltaTime);
-            result->kalmanSpeedConsistencyConfidence = KalmanSpeedConsistencyCheck(currentCamSpeedVector,
-                                                                                   getVector(lastCamSpeed,
-                                                                                             (double) lastCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
-                                                                                             10.0),
-                                                                                   currentCamSpeedConfidence,
-                                                                                   currentCamAccelerationVector,
-                                                                                   camDeltaTime);
-            result->frequency = FrequencyCheck(currentCam->cam.generationDeltaTime, lastCam->cam.generationDeltaTime);
-            result->intersection = IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
-                                                     currentCamVehicleLength, currentCamVehicleWidth,
-                                                     currentCamHeading, camDeltaTime);
+            result->positionSpeedConsistency =
+                    PositionSpeedConsistencyCheck(currentCamPosition, lastCamPosition, currentCamSpeed, lastCamSpeed,
+                                                  camDeltaTime);
+            result->positionSpeedMaxConsistency =
+                    PositionSpeedMaxConsistencyCheck(currentCamPosition, lastCamPosition, currentCamSpeed, lastCamSpeed,
+                                                     camDeltaTime);
+            result->positionHeadingConsistency =
+                    PositionHeadingConsistencyCheck(currentCamHeading, currentCamPosition, lastCamPosition,
+                                                    camDeltaTime, currentCamSpeed);
+            KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
+                         currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
+                         currentCamAccelerationVector, currentCamHeading, lastCamPosition,
+                         lastCamSpeedVector, camDeltaTime, result);
+            result->frequency = BaseChecks::FrequencyCheck(camDeltaTime);
+            result->intersection =
+                    IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
+                                      currentCamVehicleLength, currentCamVehicleWidth, currentCamHeading, camDeltaTime);
         } else {
             result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
         }
+        lastCamPosition = currentCamPosition;
+        lastCamSpeed = currentCamSpeed;
+        lastCamSpeedConfidence = currentCamSpeedConfidence;
+        lastCamSpeedVector = currentCamSpeedVector;
         return result;
     }
 

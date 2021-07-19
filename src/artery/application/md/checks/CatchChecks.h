@@ -6,7 +6,6 @@
 #define ARTERY_CATCHCHECKS_H
 
 #include <artery/application/md/checks/BaseChecks.h>
-#include <artery/application/md/checks/CheckResult.h>
 
 namespace artery {
 
@@ -20,8 +19,8 @@ namespace artery {
 
         CheckResult *
         checkCAM(const VehicleDataProvider *receiverVDP, const std::vector<Position> &receiverVehicleOutline,
-                 TrackedObjectsFilterRange &envModObjects,
-                 const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr);
+                 const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
+                 const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects);
 
     private:
         double PositionPlausibilityCheck(const Position &senderPosition,
@@ -30,47 +29,47 @@ namespace artery {
 
         double SpeedPlausibilityCheck(const double &currentSpeed, const double &currentSpeedConfidence);
 
-        double ProximityPlausibilityCheck(Position &testPosition, const Position &myPosition,
-                                          TrackedObjectsFilterRange &envModObjects);
+        double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
+                                          const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects);
 
-        double RangePlausibilityCheck(const Position &senderPosition,
-                                      const PosConfidenceEllipse_t &senderConfidenceEllipse,
-                                      const Position &receiverPosition,
-                                      const PosConfidenceEllipse_t &receiverConfidenceEllipse);
+        double RangePlausibilityCheck(const Position &senderPosition, const std::vector<Position> &senderEllipse,
+                                      const double &senderEllipseRadius,
+                                      const Position &receiverPosition, const std::vector<Position> &receiverEllipse,
+                                      const double &receiverEllipseRadius);
 
-        double PositionConsistencyCheck(const Position &currentPosition,
-                                        const PosConfidenceEllipse_t &currentConfidenceEllipse,
-                                        const Position &oldPosition,
-                                        const PosConfidenceEllipse_t &oldConfidenceEllipse,
-                                        double deltaTime);
+        double PositionConsistencyCheck(const Position &currentPosition, const std::vector<Position> &currentEllipse,
+                                        const double &currentEllipseRadius,
+                                        const Position &oldPosition, const std::vector<Position> &oldEllipse,
+                                        const double &oldEllipseRadius,
+                                        const double &deltaTime);
 
         double SpeedConsistencyCheck(const double &currentSpeed, const double &currentSpeedConfidence,
                                      const double &oldSpeed, const double &oldSpeedConfidence, const double &deltaTime);
 
         double PositionSpeedConsistencyCheck(const Position &currentPosition,
-                                             const PosConfidenceEllipse_t &currentConfidenceEllipse,
+                                             const std::vector<Position> &currentEllipse,
+                                             const double &currentEllipseRadius,
                                              const Position &oldPosition,
-                                             const PosConfidenceEllipse_t &oldConfidenceEllipse,
-                                             double currentSpeed, double currentSpeedConfidence,
-                                             double oldSpeed, double oldSpeedConfidence,
-                                             double deltaTime);
+                                             const std::vector<Position> &oldEllipse,
+                                             const double &oldEllipseRadius,
+                                             const double &currentSpeed, const double &currentSpeedConfidence,
+                                             const double &oldSpeed, const double &oldSpeedConfidence,
+                                             const double &deltaTime);
 
-        double
-        PositionSpeedMaxConsistencyCheck(const Position &currentPosition,
-                                         const PosConfidenceEllipse_t &currentPositionConfidence,
-                                         const Position &oldPosition,
-                                         const PosConfidenceEllipse_t &oldConfidenceEllipse,
-                                         double currentSpeed, double currentSpeedConfidence, double oldSpeed,
-                                         double oldSpeedConfidence, double deltaTime);
+        double PositionSpeedMaxConsistencyCheck(const Position &currentPosition,
+                                                const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                const Position &oldPosition,
+                                                const PosConfidenceEllipse_t &oldConfidenceEllipse,
+                                                const double &currentSpeed, const double &currentSpeedConfidence,
+                                                const double &oldSpeed, const double &oldSpeedConfidence,
+                                                const double &deltaTime);
 
-        double PositionHeadingConsistencyCheck(const double &currentHeading,
-                                               const double &currentHeadingConfidence,
+        double PositionHeadingConsistencyCheck(const double &currentHeading, const double &currentHeadingConfidence,
                                                const Position &currentPosition,
                                                const PosConfidenceEllipse_t &currentPositionConfidence,
                                                const Position &oldPosition,
                                                const PosConfidenceEllipse_t &oldPositionConfidence,
-                                               const double &currentSpeed,
-                                               const double &currentSpeedConfidence,
+                                               const double &currentSpeed, const double &currentSpeedConfidence,
                                                const double &deltaTime);
 
         double

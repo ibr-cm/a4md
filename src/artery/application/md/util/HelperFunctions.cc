@@ -17,7 +17,7 @@ namespace artery {
         return angle;
     }
 
-    double calculateHeadingDifference(double heading1, double heading2){
+    double calculateHeadingDifference(double heading1, double heading2) {
         double headingDiff = fabs(heading1 - heading2);
         headingDiff = std::min(headingDiff, 360 - heading1 + heading2);
         headingDiff = std::min(headingDiff, 360 - heading2 + heading1);
@@ -246,43 +246,49 @@ namespace artery {
         }
     }
 
-    double confidenceIntersectionArea(const Position &position1,
-                                      const PosConfidenceEllipse_t &confidenceEllipse1,
-                                      const Position &position2,
-                                      const PosConfidenceEllipse_t &confidenceEllipse2, double range) {
-        std::vector<Position> senderEllipse = createEllipse(position1, confidenceEllipse1);
-        std::vector<Position> receiverEllipse = createEllipse(position2, confidenceEllipse2);
-
+    double confidenceIntersectionArea(const Position &position1, const std::vector<Position> &ellipse1,
+                                      const double &ellipse1Radius,
+                                      const Position &position2, const std::vector<Position> &ellipse2,
+                                      const double &ellipse2Radius,
+                                      const double &range) {
         Position rangeCenter = Position(
                 position1.x.value() + fabs(position2.x.value() - position1.x.value()) / 2,
                 position1.y.value() + fabs(position2.y.value() - position1.y.value()) / 2);
         std::vector<Position> rangeCircle = createEllipse(rangeCenter, range, range, 0, 36);
         double distance = boost::geometry::distance(position1, position2);
-        if (distance > range * 2 + (double) confidenceEllipse1.semiMajorConfidence / 200 +
-                       (double) confidenceEllipse2.semiMajorConfidence / 200) {
+        if (distance > range + ellipse1Radius + ellipse2Radius) {
             return 0;
-        } else if (distance < range * 2 -
-                              (double) confidenceEllipse1.semiMajorConfidence / 200 -
-                              (double) confidenceEllipse2.semiMajorConfidence / 200) {
+        } else if (distance < range - ellipse1Radius - ellipse2Radius) {
             return 1;
         } else {
-            double senderArea = boost::geometry::area(senderEllipse);
-            double receiverArea = boost::geometry::area(receiverEllipse);
+            double senderArea = boost::geometry::area(ellipse1);
+            double receiverArea = boost::geometry::area(ellipse2);
 
-            double senderRangeIntersectionArea = getIntersectionArea(senderEllipse, rangeCircle);
-            double receiverRangeIntersectionArea = getIntersectionArea(receiverEllipse, rangeCircle);
+            double senderRangeIntersectionArea = getIntersectionArea(ellipse1, rangeCircle);
+            double receiverRangeIntersectionArea = getIntersectionArea(ellipse2, rangeCircle);
 
             return (senderRangeIntersectionArea + receiverRangeIntersectionArea) / (senderArea + receiverArea);
         }
     }
 
-    double intersectionFactor(const std::vector<Position> &polygon1, const std::vector<Position> &polygon2){
+    double confidenceIntersectionArea(const Position &position1,
+                                      const PosConfidenceEllipse_t &confidenceEllipse1,
+                                      const Position &position2,
+                                      const PosConfidenceEllipse_t &confidenceEllipse2, double range) {
+        std::vector<Position> ellipse1 = createEllipse(position1, confidenceEllipse1);
+        std::vector<Position> ellipse2 = createEllipse(position2, confidenceEllipse2);
+        confidenceIntersectionArea(position1, ellipse1, (double) confidenceEllipse1.semiMajorConfidence / 100,
+                                   position2, ellipse2, (double) confidenceEllipse2.semiMajorConfidence / 100,
+                                   range);
+    }
+
+    double intersectionFactor(const std::vector<Position> &polygon1, const std::vector<Position> &polygon2) {
         double area1 = boost::geometry::area(polygon1);
         double area2 = boost::geometry::area(polygon2);
 
         double intersectionArea = getIntersectionArea(polygon1, polygon2);
 
-        return (intersectionArea) / std::min(area1,area2);
+        return (intersectionArea) / std::min(area1, area2);
     }
 
     double oneSidedCircleSegmentFactor(double d, double r1, double r2, double range) {

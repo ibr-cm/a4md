@@ -7,6 +7,7 @@
 
 #include <vanetza/asn1/cam.hpp>
 #include <omnetpp.h>
+#include <artery/application/md/checks/CheckResult.h>
 #include <artery/application/md/checks/kalman/Kalman_SVI.h>
 #include <artery/application/md/checks/kalman/Kalman_SC.h>
 #include <artery/application/md/checks/kalman/Kalman_SI.h>
@@ -33,37 +34,56 @@ namespace artery {
         static std::shared_ptr<const traci::API> mTraciAPI;
         DetectionParameters *detectionParameters;
 
-        BaseChecks::FrequencyCheck(long newTime, long oldTime) const;
+        Position lastCamPosition;
+        PosConfidenceEllipse_t lastCamPositionConfidence;
+        std::vector<Position> lastCamPositionEllipse;
+        double lastCamEllipseRadius;
+        double lastCamSpeed;
+        double lastCamSpeedConfidence;
+        Position lastCamSpeedVector;
 
-        void KalmanPositionSpeedConsistencyCheck(Position &currentPosition,
-                                                 const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                 const Position &currentSpeed, const Position &currentAcceleration,
-                                                 double currentSpeedConfidence,
-                                                 double &deltaTime, double *returnValue) const;
 
-        void KalmanPositionSpeedScalarConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                                       const PosConfidenceEllipse_t &currentPositionConfidence,
-                                                       double &currentSpeed, double &currentAcceleration,
-                                                       double &currentSpeedConfidence, double &deltaTime,
-                                                       double *returnValue);
+        double BaseChecks::FrequencyCheck(const double &deltaTime) const;
 
-        double KalmanPositionConsistencyCheck(Position &currentPosition, Position &oldPosition,
-                                              const PosConfidenceEllipse_t &currentPositionConfidence,
-                                              double &deltaTime);
+        void KalmanChecks(const Position &currentCamPosition,
+                          const PosConfidenceEllipse_t &currentCamPositionConfidence,
+                          const double &currentCamSpeed,
+                          const Position &currentCamSpeedVector, const double &currentCamSpeedConfidence,
+                          const double &currentCamAcceleration, const Position &currentCamAccelerationVector,
+                          const double &currentCamHeading, const Position &lastCamPosition,
+                          const Position &lastCamSpeedVector, const double camDeltaTime,
+                          CheckResult *result);
 
-        double
-        KalmanPositionAccConsistencyCheck(const Position &currentPosition, const Position &currentSpeed,
-                                          const PosConfidenceEllipse_t &currentPositionConfidence,
-                                          double &deltaTime);
-
-        double KalmanSpeedConsistencyCheck(const Position &currentSpeed, const Position &oldSpeed,
-                                           double &currentSpeedConfidence, const Position &currentAcceleration,
-                                           double &deltaTime);
     private:
         Kalman_SVI *kalmanSVI;
         Kalman_SC *kalmanSVSI;
         Kalman_SI *kalmanSI;
         Kalman_SI *kalmanVI;
+
+        void KalmanPositionSpeedConsistencyCheck(const Position &currentPosition,
+                                                 const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                 const Position &currentSpeed, const Position &currentAcceleration,
+                                                 const double &currentSpeedConfidence,
+                                                 const double &deltaTime, double *returnValue) const;
+
+        void KalmanPositionSpeedScalarConsistencyCheck(const Position &currentPosition, const Position &oldPosition,
+                                                       const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                       const double &currentSpeed, const double &currentAcceleration,
+                                                       const double &currentSpeedConfidence, const double &deltaTime,
+                                                       double *returnValue);
+
+        double KalmanPositionConsistencyCheck(const Position &currentPosition, const Position &oldPosition,
+                                              const PosConfidenceEllipse_t &currentPositionConfidence,
+                                              const double &deltaTime);
+
+        double KalmanPositionAccConsistencyCheck(const Position &currentPosition, const Position &currentSpeed,
+                                                 const PosConfidenceEllipse_t &currentPositionConfidence,
+                                                 const double &deltaTime);
+
+        double KalmanSpeedConsistencyCheck(const Position &currentSpeed, const Position &oldSpeed,
+                                           const double &currentSpeedConfidence, const Position &currentAcceleration,
+                                           const double &deltaTime);
+
     };
 
 } // namespace artery
