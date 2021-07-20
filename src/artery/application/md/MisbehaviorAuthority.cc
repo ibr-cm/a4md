@@ -66,25 +66,35 @@ namespace artery {
             asn_INTEGER2long(&misbehaviorReport->reportMetadataContainer.generationTime, &generationTime);
             std::string reportId = ia5stringToString(misbehaviorReport->reportMetadataContainer.reportID);
             std::cout << "received report: " << reportId << " " << generationTime << std::endl;
+
+            ReportMetadataContainer reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
+            if(reportMetadataContainer.relatedReportContainer != nullptr){
+                RelatedReportContainer_t relatedReportContainer = *reportMetadataContainer.relatedReportContainer;
+                std::string relatedReportId = ia5stringToString(relatedReportContainer.relatedReportID);
+                std::cout << "  relatedReportId: " << relatedReportId << " " << std::endl;
+            }
+
             ReportContainer reportContainer = misbehaviorReport->reportContainer;
             if (reportContainer.reportedMessageContainer.present ==
                 ReportedMessageContainer_PR_certificateIncludedContainer) {
                 EtsiTs103097Data_t reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
-                Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessage.content;
-                if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
-                    auto *cam = (vanetza::asn1::Cam *) ieee1609Dot2Content.choice.unsecuredData.buf;
-                    std::cout << "reported StationID: " << cam->operator->()->header.stationID << std::endl;
-                    std::cout << "genDeltaTime: " << cam->operator->()->cam.generationDeltaTime << std::endl;
+                if(reportedMessage.content != nullptr){
+                    Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessage.content;
+                    if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
+                        auto *cam = (vanetza::asn1::Cam *) ieee1609Dot2Content.choice.unsecuredData.buf;
+                        std::cout << "  reported StationID: " << (*cam)->header.stationID << std::endl;
+                        std::cout << "  genDeltaTime: " << (*cam)->cam.generationDeltaTime << std::endl;
+                    }
                 }
             }
             if(reportContainer.misbehaviorTypeContainer.present == MisbehaviorTypeContainer_PR_semanticDetection){
                 SemanticDetection_t semanticDetection = reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
                 if(semanticDetection.present == SemanticDetection_PR_semanticDetectionReferenceCAM){
                     long detectionLevelCAM = semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM;
-                    std::cout << "detection level: " << detectionLevelCAM << std::endl;
+                    std::cout << "  detection level: " << detectionLevelCAM << std::endl;
                     OCTET_STRING_t buffer = semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM;
                     std::bitset<16> semanticDetectionErrorCodeCAM = (std::bitset<16>) buffer.buf;
-                    std::cout << semanticDetectionErrorCodeCAM.to_string() << std::endl;
+                    std::cout << "  " << semanticDetectionErrorCodeCAM.to_string() << std::endl;
                     if(detectionLevelCAM == 2){
                         auto *evidenceContainer = reportContainer.evidenceContainer;
                         if(evidenceContainer == nullptr) {
@@ -97,13 +107,13 @@ namespace artery {
                                 if(messageEvidenceContainer->list.count == 0){
                                     std::cout << "invalid report, messageEvidenceContainer is empty" << std::endl;
                                 } else {
-                                    std::cout << "evidenceCams: " << std::endl;
+                                    std::cout << "  evidenceCams: " << std::endl;
                                     for (int i = 0; i < messageEvidenceContainer->list.count; i++){
                                         auto *singleMessageContainer = (EtsiTs103097Data_t *) messageEvidenceContainer->list.array[i];
                                         auto *ieee1609Dot2Content = singleMessageContainer->content;
                                         if(ieee1609Dot2Content->present == Ieee1609Dot2Content_PR_unsecuredData){
                                             auto *evidenceCam = (vanetza::asn1::Cam *) ieee1609Dot2Content->choice.unsecuredData.buf;
-                                            std::cout << "  previous genDeltaTime: " << evidenceCam->operator->()->cam.generationDeltaTime << std::endl;
+                                            std::cout << "    previous genDeltaTime: " << evidenceCam->operator->()->cam.generationDeltaTime << std::endl;
                                         }
                                     }
 

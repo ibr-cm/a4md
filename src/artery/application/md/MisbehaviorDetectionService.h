@@ -48,10 +48,15 @@ namespace artery {
         void initializeParameters();
 
         vanetza::asn1::MisbehaviorReport
-        createMisbehaviorReport(const std::string &reportId, const vanetza::asn1::Cam &cam,
+        createMisbehaviorReport(const string &reportId, const vanetza::asn1::Cam *cam,
                                 DetectionReferenceCAM_t *semanticDetectionReferenceCam);
 
         void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
+
+        static DetectionReferenceCAM_t
+        fillSemanticDetectionReferenceCam(detectionLevels::DetectionLevels detectionLevelCam,
+                                          std::bitset<16> semanticDetectionErrorCodeCAM);
+
 
         std::vector<vanetza::asn1::Cam *> getSurroundingCamObjects(StationID_t senderStationId);
 
@@ -71,6 +76,25 @@ namespace artery {
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
         std::string lastPolyId;
+
+        std::vector<std::bitset<16>> checkCam(const vanetza::asn1::Cam &message);
+
+        void sendLevel1Report(const std::string &reportId, const std::string *relatedReportId,
+                              const vanetza::asn1::Cam *reportedMessage,
+                              std::bitset<16> semanticDetectionErrorCodeCAM);
+
+        void sendLevel2Report(const std::string &reportId, const std::string *relatedReportId,
+                              const vanetza::asn1::Cam *reportedMessage,
+                              std::bitset<16> semanticDetectionErrorCodeCAM,
+                              StationID_t senderStationId);
+
+        void sendLevel3Report(const std::string &reportId, const std::string *relatedReportId,
+                              const vanetza::asn1::Cam *reportedMessage, bitset<16> semanticDetectionErrorCodeCAM,
+                              StationID_t senderStationId);
+
+        void
+        fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer, const std::string &relatedReportId,
+                                   int omittedReportsNumber);
     };
 
 } // namespace artery

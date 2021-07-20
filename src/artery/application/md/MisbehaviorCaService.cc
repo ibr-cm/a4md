@@ -476,7 +476,8 @@ namespace artery {
                         offsetIndex = attackGridSybilCurrentVehicleIndex + 1;
                     }
                 }
-                BasicVehicleContainerHighFrequency &hfc = message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+                BasicVehicleContainerHighFrequency &hfc =
+                        message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
                 double width = hfc.vehicleWidth == VehicleWidth_unavailable ?
                                mVehicleController->getLength().value() :
                                (double) hfc.vehicleWidth / 10;

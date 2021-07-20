@@ -9,6 +9,7 @@
 #include <artery/application/md/checks/BaseChecks.h>
 #include <list>
 #include <vanetza/asn1/cam.hpp>
+#include <utility>
 #include <artery/application/md/checks/kalman/Kalman_SVI.h>
 #include <artery/application/md/checks/kalman/Kalman_SC.h>
 #include <artery/application/md/checks/kalman/Kalman_SI.h>
@@ -32,13 +33,23 @@ namespace artery {
 
         std::vector<CheckResult *> getResults() { return checkResults; };
 
+        bool hasBeenReported() const { return mHasBeenReported; };
+
+        std::string getPreviousReportId() const { return mPreviousReportId; };
+
+        void setReportId(std::string reportId) {
+            mPreviousReportId = std::move(reportId);
+            mHasBeenReported = true;
+        };
+
     private:
         BaseChecks *baseChecks;
 
         std::vector<CheckResult *> checkResults;
-
         Position mPosition;
         StationID_t mStationId;
+        bool mHasBeenReported;
+        std::string mPreviousReportId;
     };
 
 } //namespace artery

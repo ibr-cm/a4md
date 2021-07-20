@@ -13,10 +13,12 @@ namespace artery {
     class ThresholdFusion : public BaseFusion {
     public:
         explicit ThresholdFusion(double threshold);
-        DetectionReferenceCAM_t *checkForReport(CheckResult &checkResult) override;
+//        DetectionReferenceCAM_t *checkForReport(CheckResult &checkResult) override;
+        std::vector<std::bitset<16>> checkForReport(const CheckResult &checkResult) override;
 
     private:
         double threshold;
+
     };
 
 } // namespace artery
