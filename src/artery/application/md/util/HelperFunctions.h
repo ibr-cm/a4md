@@ -83,6 +83,15 @@ namespace artery {
                         double MAX_PLAUSIBLE_SPEED, double *returnDistance);
 
     double segmentSegmentFactor(double d, double r1, double r2, double range);
+
+    void setPositionWithJitter(ReferencePosition_t &referencePosition, const Position &originalPosition,
+                               const traci::Boundary &simulationBoundary,
+                               const std::shared_ptr<const traci::API> &traciAPI, omnetpp::cRNG *rng);
+
+    void setPositionWithJitter(ReferencePosition_t &referencePosition, const Position &originalPosition,
+                               const HeadingValue_t &heading, const HeadingValue_t &semiMajorOrientationOffset,
+                               const traci::Boundary &simulationBoundary,
+                               const std::shared_ptr<const traci::API> &traciAPI, omnetpp::cRNG *rng);
 }
 
 #endif //ARTERY_HELPERFUNCTIONS_H

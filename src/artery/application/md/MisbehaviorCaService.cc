@@ -464,107 +464,75 @@ namespace artery {
                 break;
             }
             case attackTypes::GridSybil: {
-                double offsetX;
-                double offsetY;
-                double currentHeadingAngle;
-                Position originalPosition;
+                int offsetIndex;
                 if (F2MDParameters::attackParameters.AttackGridSybilSelfSybil) {
-                    offsetX =
-                            -((double) attackGridSybilCurrentVehicleIndex / 2) *
-                            (mVehicleController->getWidth().value() + attackGridSybilActualDistanceX) +
-                            uniform(-attackGridSybilActualDistanceX / 10, attackGridSybilActualDistanceX / 10);
-                    offsetY =
-                            -((double) (attackGridSybilCurrentVehicleIndex % 2)) *
-                            (mVehicleController->getLength().value() + attackGridSybilActualDistanceY) +
-                            uniform(-attackGridSybilActualDistanceY / 10, attackGridSybilActualDistanceY / 10);
-                    currentHeadingAngle = artery::Angle::from_radian(
-                            mVehicleDataProvider->heading().value()).degree();
-                    originalPosition = mVehicleDataProvider->position();
+                    offsetIndex = attackGridSybilCurrentVehicleIndex;
                 } else {
                     message = getNextReplayCam();
                     if (message->header.messageID != 2) {
+                        message = vanetza::asn1::Cam();
                         break;
                     } else {
-                        double width;
-                        if (message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleWidth !=
-                            VehicleWidth_unavailable) {
-                            width = (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleWidth;
-                        } else {
-                            width = mVehicleController->getWidth().value();
-                        }
-                        double length;
-                        if (message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleLength.vehicleLengthValue !=
-                            VehicleLengthValue_unavailable) {
-                            length = (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.vehicleLength.vehicleLengthValue;
-                        } else {
-                            length = mVehicleController->getLength().value();
-                        }
-
-                        offsetX = -((double) (attackGridSybilCurrentVehicleIndex + 1) / 2) *
-                                  (width + attackGridSybilActualDistanceX) +
-                                  uniform(-attackGridSybilActualDistanceX / 10, attackGridSybilActualDistanceX / 10);
-                        offsetY = -((double) (attackGridSybilCurrentVehicleIndex + 1 % 2)) *
-                                  (length + attackGridSybilActualDistanceY) +
-                                  uniform(-attackGridSybilActualDistanceY / 10, attackGridSybilActualDistanceY / 10);
-                        currentHeadingAngle = artery::Angle::from_radian(
-                                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
-                                10).degree();
-                        originalPosition = convertReferencePosition(
-                                message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
-                                mTraciAPI);
+                        offsetIndex = attackGridSybilCurrentVehicleIndex + 1;
                     }
                 }
+                BasicVehicleContainerHighFrequency &hfc = message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+                double width = hfc.vehicleWidth == VehicleWidth_unavailable ?
+                               mVehicleController->getLength().value() :
+                               (double) hfc.vehicleWidth / 10;
+                double length = hfc.vehicleLength.vehicleLengthValue == VehicleLengthValue_unavailable ?
+                                mVehicleController->getLength().value() :
+                                (double) hfc.vehicleLength.vehicleLengthValue / 10;
+                double offsetX = -((double) offsetIndex / 2) *
+                                 (width + attackGridSybilActualDistanceX) +
+                                 uniform(-attackGridSybilActualDistanceX / 10, attackGridSybilActualDistanceX / 10);
+                double offsetY = -((double) (offsetIndex % 2)) *
+                                 (length + attackGridSybilActualDistanceY) +
+                                 uniform(-attackGridSybilActualDistanceY / 10, attackGridSybilActualDistanceY / 10);
+
+                ReferencePosition_t &referencePosition = message->cam.camParameters.basicContainer.referencePosition;
+                Position originalPosition = convertReferencePosition(referencePosition, mSimulationBoundary, mTraciAPI);
+
                 Position relativePosition = Position(offsetX, offsetY);
+                double currentHeadingAngle = (double) hfc.heading.headingValue / 10.0;
                 double newAngle = currentHeadingAngle + calculateHeadingAngle(relativePosition);
                 newAngle = 360 - std::fmod(newAngle, 360);
 
                 double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
                 double relativeX = offsetDistance * sin(newAngle * PI / 180);
                 double relativeY = offsetDistance * cos(newAngle * PI / 180);
-                Position newPosition = Position(originalPosition.x.value() + relativeX,
-                                                originalPosition.y.value() + relativeY);
-                if (getDistanceToNearestRoad(mGlobalEnvironmentModel, newPosition) >
+                Position sybilPosition = Position(originalPosition.x.value() + relativeX,
+                                                  originalPosition.y.value() + relativeY);
+                if (getDistanceToNearestRoad(mGlobalEnvironmentModel, sybilPosition) >
                     F2MDParameters::attackParameters.AttackGridSybilMaxDistanceFromRoad) {
                     message = vanetza::asn1::Cam();
                     break;
                 }
+                setPositionWithJitter(referencePosition, sybilPosition, mSimulationBoundary, mTraciAPI, getRNG(0));
 
-                ReferencePosition_t *referencePosition = &message->cam.camParameters.basicContainer.referencePosition;
-                addOffsetToCamParameter(getRNG(0),
-                                        &referencePosition->positionConfidenceEllipse.semiMajorConfidence,
-                                        SemiAxisLength_unavailable, 0.1, 0, SemiAxisLength_outOfRange);
-                addOffsetToCamParameter(getRNG(0),
-                                        &referencePosition->positionConfidenceEllipse.semiMinorConfidence,
-                                        SemiAxisLength_unavailable, 0.1, 0, SemiAxisLength_outOfRange);
-                traci::TraCIGeoPosition traciGeoPos = mTraciAPI->convertGeo(
-                        position_cast(mSimulationBoundary, newPosition));
-                referencePosition->longitude = (long) (traciGeoPos.longitude * 10000000);
-                referencePosition->latitude = (long) (traciGeoPos.latitude * 10000000);
-
-                addOffsetToCamParameter(getRNG(0),
-                                        &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue,
-                                        SpeedValue_unavailable, 0.05, 0, 16382);
-                addOffsetToCamParameter(getRNG(0),
-                                        &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedConfidence,
-                                        SpeedConfidence_unavailable, 0.1, 0, SpeedConfidence_outOfRange);
-
-                addOffsetToCamParameter(getRNG(0),
-                                        &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationValue,
-                                        LongitudinalAccelerationValue_unavailable, 0.1, -160, 160);
-                addOffsetToCamParameter(getRNG(0),
-                                        &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.longitudinalAcceleration.longitudinalAccelerationConfidence,
-                                        AccelerationConfidence_unavailable, 0.1, 0,
-                                        AccelerationConfidence_outOfRange);
-
-                double deltaAngle =
-                        currentHeadingAngle + uniform(-currentHeadingAngle / 360, +currentHeadingAngle / 360);
-                deltaAngle = std::fmod(deltaAngle + 360, 360);
-
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue = round(
-                        Angle::from_degree(deltaAngle).value, decidegree);
-                addOffsetToCamParameter(getRNG(0),
-                                        &message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingConfidence,
-                                        HeadingConfidence_unavailable, 0.1, 0, HeadingConfidence_outOfRange);
+                if (hfc.speed.speedConfidence != SpeedConfidence_unavailable) {
+                    long speedConfidence = hfc.speed.speedConfidence;
+                    hfc.speed.speedValue = intuniform(std::max(0, (int) (hfc.speed.speedValue - speedConfidence)),
+                                                      std::min(16382,
+                                                               (int) (hfc.speed.speedValue + speedConfidence)));
+                }
+                if (hfc.longitudinalAcceleration.longitudinalAccelerationConfidence !=
+                    AccelerationConfidence_unavailable) {
+                    long accelerationConfidence = hfc.longitudinalAcceleration.longitudinalAccelerationConfidence;
+                    hfc.longitudinalAcceleration.longitudinalAccelerationValue =
+                            intuniform(std::max(-160,
+                                                (int) (hfc.longitudinalAcceleration.longitudinalAccelerationValue -
+                                                       accelerationConfidence)),
+                                       std::min(160,
+                                                (int) (hfc.longitudinalAcceleration.longitudinalAccelerationValue +
+                                                       accelerationConfidence)));
+                }
+                if (hfc.heading.headingConfidence != HeadingConfidence_unavailable) {
+                    long headingConfidence = hfc.heading.headingConfidence;
+                    long newHeading = intuniform((int) (hfc.heading.headingValue - headingConfidence),
+                                                 (int) (hfc.heading.headingValue + headingConfidence));
+                    hfc.heading.headingValue = (newHeading + 3600) % 3600;
+                }
 
                 double steeringAngle = std::fmod(attackGridSybilLastHeadingAngle - currentHeadingAngle, 360);
                 steeringAngle = steeringAngle > 180 ? 360 - steeringAngle : steeringAngle;
@@ -576,8 +544,6 @@ namespace artery {
 
                 attackGridSybilCurrentVehicleIndex = ++attackGridSybilCurrentVehicleIndex % attackGridSybilVehicleCount;
                 message->header.stationID = mPseudonyms.front();
-//                message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-//                        mTimer->getTimeFor(mVehicleDataProvider->updated()));
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                         mTimer->getCurrentTime());
                 mPseudonyms.push(mPseudonyms.front());

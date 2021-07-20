@@ -225,12 +225,8 @@ namespace artery {
             double offsetDistance = sqrt(pow(borderX, 2) + pow(borderY, 2));
             double relativeX = offsetDistance * sin(newAngle * PI / 180);
             double relativeY = offsetDistance * cos(newAngle * PI / 180);
-//            point p(center.x() + relativeX, center.y() + relativeY);
-//            Position p(center.x.value() + relativeX, center.y.value() + relativeY);
             ellipseOutline.emplace_back(Position(center.x.value() + relativeX, center.y.value() + relativeY));
         }
-//        polygon ellipseOutline;
-//        boost::geometry::assign_points(ellipseOutline, points);
         boost::geometry::correct(ellipseOutline);
         return ellipseOutline;
     }
@@ -454,6 +450,70 @@ namespace artery {
             }
         }
         return (overlap1 + overlap2) / (2 * r1 + 2 * r2);
+    }
+
+    void setPositionWithJitter(ReferencePosition_t &referencePosition, const Position &originalPosition,
+                               const traci::Boundary &simulationBoundary,
+                               const std::shared_ptr<const traci::API> &traciAPI, omnetpp::cRNG *rng) {
+        Position newPosition;
+        if (referencePosition.positionConfidenceEllipse.semiMajorConfidence == SemiAxisLength_unavailable ||
+            referencePosition.positionConfidenceEllipse.semiMinorConfidence == SemiAxisLength_unavailable) {
+            newPosition = originalPosition;
+        } else {
+            double phi = uniform(rng, 0, 2 * PI);
+            double rho = sqrt(uniform(rng, 0, 1));
+            double offsetX =
+                    rho * cos(phi) * (double) referencePosition.positionConfidenceEllipse.semiMajorConfidence / 200;
+            double offsetY =
+                    rho * sin(phi) * (double) referencePosition.positionConfidenceEllipse.semiMinorConfidence / 200;
+            double newAngle = (double) referencePosition.positionConfidenceEllipse.semiMajorOrientation / 10 +
+                              calculateHeadingAngle(Position(offsetX, offsetY));
+            newAngle = 360 - std::fmod(newAngle, 360);
+
+            double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
+            double relativeX = offsetDistance * sin(newAngle * PI / 180);
+            double relativeY = offsetDistance * cos(newAngle * PI / 180);
+            newPosition = Position(originalPosition.x.value() + relativeX,
+                                   originalPosition.y.value() + relativeY);
+        }
+        traci::TraCIGeoPosition traciGeoPos = traciAPI->convertGeo(
+                position_cast(simulationBoundary, newPosition));
+        referencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
+        referencePosition.latitude = (long) (traciGeoPos.latitude * 10000000);
+    }
+
+    void setPositionWithJitter(ReferencePosition_t &referencePosition, const Position &originalPosition,
+                               const HeadingValue_t &heading, const HeadingValue_t &semiMajorOrientationOffset,
+                               const traci::Boundary &simulationBoundary,
+                               const std::shared_ptr<const traci::API> &traciAPI, omnetpp::cRNG *rng) {
+        Position newPosition;
+        if (referencePosition.positionConfidenceEllipse.semiMajorConfidence == SemiAxisLength_unavailable ||
+            referencePosition.positionConfidenceEllipse.semiMinorConfidence == SemiAxisLength_unavailable) {
+            newPosition = originalPosition;
+        } else {
+            referencePosition.positionConfidenceEllipse.semiMajorOrientation =
+                    (heading + semiMajorOrientationOffset) % 3600;
+
+            double phi = uniform(rng, 0, 2 * PI);
+            double rho = sqrt(uniform(rng, 0, 1));
+            double offsetX =
+                    rho * cos(phi) * (double) referencePosition.positionConfidenceEllipse.semiMajorConfidence / 200;
+            double offsetY =
+                    rho * sin(phi) * (double) referencePosition.positionConfidenceEllipse.semiMinorConfidence / 200;
+            double newAngle = (double) referencePosition.positionConfidenceEllipse.semiMajorOrientation / 10 +
+                              calculateHeadingAngle(Position(offsetX, offsetY));
+            newAngle = 360 - std::fmod(newAngle, 360);
+
+            double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
+            double relativeX = offsetDistance * sin(newAngle * PI / 180);
+            double relativeY = offsetDistance * cos(newAngle * PI / 180);
+            newPosition = Position(originalPosition.x.value() + relativeX,
+                                   originalPosition.y.value() + relativeY);
+        }
+        traci::TraCIGeoPosition traciGeoPos = traciAPI->convertGeo(
+                position_cast(simulationBoundary, newPosition));
+        referencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
+        referencePosition.latitude = (long) (traciGeoPos.latitude * 10000000);
     }
 
 }

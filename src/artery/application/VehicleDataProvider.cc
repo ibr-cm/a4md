@@ -220,7 +220,6 @@ namespace artery {
 
         long actualHeading = round(dynamics.heading, decidegree);
         if (mHeading.headingConfidence != HeadingConfidence_unavailable) {
-
             long headingConfidence = mHeading.headingConfidence;
             long newHeading = intuniform(rng, (int) (actualHeading - headingConfidence),
                                          (int) (actualHeading + headingConfidence));
@@ -229,41 +228,8 @@ namespace artery {
             mHeading.headingValue = actualHeading;
         }
 
-        Position newPosition;
-        if (mReferencePosition.positionConfidenceEllipse.semiMajorConfidence != SemiAxisLength_unavailable ||
-            mReferencePosition.positionConfidenceEllipse.semiMinorConfidence != SemiAxisLength_unavailable) {
-            mReferencePosition.positionConfidenceEllipse.semiMajorOrientation =
-                    (mHeading.headingValue + semiMajorOrientationOffset) % 3600;
-
-            double phi = uniform(rng, 0, 2 * PI);
-            double rho = sqrt(uniform(rng, 0, 1));
-            double offsetX =
-                    rho * cos(phi) * (double) mReferencePosition.positionConfidenceEllipse.semiMajorConfidence / 200;
-            double offsetY =
-                    rho * sin(phi) * (double) mReferencePosition.positionConfidenceEllipse.semiMinorConfidence / 200;
-            double newAngle = (double) mReferencePosition.positionConfidenceEllipse.semiMajorOrientation / 10 +
-                              calculateHeadingAngle(Position(offsetX, offsetY));
-            newAngle = 360 - std::fmod(newAngle, 360);
-
-            double offsetDistance = sqrt(pow(offsetX, 2) + pow(offsetY, 2));
-            double relativeX = offsetDistance * sin(newAngle * PI / 180);
-            double relativeY = offsetDistance * cos(newAngle * PI / 180);
-            Position originalPosition = mVehicleKinematics.position;
-            newPosition = Position(originalPosition.x.value() + relativeX,
-                                   originalPosition.y.value() + relativeY);
-            traci::TraCIGeoPosition traciGeoPos = traciAPI->convertGeo(
-                    position_cast(simulationBoundary, newPosition));
-            mReferencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
-            mReferencePosition.latitude = (long) (traciGeoPos.latitude * 10000000);
-        } else {
-            newPosition = mVehicleKinematics.position;
-            mReferencePosition.positionConfidenceEllipse.semiMajorOrientation = HeadingValue_unavailable;
-        }
-        traci::TraCIGeoPosition traciGeoPos = traciAPI->convertGeo(
-                position_cast(simulationBoundary, newPosition));
-        mReferencePosition.longitude = (long) (traciGeoPos.longitude * 10000000);
-        mReferencePosition.latitude = (long) (traciGeoPos.latitude * 10000000);
-
+        setPositionWithJitter(mReferencePosition, mVehicleKinematics.position, mHeading.headingValue,
+                              semiMajorOrientationOffset, simulationBoundary, traciAPI, rng);
 
     }
 
