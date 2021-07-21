@@ -95,6 +95,8 @@ namespace artery {
         void
         fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer, const std::string &relatedReportId,
                                    int omittedReportsNumber);
+
+        string generateReportId(StationID_t senderStationId);
     };
 
 } // namespace artery

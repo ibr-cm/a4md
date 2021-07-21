@@ -14,6 +14,7 @@ namespace artery {
                                    DetectionParameters *detectionParameters,
                                    const vanetza::asn1::Cam &message) {
         mStationId = message->header.stationID;
+        mHasBeenReported = false;
         switch (detectionParameters->checkType) {
             case checkTypes::LegacyChecks:
                 baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, message);

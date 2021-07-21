@@ -199,6 +199,11 @@ namespace artery {
                 detectionLevels::Level1, semanticDetectionErrorCodeCAM);
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, reportedMessage,
                                                                                      &semanticDetectionReferenceCam);
+        if (relatedReportId != nullptr) {
+            misbehaviorReport->reportMetadataContainer.relatedReportContainer = new RelatedReportContainer_t();
+            fillRelatedReportContainer(misbehaviorReport->reportMetadataContainer.relatedReportContainer,
+                                       *relatedReportId, 0);
+        }
 
         MisbehaviorReportObject obj(std::move(misbehaviorReport));
         emit(scSignalMisbehaviorAuthorityNewReport, &obj);
@@ -212,9 +217,10 @@ namespace artery {
                 detectionLevels::Level2, semanticDetectionErrorCodeCAM);
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, reportedMessage,
                                                                                      &semanticDetectionReferenceCam);
-        if(relatedReportId != nullptr){
-            misbehaviorReport->reportMetadataContainer.relatedReportContainer = new RelatedReportContainer_t ();
-            fillRelatedReportContainer(misbehaviorReport->reportMetadataContainer.relatedReportContainer,*relatedReportId,0);
+        if (relatedReportId != nullptr) {
+            misbehaviorReport->reportMetadataContainer.relatedReportContainer = new RelatedReportContainer_t();
+            fillRelatedReportContainer(misbehaviorReport->reportMetadataContainer.relatedReportContainer,
+                                       *relatedReportId, 0);
         }
         std::vector<CheckResult *> results = detectedSenders[senderStationId]->getResults();
         if (results.size() > 1) {
@@ -247,9 +253,10 @@ namespace artery {
                 detectionLevels::Level3, semanticDetectionErrorCodeCAM);
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createMisbehaviorReport(reportId, reportedMessage,
                                                                                      &semanticDetectionReferenceCam);
-        if(relatedReportId != nullptr){
-            misbehaviorReport->reportMetadataContainer.relatedReportContainer = new RelatedReportContainer_t ();
-            fillRelatedReportContainer(misbehaviorReport->reportMetadataContainer.relatedReportContainer,*relatedReportId,0);
+        if (relatedReportId != nullptr) {
+            misbehaviorReport->reportMetadataContainer.relatedReportContainer = new RelatedReportContainer_t();
+            fillRelatedReportContainer(misbehaviorReport->reportMetadataContainer.relatedReportContainer,
+                                       *relatedReportId, 0);
         }
 
         auto *evidenceContainer = new EvidenceContainer_t();
@@ -290,6 +297,11 @@ namespace artery {
         emit(scSignalMisbehaviorAuthorityNewReport, &obj);
     }
 
+    std::string MisbehaviorDetectionService::generateReportId(StationID_t senderStationId) {
+        return {std::to_string(senderStationId) + "_" +
+                std::to_string(countTaiMilliseconds(mTimer->getCurrentTime())) + "_" +
+                std::to_string(intrand(UINT32_MAX))};
+    }
 
     void MisbehaviorDetectionService::receiveSignal(cComponent *source, simsignal_t signal, cObject *c_obj, cObject *) {
         Enter_Method("receiveSignal");
@@ -299,49 +311,56 @@ namespace artery {
             uint32_t senderStationId = message->header.stationID;
             misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(
                     senderStationId);
-            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker) {
-//            std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
-//                      << message->cam.generationDeltaTime << std::endl;
-                bool messageIsReported = false;
+            if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker && senderStationId == 2971333630) {
+                std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
+                          << message->cam.generationDeltaTime << std::endl;
+
                 std::vector<std::bitset<16>> detectionLevelErrorCodes = checkCam(message);
+                bool messageIsReported = false;
+                DetectedSender &detectedSender = *detectedSenders[senderStationId];
+                std::shared_ptr<std::string> relatedReportId = nullptr;
+                if (detectedSender.hasBeenReported()) {
+                    relatedReportId = std::make_shared<std::string>(detectedSender.getPreviousReportId());
+                }
+
                 if (detectionLevelErrorCodes[detectionLevels::Level1] != 0) {
-                    std::string reportId = {std::to_string(senderStationId) + "_" +
-                                            std::to_string(countTaiMilliseconds(mTimer->getCurrentTime())) + "_" +
-                                            std::to_string(intrand(UINT32_MAX))};
-                    sendLevel1Report(reportId, nullptr, &message, detectionLevelErrorCodes[detectionLevels::Level1]);
-                    detectedSenders[senderStationId]->setReportId(reportId);
+                    std::shared_ptr<std::string> reportId =
+                            std::make_shared<std::string>(generateReportId(senderStationId));
+                    sendLevel1Report(*reportId, relatedReportId.get(),
+                                     messageIsReported ? &message : nullptr,
+                                     detectionLevelErrorCodes[detectionLevels::Level1]);
+                    if (relatedReportId == nullptr) {
+                        relatedReportId = reportId;
+                    }
                     messageIsReported = true;
                 }
                 if (detectionLevelErrorCodes[detectionLevels::Level2] != 0) {
-                    std::string reportId = {std::to_string(senderStationId) + "_" +
-                                            std::to_string(countTaiMilliseconds(mTimer->getCurrentTime())) + "_" +
-                                            std::to_string(intrand(UINT32_MAX))};
-                    if(messageIsReported){
-                        std::string relatedReportId = detectedSenders[senderStationId]->getPreviousReportId();
-                        sendLevel2Report(reportId, &relatedReportId, nullptr,
-                                         detectionLevelErrorCodes[detectionLevels::Level2], senderStationId);
-                    } else {
-                        sendLevel2Report(reportId, nullptr, &message,
-                                         detectionLevelErrorCodes[detectionLevels::Level2], senderStationId);
+                    std::shared_ptr<std::string> reportId =
+                            std::make_shared<std::string>(generateReportId(senderStationId));
+                    sendLevel2Report(*reportId, relatedReportId.get(),
+                                     messageIsReported ? &message : nullptr,
+                                     detectionLevelErrorCodes[detectionLevels::Level2], senderStationId);
+                    if (relatedReportId == nullptr) {
+                        relatedReportId = reportId;
                     }
                     messageIsReported = true;
                 }
                 if (detectionLevelErrorCodes[detectionLevels::Level3] != 0) {
-                    std::string reportId = {std::to_string(senderStationId) + "_" +
-                                            std::to_string(countTaiMilliseconds(mTimer->getCurrentTime())) + "_" +
-                                            std::to_string(intrand(UINT32_MAX))};
-                    if(messageIsReported){
-                        std::string relatedReportId = detectedSenders[senderStationId]->getPreviousReportId();
-                        sendLevel3Report(reportId, &relatedReportId, nullptr,
-                                         detectionLevelErrorCodes[detectionLevels::Level3], senderStationId);
-                    } else {
-                        sendLevel3Report(reportId, nullptr, &message,
-                                         detectionLevelErrorCodes[detectionLevels::Level3], senderStationId);
+                    std::shared_ptr<std::string> reportId =
+                            std::make_shared<std::string>(generateReportId(senderStationId));
+                    sendLevel3Report(*reportId, relatedReportId.get(),
+                                     messageIsReported ? &message : nullptr,
+                                     detectionLevelErrorCodes[detectionLevels::Level3], senderStationId);
+                    if (relatedReportId == nullptr) {
+                        relatedReportId = reportId;
                     }
                     messageIsReported = true;
                 }
-                if(detectionLevelErrorCodes[detectionLevels::Level4] != 0){
+                if (detectionLevelErrorCodes[detectionLevels::Level4] != 0) {
 
+                }
+                if (detectedSender.getPreviousReportId().empty()) {
+                    detectedSender.setReportId(*relatedReportId);
                 }
             }
         }
@@ -369,10 +388,8 @@ namespace artery {
             auto *ieee1609Dot2Content = new Ieee1609Dot2Content_t();
             reportedMessage.content = ieee1609Dot2Content;
             ieee1609Dot2Content->present = Ieee1609Dot2Content_PR_unsecuredData;
-            vanetza::ByteBuffer byteBuffer = cam->encode();
-            std::string encodedCam(byteBuffer.begin(), byteBuffer.end());
             Opaque_t &unsecuredData = ieee1609Dot2Content->choice.unsecuredData;
-            OCTET_STRING_fromBuf(&unsecuredData, (const char *) &cam, (int) cam->size());
+            OCTET_STRING_fromBuf(&unsecuredData, (const char *) cam, (int) cam->size());
         }
 
         reportContainer.misbehaviorTypeContainer.present = MisbehaviorTypeContainer_PR_semanticDetection;
@@ -430,9 +447,12 @@ namespace artery {
         return *semanticDetectionReferenceCam;
     }
 
-    void MisbehaviorDetectionService::fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer, const std::string& relatedReportId, int omittedReportsNumber){
+    void MisbehaviorDetectionService::fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer,
+                                                                 const std::string &relatedReportId,
+                                                                 int omittedReportsNumber) {
 //        relatedReportContainer = new RelatedReportContainer_t();
-        OCTET_STRING_fromBuf(&relatedReportContainer->relatedReportID, relatedReportId.c_str(), (int) strlen(relatedReportId.c_str()));
+        OCTET_STRING_fromBuf(&relatedReportContainer->relatedReportID, relatedReportId.c_str(),
+                             (int) strlen(relatedReportId.c_str()));
         relatedReportContainer->omittedReportsNumber = omittedReportsNumber;
     }
 

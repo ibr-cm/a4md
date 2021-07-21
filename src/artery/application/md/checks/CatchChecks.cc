@@ -384,10 +384,10 @@ namespace artery {
             result->consistencyIsChecked = true;
 
 
-            drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
-                         mTraciAPI);
-            drawTraciPoi(lastCamPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary,
-                         mTraciAPI);
+//            drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+//                         mTraciAPI);
+//            drawTraciPoi(lastCamPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary,
+//                         mTraciAPI);
 
             result->positionConsistency =
                     PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
