@@ -3,6 +3,7 @@
 //
 
 #include "ThresholdFusion.h"
+#include "artery/application/md/util/DetectionLevels.h"
 
 namespace artery {
 

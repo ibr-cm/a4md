@@ -3,6 +3,7 @@
 #define ARTERY_MDSERVICE_H_
 
 #include "artery/application/ItsG5Service.h"
+#include "artery/application/md/util/DetectionLevels.h"
 #include <vanetza/asn1/asn1c_wrapper.hpp>
 #include <curl/curl.h>
 #include "artery/envmod/LocalEnvironmentModel.h"
@@ -40,29 +41,6 @@ namespace artery {
         void handleMessage(omnetpp::cMessage *) override;
 
     private:
-        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
-
-        void
-        visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color, const std::string &idPrefix);
-
-        void initializeParameters();
-
-        vanetza::asn1::MisbehaviorReport
-        createMisbehaviorReport(const string &reportId, const vanetza::asn1::Cam *cam,
-                                DetectionReferenceCAM_t *semanticDetectionReferenceCam);
-
-        void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
-
-        static DetectionReferenceCAM_t
-        fillSemanticDetectionReferenceCam(detectionLevels::DetectionLevels detectionLevelCam,
-                                          std::bitset<16> semanticDetectionErrorCodeCAM);
-
-
-        std::vector<vanetza::asn1::Cam *> getSurroundingCamObjects(StationID_t senderStationId);
-
-        std::list<std::string> activePoIs;
-        const traci::VehicleController *mVehicleController = nullptr;
-
         CURL *curl;
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
@@ -76,27 +54,58 @@ namespace artery {
         static bool staticInitializationComplete;
         static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
         std::string lastPolyId;
+        std::list<std::string> activePoIs;
+        const traci::VehicleController *mVehicleController = nullptr;
+
+        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
+
+        void
+        visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color, const std::string &idPrefix);
+
+        void initializeParameters();
+
+
+        std::vector<vanetza::asn1::Cam *> getSurroundingCamObjects(StationID_t senderStationId);
 
         std::vector<std::bitset<16>> checkCam(const vanetza::asn1::Cam &message);
 
-        void sendLevel1Report(const std::string &reportId, const std::string *relatedReportId,
-                              const vanetza::asn1::Cam *reportedMessage,
-                              std::bitset<16> semanticDetectionErrorCodeCAM);
 
-        void sendLevel2Report(const std::string &reportId, const std::string *relatedReportId,
-                              const vanetza::asn1::Cam *reportedMessage,
-                              std::bitset<16> semanticDetectionErrorCodeCAM,
-                              StationID_t senderStationId);
+        vanetza::asn1::MisbehaviorReport createReport(detectionLevels::DetectionLevels detectionLevel,
+                                                      const std::string &reportId, std::string &relatedReportId,
+                                                      const vanetza::asn1::Cam *reportedMessage,
+                                                      std::bitset<16> errorCode, DetectedSender &detectedSender);
 
-        void sendLevel3Report(const std::string &reportId, const std::string *relatedReportId,
-                              const vanetza::asn1::Cam *reportedMessage, bitset<16> semanticDetectionErrorCodeCAM,
-                              StationID_t senderStationId);
+        vanetza::asn1::MisbehaviorReport
+        createLevel1Report(const std::string &reportId, const vanetza::asn1::Cam *reportedMessage,
+                           const bitset<16> &semanticDetectionErrorCodeCAM);
 
-        void
-        fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer, const std::string &relatedReportId,
-                                   int omittedReportsNumber);
+        vanetza::asn1::MisbehaviorReport
+        createLevel2Report(const std::string &reportId, const vanetza::asn1::Cam *reportedMessage,
+                           const bitset<16> &semanticDetectionErrorCodeCAM,
+                           DetectedSender &detectedSender);
 
-        string generateReportId(StationID_t senderStationId);
+        vanetza::asn1::MisbehaviorReport
+        createLevel3Report(const std::string &reportId, const vanetza::asn1::Cam *reportedMessage,
+                           const bitset<16> &semanticDetectionErrorCodeCAM,
+                           DetectedSender &detectedSender);
+
+
+        vanetza::asn1::MisbehaviorReport
+        createBasicMisbehaviorReport(const string &reportId, const vanetza::asn1::Cam *cam);
+
+        void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
+
+        static void fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer,
+                                               const std::string &relatedReportId, const int &omittedReportsNumber);
+
+        string generateReportId(const StationID_t &senderStationId);
+
+
+        static void fillMisbehaviorTypeContainer(MisbehaviorTypeContainer_t &misbehaviorTypeContainer,
+                                                 const detectionLevels::DetectionLevels &detectionLevel,
+                                                 const bitset<16> &errorCode);
+
+        void detectMisbehavior(vanetza::asn1::Cam &message);
     };
 
 } // namespace artery

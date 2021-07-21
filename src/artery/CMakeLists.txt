@@ -80,7 +80,6 @@ add_library(core SHARED
     application/md/checks/LegacyChecks.cc
     application/md/checks/CatchChecks.cc
     application/md/checks/BaseChecks.cc
-    application/md/fusion/BaseFusion.cc
     application/md/fusion/ThresholdFusion.cc
     application/md/checks/kalman/Kalman_SC.cc
     application/md/checks/kalman/Kalman_SI.cc
