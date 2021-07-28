@@ -5,7 +5,7 @@
 #ifndef ARTERY_CATCHCHECKS_H
 #define ARTERY_CATCHCHECKS_H
 
-#include <artery/application/md/checks/BaseChecks.h>
+#include <artery/application/misbehavior/checks/BaseChecks.h>
 
 namespace artery {
 

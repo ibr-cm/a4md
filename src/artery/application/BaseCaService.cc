@@ -3,7 +3,7 @@
 //
 
 #include "artery/application/BaseCaService.h"
-#include "artery/application/md/util/HelperFunctions.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 #include "artery/utility/simtime_cast.h"
 #include <artery/traci/Cast.h>
 #include <vanetza/facilities/cam_functions.hpp>

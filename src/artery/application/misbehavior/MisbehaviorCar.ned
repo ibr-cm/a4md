@@ -1,4 +1,4 @@
-package artery.application.md;
+package artery.application.misbehavior;
 
 import artery.envmod.Car;
 import artery.networking.Vanetza;

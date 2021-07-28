@@ -70,27 +70,29 @@ add_library(core SHARED
     utility/FilterRules.cc
     utility/Geometry.cc
     application/BaseCaService.cc
-    application/md/MisbehaviorDetectionService.cc
-    application/md/MisbehaviorCaService.cc
-    application/md/MisbehaviorAuthority.cc
-    application/md/MisbehaviorReportObject.cc
-    application/md/util/F2MDParameters.cc
-    application/md/util/base64.cc
-    application/md/util/HelperFunctions.cc
-    application/md/checks/LegacyChecks.cc
-    application/md/checks/CatchChecks.cc
-    application/md/checks/BaseChecks.cc
-    application/md/fusion/ThresholdFusion.cc
-    application/md/checks/kalman/Kalman_SC.cc
-    application/md/checks/kalman/Kalman_SI.cc
-    application/md/checks/kalman/Kalman_SVI.cc
-    application/md/checks/kalman/KalmanFilterJ_SC.cc
-    application/md/checks/kalman/KalmanFilterJ_SI.cc
-    application/md/checks/kalman/KalmanFilterJ_SVI.cc
-    application/md/checks/kalman/MatrixOp_SC.cc
-    application/md/checks/kalman/MatrixOp_SI.cc
-    application/md/checks/kalman/MatrixOp_SVI.cc
-    application/md/DetectedSender.cc
+    application/misbehavior/MisbehaviorDetectionService.cc
+    application/misbehavior/MisbehaviorCaService.cc
+    application/misbehavior/MisbehaviorReportObject.cc
+    application/misbehavior/util/F2MDParameters.cc
+    application/misbehavior/util/base64.cc
+    application/misbehavior/util/HelperFunctions.cc
+    application/misbehavior/checks/LegacyChecks.cc
+    application/misbehavior/checks/CatchChecks.cc
+    application/misbehavior/checks/BaseChecks.cc
+    application/misbehavior/fusion/ThresholdFusion.cc
+    application/misbehavior/checks/kalman/Kalman_SC.cc
+    application/misbehavior/checks/kalman/Kalman_SI.cc
+    application/misbehavior/checks/kalman/Kalman_SVI.cc
+    application/misbehavior/checks/kalman/KalmanFilterJ_SC.cc
+    application/misbehavior/checks/kalman/KalmanFilterJ_SI.cc
+    application/misbehavior/checks/kalman/KalmanFilterJ_SVI.cc
+    application/misbehavior/checks/kalman/MatrixOp_SC.cc
+    application/misbehavior/checks/kalman/MatrixOp_SI.cc
+    application/misbehavior/checks/kalman/MatrixOp_SVI.cc
+    application/misbehavior/DetectedSender.cc
+    application/misbehavior/ma/MisbehaviorAuthority.cc
+    application/misbehavior/ma/ReportedPseudonym.cc
+    application/misbehavior/ma/MisbehavingPseudonym.cc
         )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)

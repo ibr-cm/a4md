@@ -1,7 +1,7 @@
 #include "LegacyChecks.h"
 #include <utility>
 #include <artery/traci/Cast.h>
-#include "artery/application/md/util/HelperFunctions.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
 

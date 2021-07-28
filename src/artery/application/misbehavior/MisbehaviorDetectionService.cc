@@ -1,7 +1,7 @@
 
-#include "artery/application/md/MisbehaviorDetectionService.h"
-#include "artery/application/md/util/HelperFunctions.h"
-#include "artery/application/md/fusion/ThresholdFusion.h"
+#include "artery/application/misbehavior/MisbehaviorDetectionService.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
+#include "artery/application/misbehavior/fusion/ThresholdFusion.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/traci/VehicleController.h"
 #include <omnetpp/cmessage.h>
@@ -9,10 +9,10 @@
 #include <vanetza/asn1/cam.hpp>
 #include "artery/application/CaService.h"
 #include "artery/application/VehicleDataProvider.h"
-#include "artery/application/md/util/MisbehaviorTypes.h"
+#include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include <inet/common/ModuleAccess.h>
 #include "artery/traci/Cast.h"
-#include "artery/application/md/MisbehaviorCaService.h"
+#include "artery/application/misbehavior/MisbehaviorCaService.h"
 #include "MisbehaviorReportObject.h"
 #include <bitset>
 #include <boost/units/systems/cgs.hpp>
@@ -72,6 +72,7 @@ namespace artery {
             initializeParameters();
         }
 
+
         fusionApplication = new ThresholdFusion(0.5);
     }
 
@@ -107,6 +108,9 @@ namespace artery {
         F2MDParameters::detectionParameters.kalmanSpeedRange = par("kalmanSpeedRange");
 
         F2MDParameters::reportParameters.evidenceContainerMaxCamCount = par("evidenceContainerMaxCamCount");
+        F2MDParameters::reportParameters.omittedReportsCount = par("omittedReportsCount");
+        F2MDParameters::reportParameters.omittedReportsCountPerErrorCode = par("omittedReportsCountPerErrorCode");
+        F2MDParameters::reportParameters.broadcastReport = par("broadcastReport");
 
     }
 
@@ -145,17 +149,19 @@ namespace artery {
             auto *camPtr = &message;
             DetectedSender &detectedSender = *detectedSenders[senderStationId];
             std::string relatedReportId = detectedSender.getPreviousReportId();
+            std::bitset<16> reportedErrorCodes = 0;
 
             for (detectionLevels::DetectionLevels detectionLevel : detectionLevels::DetectionLevelVector) {
                 std::bitset<16> errorCode = detectionLevelErrorCodes[(int) detectionLevel];
+//                std::cout << " checking level " << detectionLevels::DetectionLevelStrings[(int) detectionLevel] << ": "
+//                          << errorCode << std::endl;
                 if (errorCode.any()) {
                     std::string reportId = generateReportId(senderStationId);
                     vanetza::asn1::MisbehaviorReport misbehaviorReport =
                             createReport(detectionLevel, reportId, relatedReportId, camPtr,
                                          detectionLevelErrorCodes[(int) detectionLevel], detectedSender);
                     fillMisbehaviorTypeContainer(misbehaviorReport->reportContainer.misbehaviorTypeContainer,
-                                                 detectionLevel,
-                                                 errorCode);
+                                                 detectionLevel, errorCode);
                     if (relatedReportId.empty()) {
                         relatedReportId = reportId;
                     } else {
@@ -165,10 +171,27 @@ namespace artery {
                                 relatedReportId, 0);
                     }
                     camPtr = nullptr;
-                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
-                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                    if (detectedSender.checkOmittedReportsLimit(errorCode)) {
+//                        std::cout << "### sending report" << std::endl;
+                        reportedErrorCodes |= errorCode;
+                        MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                        emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                    }
                 }
             }
+            if (reportedErrorCodes.any()) {
+                detectedSender.resetOmittedReports(reportedErrorCodes);
+            } else {
+                if(camPtr == nullptr){
+                    std::cout << "omitted report" << std::endl;
+                }
+            }
+            detectedSender.incrementOmittedReports(detectionLevelErrorCodes,reportedErrorCodes);
+//            if (camPtr == nullptr && reportedErrorCodes.none()) {
+//                detectedSender.incrementOmittedReports(detectionLevelErrorCodes);
+//                std::cout << "omitted report" << std::endl;
+//            }
+//            detectedSender.incrementOmittedReports(detectionLevelErrorCodes);
             if (detectedSender.getPreviousReportId().empty()) {
                 detectedSender.setReportId(relatedReportId);
             }
@@ -359,7 +382,7 @@ namespace artery {
                                                                    const detectionLevels::DetectionLevels &detectionLevel,
                                                                    const std::bitset<16> &errorCode) {
         auto *semanticDetectionReferenceCam = new DetectionReferenceCAM_t();
-        semanticDetectionReferenceCam->detectionLevelCAM = detectionLevel + 1;
+        semanticDetectionReferenceCam->detectionLevelCAM = detectionLevel;
         std::string encoded = errorCode.to_string();
         OCTET_STRING_fromBuf(&semanticDetectionReferenceCam->semanticDetectionErrorCodeCAM, encoded.c_str(),
                              (int) strlen(encoded.c_str()));

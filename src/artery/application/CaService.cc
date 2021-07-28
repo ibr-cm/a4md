@@ -8,7 +8,7 @@
 #include "artery/application/CaObject.h"
 #include "artery/application/Asn1PacketVisitor.h"
 #include "artery/application/MultiChannelPolicy.h"
-#include "artery/application/md/MisbehaviorDetectionService.h"
+#include "artery/application/misbehavior/MisbehaviorDetectionService.h"
 #include "artery/utility/simtime_cast.h"
 #include <boost/units/systems/si/prefixes.hpp>
 

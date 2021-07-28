@@ -3,17 +3,17 @@
 #define ARTERY_MDSERVICE_H_
 
 #include "artery/application/ItsG5Service.h"
-#include "artery/application/md/util/DetectionLevels.h"
+#include "artery/application/misbehavior/util/DetectionLevels.h"
 #include <vanetza/asn1/asn1c_wrapper.hpp>
 #include <curl/curl.h>
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/application/VehicleDataProvider.h"
-#include "artery/application/md/util/MisbehaviorTypes.h"
+#include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "DetectedSender.h"
-#include "artery/application/md/util/F2MDParameters.h"
+#include "artery/application/misbehavior/util/F2MDParameters.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include <vanetza/asn1/misbehavior_report.hpp>
-#include "artery/application/md/fusion/BaseFusion.h"
+#include "artery/application/misbehavior/fusion/BaseFusion.h"
 
 namespace artery {
 

@@ -6,9 +6,12 @@
 #define ARTERY_MISBEHAVIORAUTHORITY_H
 
 #include <omnetpp.h>
+#include <vanetza/asn1/misbehavior_report.hpp>
 #include "artery/envmod/GlobalEnvironmentModel.h"
-#include "artery/application/md/util/MisbehaviorTypes.h"
-#include "artery/application/md/util/AttackTypes.h"
+#include "artery/application/misbehavior/util/MisbehaviorTypes.h"
+#include "artery/application/misbehavior/util/AttackTypes.h"
+#include "artery/application/misbehavior/ma/ReportedPseudonym.h"
+#include "artery/application/misbehavior/ma/MisbehavingPseudonym.h"
 
 namespace artery {
     class MisbehaviorAuthority : public omnetpp::cSimpleModule, public omnetpp::cListener {
@@ -16,6 +19,7 @@ namespace artery {
         MisbehaviorAuthority();
 
         ~MisbehaviorAuthority();
+
         void initialize() override;
 
         void handleMessage(omnetpp::cMessage *) override;
@@ -32,10 +36,15 @@ namespace artery {
 
         omnetpp::simsignal_t traciInitSignal;
         omnetpp::simsignal_t traciCloseSignal;
-        omnetpp::simsignal_t MAnewReport;
+        omnetpp::simsignal_t maNewReport;
+        omnetpp::simsignal_t maMisbehaviorAnnouncement;
 
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
         std::shared_ptr<const traci::API> mTraciAPI;
+        std::map<StationID_t, ReportedPseudonym *> mReportedPseudonyms;
+        std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
+
+        void processReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
     };
 } // namespace artery
 

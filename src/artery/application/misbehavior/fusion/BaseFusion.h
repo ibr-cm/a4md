@@ -5,7 +5,7 @@
 #ifndef ARTERY_BASEFUSION_H
 #define ARTERY_BASEFUSION_H
 
-#include "artery/application/md/checks/CheckResult.h"
+#include "artery/application/misbehavior/checks/CheckResult.h"
 #include "vanetza/asn1/md/DetectionReferenceCAM.h"
 #include <bitset>
 

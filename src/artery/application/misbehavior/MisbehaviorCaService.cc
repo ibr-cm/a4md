@@ -4,9 +4,9 @@
 * Licensed under GPLv2, see COPYING file for detailed license and warranty terms.
 */
 
-#include "artery/application/md/MisbehaviorCaService.h"
-#include "artery/application/md/MisbehaviorDetectionService.h"
-#include "artery/application/md/util/HelperFunctions.h"
+#include "artery/application/misbehavior/MisbehaviorCaService.h"
+#include "artery/application/misbehavior/MisbehaviorDetectionService.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 #include "artery/application/CaObject.h"
 #include "artery/application/Asn1PacketVisitor.h"
 #include "artery/application/MultiChannelPolicy.h"
@@ -23,6 +23,8 @@ namespace artery {
         auto centimeter_per_second = vanetza::units::si::meter_per_second * boost::units::si::centi;
 
         static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
+        static const simsignal_t scSignalMaMisbehaviorAnnouncement = cComponent::registerSignal(
+                "misbehaviorAuthority.MisbehaviorAnnouncement");
     }
 
     GlobalEnvironmentModel *MisbehaviorCaService::mGlobalEnvironmentModel;
@@ -132,6 +134,7 @@ namespace artery {
             mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
+        emit(scSignalMaMisbehaviorAnnouncement,simTime());
         MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(), mMisbehaviorType);
     }
 

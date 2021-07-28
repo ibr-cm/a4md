@@ -32,7 +32,7 @@
 #include <limits>
 #include <stdexcept>
 #include <algorithm>
-#include <artery/application/md/util/HelperFunctions.h>
+#include <artery/application/misbehavior/util/HelperFunctions.h>
 
 namespace artery {
 

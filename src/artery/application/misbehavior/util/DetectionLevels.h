@@ -21,5 +21,8 @@ namespace artery {
         const DetectionLevels DetectionLevelVector[] = {detectionLevels::Level1, detectionLevels::Level2,
                                                         detectionLevels::Level3, detectionLevels::Level4};
 
+        static const char *DetectionLevelStrings[] = {"1", "2", "3", "4"};
+
     }
+
 } // namespace artery

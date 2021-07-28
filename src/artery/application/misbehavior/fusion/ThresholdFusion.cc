@@ -3,7 +3,7 @@
 //
 
 #include "ThresholdFusion.h"
-#include "artery/application/md/util/DetectionLevels.h"
+#include "artery/application/misbehavior/util/DetectionLevels.h"
 
 namespace artery {
 
@@ -160,11 +160,17 @@ namespace artery {
             }
         }
 
-        detectionLevelErrorCodes[detectionLevels::Level1][0] = true;
-        detectionLevelErrorCodes[detectionLevels::Level1][2] = true;
+        static int counter = 0;
 
-        detectionLevelErrorCodes[detectionLevels::Level2][1] = true;
-        detectionLevelErrorCodes[detectionLevels::Level2][2] = true;
+//        detectionLevelErrorCodes[detectionLevels::Level1][0] = true;
+        if (counter % 2 == 0) {
+            detectionLevelErrorCodes[detectionLevels::Level2][1] = true;
+        }
+        if (counter % 3 == 0) {
+            detectionLevelErrorCodes[detectionLevels::Level1][2] = true;
+            detectionLevelErrorCodes[detectionLevels::Level2][2] = true;
+        }
+        counter++;
         return detectionLevelErrorCodes;
     }
 

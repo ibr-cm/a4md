@@ -1,8 +1,8 @@
 #ifndef ARTERY_LEGACYCHECK_H_
 #define ARTERY_LEGACYCHECK_H_
 
-#include <artery/application/md/checks/BaseChecks.h>
-#include <artery/application/md/checks/CheckResult.h>
+#include <artery/application/misbehavior/checks/BaseChecks.h>
+#include <artery/application/misbehavior/checks/CheckResult.h>
 
 namespace artery {
 

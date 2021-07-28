@@ -1,5 +1,4 @@
-
-package artery.application.md;
+package artery.application.misbehavior;
 
 //simple MisbehaviorCaService like artery.application.ItsG5Service
 simple MisbehaviorCaService like artery.application.BaseCaService
@@ -7,6 +6,7 @@ simple MisbehaviorCaService like artery.application.BaseCaService
     parameters:
         @signal[CamReceived](type=CaObject);
         @signal[CamSent](type=CaObject);
+        @signal[misbehaviorAuthority.MisbehaviorAnnouncement](simtime_t);
 
         @statistic[reception](source=CamReceived;record=vector(camStationId)?,vector(camGenerationDeltaTime)?);
         @statistic[transmission](source=CamSent;record=vector(camStationId)?,vector(camGenerationDeltaTime)?);

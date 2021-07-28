@@ -108,6 +108,9 @@ namespace artery {
 
     struct ReportParameters {
         int evidenceContainerMaxCamCount;
+        int omittedReportsCount;
+        bool omittedReportsCountPerErrorCode;
+        bool broadcastReport;
     };
 
     struct MiscParameters {

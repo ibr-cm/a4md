@@ -3,7 +3,7 @@
 //
 
 #include "BaseChecks.h"
-#include "artery/application/md/util/HelperFunctions.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
     bool BaseChecks::staticInitializationComplete = false;

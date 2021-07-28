@@ -8,9 +8,9 @@
 #define ARTERY_MISBEHAVIORCASERVICE_H_
 
 #include "artery/application/BaseCaService.h"
-#include "artery/application/md/util/F2MDParameters.h"
-#include "artery/application/md/util/MisbehaviorTypes.h"
-#include "artery/application/md/util/AttackTypes.h"
+#include "artery/application/misbehavior/util/F2MDParameters.h"
+#include "artery/application/misbehavior/util/MisbehaviorTypes.h"
+#include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include "artery/utility/Channel.h"
@@ -40,6 +40,12 @@ namespace artery {
         void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
 
         void trigger() override;
+
+        StationID_t getStationId() { return mVehicleDataProvider->getStationId(); };
+
+        misbehaviorTypes::MisbehaviorTypes getMisbehaviorType() { return mMisbehaviorType; };
+
+        attackTypes::AttackTypes getAttackType() { return mAttackType; };
 
     private:
         void sendCam(const omnetpp::SimTime &);

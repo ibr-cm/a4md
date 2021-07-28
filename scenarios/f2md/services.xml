@@ -6,17 +6,17 @@
             <type pattern="artery.envmod.Car"/>
         </filters>
     </service>
-    <service type="artery.application.md.MisbehaviorCaService">
+    <service type="artery.application.misbehavior.MisbehaviorCaService">
         <listener port="2001"/>
         <filters>
-            <type pattern="artery.application.md.MisbehaviorCar"/>
+            <type pattern="artery.application.misbehavior.MisbehaviorCar"/>
         </filters>
     </service>
-    <service type="artery.application.md.MisbehaviorDetectionService">
+    <service type="artery.application.misbehavior.MisbehaviorDetectionService">
         <listener port="4712"/>
         <filters operator="or">
             <type pattern="artery.envmod.Car"/>
-            <type pattern="artery.application.md.MisbehaviorCar"/>
+            <type pattern="artery.application.misbehavior.MisbehaviorCar"/>
         </filters>
     </service>
 </services>

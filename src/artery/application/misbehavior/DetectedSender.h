@@ -6,16 +6,17 @@
 #define ARTERY_DETECTEDSENDER_H
 
 
-#include <artery/application/md/checks/BaseChecks.h>
+#include <artery/application/misbehavior/checks/BaseChecks.h>
 #include <list>
 #include <vanetza/asn1/cam.hpp>
 #include <utility>
-#include <artery/application/md/checks/kalman/Kalman_SVI.h>
-#include <artery/application/md/checks/kalman/Kalman_SC.h>
-#include <artery/application/md/checks/kalman/Kalman_SI.h>
-#include <artery/application/md/checks/CheckResult.h>
+#include <artery/application/misbehavior/checks/kalman/Kalman_SVI.h>
+#include <artery/application/misbehavior/checks/kalman/Kalman_SC.h>
+#include <artery/application/misbehavior/checks/kalman/Kalman_SI.h>
+#include <artery/application/misbehavior/checks/CheckResult.h>
 #include <artery/traci/VehicleController.h>
-#include <artery/application/md/util/F2MDParameters.h>
+#include <artery/application/misbehavior/util/F2MDParameters.h>
+#include <bitset>
 
 namespace artery {
 
@@ -42,6 +43,13 @@ namespace artery {
             mHasBeenReported = true;
         };
 
+        bool checkOmittedReportsLimit(const bitset<16> &reportedErrorCodes);
+
+        void incrementOmittedReports(const std::vector<std::bitset<16>> &detectionLevelErrorCodes,
+                                     const std::bitset<16> &reportedErrorCodes);
+
+        void resetOmittedReports(const bitset<16> &reportedErrorCodes);
+
     private:
         BaseChecks *baseChecks;
 
@@ -50,6 +58,9 @@ namespace artery {
         StationID_t mStationId;
         bool mHasBeenReported;
         std::string mPreviousReportId;
+        std::vector<int> mOmittedReportsPerErrorCode;
+        int mOmittedReportsCumulated;
+
     };
 
 } //namespace artery

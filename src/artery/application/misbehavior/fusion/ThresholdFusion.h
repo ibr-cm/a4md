@@ -5,8 +5,8 @@
 #ifndef ARTERY_THRESHOLDFUSION_H
 #define ARTERY_THRESHOLDFUSION_H
 
-#include "artery/application/md/checks/CheckResult.h"
-#include "artery/application/md/fusion/BaseFusion.h"
+#include "artery/application/misbehavior/checks/CheckResult.h"
+#include "artery/application/misbehavior/fusion/BaseFusion.h"
 
 namespace artery {
 

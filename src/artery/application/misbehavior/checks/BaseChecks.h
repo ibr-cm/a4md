@@ -7,15 +7,15 @@
 
 #include <vanetza/asn1/cam.hpp>
 #include <omnetpp.h>
-#include <artery/application/md/checks/CheckResult.h>
-#include <artery/application/md/checks/kalman/Kalman_SVI.h>
-#include <artery/application/md/checks/kalman/Kalman_SC.h>
-#include <artery/application/md/checks/kalman/Kalman_SI.h>
-#include <artery/application/md/checks/BaseChecks.h>
+#include <artery/application/misbehavior/checks/CheckResult.h>
+#include <artery/application/misbehavior/checks/kalman/Kalman_SVI.h>
+#include <artery/application/misbehavior/checks/kalman/Kalman_SC.h>
+#include <artery/application/misbehavior/checks/kalman/Kalman_SI.h>
+#include <artery/application/misbehavior/checks/BaseChecks.h>
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/envmod/GlobalEnvironmentModel.h>
 #include <artery/application/VehicleDataProvider.h>
-#include <artery/application/md/util/F2MDParameters.h>
+#include <artery/application/misbehavior/util/F2MDParameters.h>
 #include "artery/traci/VehicleController.h"
 #include "artery/utility/Geometry.h"
 

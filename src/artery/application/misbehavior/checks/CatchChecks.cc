@@ -5,7 +5,7 @@
 #include "CatchChecks.h"
 #include <utility>
 #include <artery/traci/Cast.h>
-#include "artery/application/md/util/HelperFunctions.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
 
@@ -415,10 +415,10 @@ namespace artery {
                                                     lastCamPositionConfidence, currentCamSpeed,
                                                     currentCamSpeedConfidence, camDeltaTime);
             if (result->positionHeadingConsistency < 1) {
-                drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
-                             mTraciAPI);
-                drawTraciPoi(lastCamPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary,
-                             mTraciAPI);
+//                drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
+//                             mTraciAPI);
+//                drawTraciPoi(lastCamPosition, "old", libsumo::TraCIColor(255, 155, 155, 255), mSimulationBoundary,
+//                             mTraciAPI);
             }
             result->frequency =
                     FrequencyCheck(camDeltaTime);
