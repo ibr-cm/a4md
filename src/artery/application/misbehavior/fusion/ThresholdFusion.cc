@@ -160,7 +160,7 @@ namespace artery {
             }
         }
 
-        static int counter = 0;
+//        static int counter = 0;
 
 //        detectionLevelErrorCodes[detectionLevels::Level1][0] = true;
 //        if (counter % 2 == 0) {
@@ -168,9 +168,9 @@ namespace artery {
 //        }
 //        if (counter % 3 == 0) {
 //            detectionLevelErrorCodes[detectionLevels::Level1][2] = true;
-            detectionLevelErrorCodes[detectionLevels::Level2][2] = true;
+//            detectionLevelErrorCodes[detectionLevels::Level2][2] = true;
 //        }
-        counter++;
+//        counter++;
         return detectionLevelErrorCodes;
     }
 

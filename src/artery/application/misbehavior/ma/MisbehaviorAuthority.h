@@ -50,7 +50,10 @@ namespace artery {
         std::map<std::string, std::shared_ptr<ma::Report>> mReports;
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> mCams;
 
-        bool checkReportStructure(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
+        ma::Report *parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
+
+        void parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
+                                           std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages);
     };
 } // namespace artery
 
