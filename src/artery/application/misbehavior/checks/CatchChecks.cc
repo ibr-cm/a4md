@@ -330,7 +330,7 @@ namespace artery {
         std::vector<Position> receiverCircle = createCircle(receiverPosition, receiverMaxRadius, 36);
         std::vector<Position> senderEllipse = createEllipse(senderPosition, senderConfidenceEllipse);
         double area = getIntersectionArea(receiverCircle, senderEllipse);
-        return 1 - (area / PI * pow((double) senderConfidenceEllipse.semiMajorConfidence / 100, 2.0));
+        return 1 - area / (PI * pow((double) senderConfidenceEllipse.semiMajorConfidence / 100, 2.0));
     }
 
 
