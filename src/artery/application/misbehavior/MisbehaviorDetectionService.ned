@@ -41,7 +41,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
 
         // ### report parameters
         int evidenceContainerMaxCamCount = default(5);
-        int omittedReportsCount = default(2);
+        int omittedReportsCount = default(0);
         bool omittedReportsCountPerErrorCode = default(false);
         bool broadcastReport = default(false);
 

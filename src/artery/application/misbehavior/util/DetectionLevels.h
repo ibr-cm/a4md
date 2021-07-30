@@ -5,7 +5,6 @@
 #ifndef ARTERY_DETECTIONLEVELS_H
 #define ARTERY_DETECTIONLEVELS_H
 
-#endif //ARTERY_DETECTIONLEVELS_H
 namespace artery {
 
     namespace detectionLevels {
@@ -26,3 +25,5 @@ namespace artery {
     }
 
 } // namespace artery
+
+#endif //ARTERY_DETECTIONLEVELS_H

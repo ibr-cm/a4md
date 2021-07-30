@@ -6,6 +6,7 @@ namespace artery {
 
     AttackParameters F2MDParameters::attackParameters = AttackParameters{};
     DetectionParameters F2MDParameters::detectionParameters = DetectionParameters{};
-    MiscParameters F2MDParameters::miscParameters = MiscParameters{};
     ReportParameters F2MDParameters::reportParameters = ReportParameters{};
+    MisbehaviorAuthorityParameters F2MDParameters::misbehaviorAuthorityParameters = MisbehaviorAuthorityParameters{};
+    MiscParameters F2MDParameters::miscParameters = MiscParameters{};
 }

@@ -113,6 +113,10 @@ namespace artery {
         bool broadcastReport;
     };
 
+    struct MisbehaviorAuthorityParameters {
+        double maxReportAge;
+    };
+
     struct MiscParameters {
         // CAM Location Visualizer (PoI)
         bool CamLocationVisualizer;
@@ -125,8 +129,9 @@ namespace artery {
 
         static AttackParameters attackParameters;
         static DetectionParameters detectionParameters;
-        static MiscParameters miscParameters;
         static ReportParameters reportParameters;
+        static MisbehaviorAuthorityParameters misbehaviorAuthorityParameters;
+        static MiscParameters miscParameters;
 
     };
 } // namespace artery

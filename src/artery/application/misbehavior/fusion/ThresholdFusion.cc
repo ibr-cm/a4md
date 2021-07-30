@@ -163,13 +163,13 @@ namespace artery {
         static int counter = 0;
 
 //        detectionLevelErrorCodes[detectionLevels::Level1][0] = true;
-        if (counter % 2 == 0) {
-            detectionLevelErrorCodes[detectionLevels::Level2][1] = true;
-        }
-        if (counter % 3 == 0) {
-            detectionLevelErrorCodes[detectionLevels::Level1][2] = true;
+//        if (counter % 2 == 0) {
+//            detectionLevelErrorCodes[detectionLevels::Level2][1] = true;
+//        }
+//        if (counter % 3 == 0) {
+//            detectionLevelErrorCodes[detectionLevels::Level1][2] = true;
             detectionLevelErrorCodes[detectionLevels::Level2][2] = true;
-        }
+//        }
         counter++;
         return detectionLevelErrorCodes;
     }
