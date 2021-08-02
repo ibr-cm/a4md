@@ -15,8 +15,20 @@
 #include "artery/application/misbehavior/ma/ReportedPseudonym.h"
 #include "artery/application/misbehavior/ma/MisbehavingPseudonym.h"
 #include "artery/application/misbehavior/ma/Report.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
+
+    namespace {
+        struct CamCompare {
+            bool operator()(const std::shared_ptr<vanetza::asn1::Cam> &ptr1,
+                            const std::shared_ptr<vanetza::asn1::Cam> &ptr2) {
+                return camCompPtr(ptr1, ptr2);
+            }
+        };
+    }
+
+
     class MisbehaviorAuthority : public omnetpp::cSimpleModule, public omnetpp::cListener {
     public:
         MisbehaviorAuthority();
@@ -48,7 +60,7 @@ namespace artery {
         std::map<StationID_t, ReportedPseudonym *> mReportedPseudonyms;
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
         std::map<std::string, std::shared_ptr<ma::Report>> mReports;
-        std::vector<std::shared_ptr<vanetza::asn1::Cam>> mCams;
+        std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
 
         ma::Report *parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
 

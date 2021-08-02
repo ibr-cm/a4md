@@ -92,6 +92,12 @@ namespace artery {
                                const HeadingValue_t &heading, const HeadingValue_t &semiMajorOrientationOffset,
                                const traci::Boundary &simulationBoundary,
                                const std::shared_ptr<const traci::API> &traciAPI, omnetpp::cRNG *rng);
+
+    bool camComp(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2);
+
+    bool camCompPtr(const std::shared_ptr<vanetza::asn1::Cam> &ptr1, const std::shared_ptr<vanetza::asn1::Cam> &ptr2);
+
+    bool camEquiv(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2);
 }
 
 #endif //ARTERY_HELPERFUNCTIONS_H
