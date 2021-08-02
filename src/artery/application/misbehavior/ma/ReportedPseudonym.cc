@@ -3,11 +3,13 @@
 //
 
 #include "ReportedPseudonym.h"
+#include "artery/application/misbehavior/util/F2MDParameters.h"
+#include <algorithm>
 
 namespace artery {
 
-    ReportedPseudonym::ReportedPseudonym(const StationID_t &stationId, const vanetza::asn1::MisbehaviorReport &report) :
-            mStationId(stationId),
+    ReportedPseudonym::ReportedPseudonym(const std::shared_ptr<ma::Report> &report) :
+            mStationId((*report->reportedMessage)->header.stationID),
             mReactionType(reactionTypes::Nothing),
             mActualAttackType(attackTypes::Benign),
             mActualMisbehaviorType(misbehaviorTypes::Benign) {
@@ -17,7 +19,7 @@ namespace artery {
         addReport(report);
     }
 
-    void ReportedPseudonym::addReport(const vanetza::asn1::MisbehaviorReport &report) {
+    void ReportedPseudonym::addReport(const std::shared_ptr<ma::Report> &report) {
         mReportList.emplace_back(report);
         updateReactionType();
     }
@@ -33,6 +35,27 @@ namespace artery {
             mReactionType = reactionTypes::ActiveRevocation;
         }
 
+    }
+
+    misbehaviorTypes::MisbehaviorTypes ReportedPseudonym::predictMisbehaviorType() {
+        misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType;
+        if (mReportList.size() > F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold) {
+            predictedMisbehaviorType = misbehaviorTypes::LocalAttacker;
+        } else {
+            predictedMisbehaviorType = misbehaviorTypes::Benign;
+        }
+        mPredictedMisbehaviorTypeCount[predictedMisbehaviorType]++;
+        return predictedMisbehaviorType;
+    }
+
+    misbehaviorTypes::MisbehaviorTypes ReportedPseudonym::predictMisbehaviorTypeAggregate() {
+        auto maxElement =
+                std::max_element(mPredictedMisbehaviorTypeCount.begin(), mPredictedMisbehaviorTypeCount.end(),
+                                 [](const std::pair<misbehaviorTypes::MisbehaviorTypes, int> &a,
+                                    const std::pair<misbehaviorTypes::MisbehaviorTypes, int> &b) -> bool {
+                                     return a.second < b.second;
+                                 });
+        return maxElement->first;
     }
 
 } // namespace artery

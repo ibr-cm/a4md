@@ -54,7 +54,7 @@ namespace artery {
         struct Report {
             std::string reportId;
             uint64_t generationTime;
-            vanetza::asn1::Cam reportedMessage;
+            std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
             DetectionType detectionType;
             RelatedReport *relatedReport;
             Evidence evidence;

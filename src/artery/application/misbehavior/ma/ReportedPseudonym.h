@@ -10,20 +10,37 @@
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/util/ReactionTypes.h"
+#include "artery/application/misbehavior/ma/Report.h"
 #include <map>
 
 namespace artery {
     class ReportedPseudonym {
     public:
-        ReportedPseudonym(const StationID_t &stationId, const vanetza::asn1::MisbehaviorReport &report);
+        ReportedPseudonym(const std::shared_ptr<ma::Report> &report);
 
-        void addReport(const vanetza::asn1::MisbehaviorReport &report);
+        StationID_t getStationId() { return mStationId; };
+
+        void addReport(const std::shared_ptr<ma::Report> &report);
+
+        std::vector<std::shared_ptr<ma::Report>> getReports() { return mReportList; };
+
+        int getReportCount() { return mReportList.size(); };
+
+        std::shared_ptr<ma::Report> getLastReport(){return mReportList.back();};
 
         void updateReactionType();
 
+        misbehaviorTypes::MisbehaviorTypes predictMisbehaviorType();
+
+        misbehaviorTypes::MisbehaviorTypes predictMisbehaviorTypeAggregate();
+
+        misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType() {
+            return mActualMisbehaviorType;
+        }
+
     private:
         StationID_t mStationId;
-        std::vector<vanetza::asn1::MisbehaviorReport> mReportList;
+        std::vector<std::shared_ptr<ma::Report>> mReportList;
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
         misbehaviorTypes::MisbehaviorTypes mActualMisbehaviorType;
         attackTypes::AttackTypes mActualAttackType;

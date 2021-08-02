@@ -74,7 +74,7 @@ namespace artery {
     };
 
     struct DetectionParameters {
-        
+
         int checkType;
 
         double maxPlausibleSpeed;
@@ -115,6 +115,10 @@ namespace artery {
 
     struct MisbehaviorAuthorityParameters {
         double maxReportAge;
+        int reportCountThreshold;
+        double updateTimeStep;
+        int displaySteps;
+        int recentReportedCount;
     };
 
     struct MiscParameters {

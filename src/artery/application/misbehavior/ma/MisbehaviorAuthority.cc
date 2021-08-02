@@ -10,6 +10,12 @@
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include <bitset>
+#include <chrono>
+
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/writer.h>
 
 
 namespace artery {
@@ -23,7 +29,7 @@ namespace artery {
         traciCloseSignal = cComponent::registerSignal("traci.close");
         maNewReport = cComponent::registerSignal("misbehaviorAuthority.newReport");
         maMisbehaviorAnnouncement = cComponent::registerSignal("misbehaviorAuthority.MisbehaviorAnnouncement");
-    };
+    }
 
     MisbehaviorAuthority::~MisbehaviorAuthority() {
         this->clear();
@@ -47,11 +53,101 @@ namespace artery {
         mGlobalEnvironmentModel = dynamic_cast<GlobalEnvironmentModel *>(globalEnvMod);
 
         F2MDParameters::misbehaviorAuthorityParameters.maxReportAge = par("maxReportAge");
+        F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
+        F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
+        F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount = par("recentReportedCount");
+
+        scheduleAt(simTime() + 2.0, mSelfMsg);
     }
 
     void MisbehaviorAuthority::handleMessage(omnetpp::cMessage *msg) {
         Enter_Method("handleMessage");
+        if (msg == mSelfMsg) {
+            std::list<std::tuple<StationID_t, int, uint64_t>> recentReported = getRecentReported();
+
+            rapidjson::Document d;
+            d.SetObject();
+            rapidjson::Document::AllocatorType &allocator = d.GetAllocator();
+            d.AddMember("newReport", mNewReport, allocator);
+            d.AddMember("totalReports", mTotalReportCount, allocator);
+            d.AddMember("cumulativeDetectionRate", mDetectionRate, allocator);
+            //TODO reactionsData / getRadarData()
+
+            rapidjson::Value recentlyReportedData(rapidjson::kObjectType);
+            {
+                rapidjson::Value labels;
+                rapidjson::Value data;
+                labels.SetArray();
+                data.SetArray();
+                for (auto r : recentReported) {
+                    labels.PushBack(std::get<0>(r), allocator);
+                    data.PushBack(std::get<1>(r), allocator);
+                }
+                recentlyReportedData.AddMember("labels", labels, allocator);
+                recentlyReportedData.AddMember("data", data, allocator);
+            }
+            d.AddMember("recentlyReportedData", recentlyReportedData, allocator);
+
+            rapidjson::Value detectionRatesData(rapidjson::kObjectType);
+            {
+                rapidjson::Value labels;
+                rapidjson::Value accurate;
+                rapidjson::Value notAccurate;
+                rapidjson::Value rate;
+                labels.SetArray();
+                accurate.SetArray();
+                notAccurate.SetArray();
+                rate.SetArray();
+                for (const auto &label : mDetectionAccuracyLabels) {
+                    rapidjson::Value v;
+                    v.SetString(label.c_str(), label.length(), allocator);
+                    labels.PushBack(v, allocator);
+                }
+                for (const auto &data : mDetectionAccuracyData) {
+                    accurate.PushBack(std::get<0>(data), allocator);
+                    notAccurate.PushBack(std::get<1>(data) * -1, allocator);
+                    rate.PushBack(std::get<2>(data), allocator);
+                }
+            }
+            d.AddMember("detectionRatesData", detectionRatesData, allocator);
+
+            rapidjson::StringBuffer strBuf;
+            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(strBuf);
+            d.Accept(writer);
+            std::string jsonString = strBuf.GetString();
+            std::cout << jsonString;
+        }
     }
+
+    bool sortByGenerationTime(const std::tuple<StationID_t, int, uint64_t> &a,
+                              const std::tuple<StationID_t, int, uint64_t> &b) {
+        return std::get<2>(a) < std::get<2>(b);
+    }
+
+    std::list<std::tuple<StationID_t, int, uint64_t>> MisbehaviorAuthority::getRecentReported() {
+        std::list<std::tuple<StationID_t, int, uint64_t>> recentReported;
+        for (auto r : mReportedPseudonyms) {
+            auto reportedPseudonym = *r.second;
+            if (reportedPseudonym.getActualMisbehaviorType() != misbehaviorTypes::Benign) {
+                std::sort(recentReported.begin(), recentReported.end(), sortByGenerationTime);
+                if (recentReported.size() < F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount) {
+                    recentReported.emplace_back(reportedPseudonym.getStationId(), reportedPseudonym.getReportCount(),
+                                                reportedPseudonym.getLastReport()->generationTime);
+                } else {
+                    if (std::get<2>(*recentReported.begin()) < reportedPseudonym.getLastReport()->generationTime) {
+                        recentReported.pop_front();
+                        recentReported.emplace_back(reportedPseudonym.getStationId(),
+                                                    reportedPseudonym.getReportCount(),
+                                                    reportedPseudonym.getLastReport()->generationTime);
+                    }
+                }
+            }
+        }
+        std::sort(recentReported.begin(), recentReported.end(), std::greater<StationID_t>());
+        return recentReported;
+
+    }
+
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,
                                              cObject *) {
@@ -74,18 +170,72 @@ namespace artery {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
-            ma::Report *parsedReport = parseReport(misbehaviorReport);
-            if (parsedReport != nullptr) {
-                std::shared_ptr<ma::Report> reportPtr(parsedReport);
-                mReports.emplace(parsedReport->reportId, reportPtr);
+            std::shared_ptr<ma::Report> reportPtr(parseReport(misbehaviorReport));
+            if (reportPtr != nullptr) {
+                mTotalReportCount++;
+                mNewReport = true;
+
+                mReports.emplace(reportPtr->reportId, reportPtr);
+                StationID_t reportedStationId = (*reportPtr->reportedMessage)->header.stationID;
+                ReportedPseudonym *reportedPseudonym;
+                auto it = mReportedPseudonyms.find(reportedStationId);
+                if (it != mReportedPseudonyms.end()) {
+                    mReportedPseudonyms[reportedStationId]->addReport(reportPtr);
+                    reportedPseudonym = it->second;
+                } else {
+                    reportedPseudonym = new ReportedPseudonym(reportPtr);
+                    mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
+                }
+                updateDetectionRates(*reportedPseudonym, *reportPtr);
             }
         }
     }
 
-    template<typename T>
-    bool compare(T value1, T value2) {
-        if (value1 != value2) {
-            return value1 < value2;
+    void MisbehaviorAuthority::updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report) {
+
+        misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType =
+                reportedPseudonym.predictMisbehaviorType();
+        misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorTypeAggregated =
+                reportedPseudonym.predictMisbehaviorTypeAggregate();
+
+        if (predictedMisbehaviorType == reportedPseudonym.getActualMisbehaviorType()) {
+            mTrueDetectionCount++;
+        } else {
+            mFalseDetectionCount++;
+        }
+        mDetectionRate = 100 * mTrueDetectionCount / ((double) mTrueDetectionCount / mFalseDetectionCount);
+        if (predictedMisbehaviorTypeAggregated == reportedPseudonym.getActualMisbehaviorType()) {
+            mTrueDetectionAggregateCount++;
+        } else {
+            mFalseDetectionAggregateCount++;
+        }
+
+        mDetectionRateAggregate = 100 * mTrueDetectionAggregateCount /
+                                  ((double) mTrueDetectionAggregateCount + mFalseDetectionAggregateCount);
+        if (report.generationTime - mLastUpdateTime >
+            (long) F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep * 1000) {
+            mLastUpdateTime = report.generationTime;
+            auto time = (std::time_t) (report.generationTime / 1000 + 1072915200 - 5);
+            std::tm t_tm = *std::gmtime(&time);
+            std::stringstream ss;
+            ss << std::put_time(&t_tm, "%d-%m-%Y_%H:%M:%S");
+            std::string timeString = ss.str();
+//            std::cout << timeString << std::endl;
+            mDetectionAccuracyLabels.emplace_back(timeString);
+            int trueDetectionCurrent = mTrueDetectionCount - mTrueDetectionCountInst;
+            int falseDetectionCurrent = mFalseDetectionCount - mFalseDetectionCountInst;
+            if (trueDetectionCurrent + falseDetectionCurrent > 0) {
+                mDetectionRateCur = 100 * trueDetectionCurrent / (trueDetectionCurrent + falseDetectionCurrent);
+            }
+            mTrueDetectionCountInst = mTrueDetectionCount;
+            mFalseDetectionCountInst = mFalseDetectionCount;
+            auto data = std::make_tuple(trueDetectionCurrent, falseDetectionCurrent, mDetectionRateCur);
+            mDetectionAccuracyData.emplace_back(data);
+            if (mDetectionAccuracyData.size() > F2MDParameters::misbehaviorAuthorityParameters.displaySteps) {
+                mDetectionAccuracyData.pop_front();
+                mDetectionAccuracyLabels.pop_front();
+            }
+
         }
     }
 
@@ -131,7 +281,14 @@ namespace artery {
                     auto *cam = (vanetza::asn1::Cam *) ieee1609Dot2Content.choice.unsecuredData.buf;
                     std::cout << "  reported StationID: " << (*cam)->header.stationID << std::endl;
                     std::cout << "  genDeltaTime: " << (*cam)->cam.generationDeltaTime << std::endl;
-                    report->reportedMessage = *cam;
+                    auto camPtr = std::make_shared<vanetza::asn1::Cam>(*cam);
+                    auto it = mCams.find(camPtr);
+                    if (it == mCams.end()) {
+                        mCams.insert(camPtr);
+                    } else {
+                        camPtr = (*it);
+                    }
+                    report->reportedMessage = camPtr;
                 } else if (report->relatedReport == nullptr) {
                     return nullptr;
                 }
@@ -223,7 +380,7 @@ namespace artery {
 
                 auto camPtr = std::make_shared<vanetza::asn1::Cam>(*evidenceCam);
                 auto it = mCams.find(camPtr);
-                if(it == mCams.end()) {
+                if (it == mCams.end()) {
                     mCams.insert(camPtr);
                 } else {
                     camPtr = (*it);

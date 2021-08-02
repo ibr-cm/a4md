@@ -54,18 +54,44 @@ namespace artery {
         omnetpp::simsignal_t maNewReport;
         omnetpp::simsignal_t maMisbehaviorAnnouncement;
 
+        omnetpp::cMessage* mSelfMsg;
+
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
         std::shared_ptr<const traci::API> mTraciAPI;
         Timer mTimer;
+
         std::map<StationID_t, ReportedPseudonym *> mReportedPseudonyms;
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
         std::map<std::string, std::shared_ptr<ma::Report>> mReports;
         std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
 
+
+        std::list<std::string> mDetectionAccuracyLabels;
+        std::list<std::tuple<int,int,double>> mDetectionAccuracyData;
+
+        int mTotalReportCount;
+        int mNewReport;
+        uint64_t mLastUpdateTime;
+
+        int mTrueDetectionCount;
+        int mFalseDetectionCount;
+        double mDetectionRate;
+        int mTrueDetectionAggregateCount;
+        int mFalseDetectionAggregateCount;
+        double mDetectionRateAggregate;
+        int mTrueDetectionCountInst;
+        int mFalseDetectionCountInst;
+        int mDetectionRateCur;
+
+
         ma::Report *parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
 
         void parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
                                            std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages);
+
+        void updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report);
+
+        std::list<std::tuple<StationID_t ,int,uint64_t>> getRecentReported();
     };
 } // namespace artery
 
