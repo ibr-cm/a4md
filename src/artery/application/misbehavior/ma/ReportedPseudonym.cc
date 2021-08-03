@@ -11,8 +11,7 @@ namespace artery {
     ReportedPseudonym::ReportedPseudonym(const std::shared_ptr<ma::Report> &report) :
             mStationId((*report->reportedMessage)->header.stationID),
             mReactionType(reactionTypes::Nothing),
-            mActualAttackType(attackTypes::Benign),
-            mActualMisbehaviorType(misbehaviorTypes::Benign) {
+            mActualAttackType(attackTypes::Benign) {
         for (int misbehaviorType = 0; misbehaviorType < misbehaviorTypes::SIZE_OF_ENUM; misbehaviorType++) {
             mPredictedMisbehaviorTypeCount[static_cast<misbehaviorTypes::MisbehaviorTypes>(misbehaviorType)] = 0;
         }

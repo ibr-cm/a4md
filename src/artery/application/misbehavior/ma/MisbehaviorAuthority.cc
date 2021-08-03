@@ -83,7 +83,7 @@ namespace artery {
             std::vector<int> reactionsMalicious(5, 0);
 
             for (auto reportedPseudonym : mReportedPseudonyms) {
-                misbehaviorTypes::MisbehaviorTypes misbehaviorType = reportedPseudonym.second->getActualMisbehaviorType();
+                misbehaviorTypes::MisbehaviorTypes misbehaviorType = getActualMisbehaviorType(reportedPseudonym.second->getStationId());
                 if (misbehaviorType == misbehaviorTypes::Benign) {
                     reactionsBenign[static_cast<int>(reportedPseudonym.second->getReactionType())]++;
                 } else if (misbehaviorType == misbehaviorTypes::LocalAttacker ||
@@ -279,19 +279,13 @@ namespace artery {
                 reportedPseudonym.predictMisbehaviorTypeAggregate();
 
         misbehaviorTypes::MisbehaviorTypes actualMisbehaviorType;
-//        auto it = mMisbehavingPseudonyms.find(reportedPseudonym.getStationId());
-//        if (it != mMisbehavingPseudonyms.end()) {
-//            actualMisbehaviorType = (*it).second->getMisbehaviorType();
-//        } else {
-//            actualMisbehaviorType = misbehaviorTypes::Benign;
-//        }
         if (predictedMisbehaviorType == getActualMisbehaviorType(reportedPseudonym.getStationId())) {
             mTrueDetectionCount++;
         } else {
             mFalseDetectionCount++;
         }
         mDetectionRate = 100 * mTrueDetectionCount / (double) (mTrueDetectionCount + mFalseDetectionCount);
-        if (predictedMisbehaviorTypeAggregated == reportedPseudonym.getActualMisbehaviorType()) {
+        if (predictedMisbehaviorTypeAggregated == getActualMisbehaviorType(reportedPseudonym.getStationId())) {
             mTrueDetectionAggregateCount++;
         } else {
             mFalseDetectionAggregateCount++;
