@@ -7,15 +7,15 @@
 namespace artery {
 
 
-    StationID_t MisbehavingPseudonym::getMStationId() const {
+    StationID_t MisbehavingPseudonym::getStationId() const {
         return mStationId;
     }
 
-    misbehaviorTypes::MisbehaviorTypes artery::MisbehavingPseudonym::getMMisbehaviorType() const {
+    misbehaviorTypes::MisbehaviorTypes artery::MisbehavingPseudonym::getMisbehaviorType() const {
         return mMisbehaviorType;
     }
 
-    attackTypes::AttackTypes artery::MisbehavingPseudonym::getMAttackType() const {
+    attackTypes::AttackTypes artery::MisbehavingPseudonym::getAttackType() const {
         return mAttackType;
     }
 

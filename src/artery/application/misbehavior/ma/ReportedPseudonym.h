@@ -16,17 +16,19 @@
 namespace artery {
     class ReportedPseudonym {
     public:
-        ReportedPseudonym(const std::shared_ptr<ma::Report> &report);
+        explicit ReportedPseudonym(const std::shared_ptr<ma::Report> &report);
 
-        StationID_t getStationId() { return mStationId; };
+        StationID_t getStationId() const { return mStationId; };
 
         void addReport(const std::shared_ptr<ma::Report> &report);
 
         std::vector<std::shared_ptr<ma::Report>> getReports() { return mReportList; };
 
-        int getReportCount() { return mReportList.size(); };
+        size_t getReportCount() { return mReportList.size(); };
 
         std::shared_ptr<ma::Report> getLastReport(){return mReportList.back();};
+
+        reactionTypes::ReactionTypes getReactionType(){return mReactionType;};
 
         void updateReactionType();
 
@@ -34,15 +36,11 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorTypeAggregate();
 
-        misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType() {
-            return mActualMisbehaviorType;
-        }
 
     private:
         StationID_t mStationId;
         std::vector<std::shared_ptr<ma::Report>> mReportList;
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
-        misbehaviorTypes::MisbehaviorTypes mActualMisbehaviorType;
         attackTypes::AttackTypes mActualAttackType;
         reactionTypes::ReactionTypes mReactionType;
 

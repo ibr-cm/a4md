@@ -5,6 +5,7 @@
 #ifndef ARTERY_MISBEHAVIORAUTHORITY_H
 #define ARTERY_MISBEHAVIORAUTHORITY_H
 
+#include <curl/curl.h>
 #include <omnetpp.h>
 #include <vanetza/asn1/misbehavior_report.hpp>
 #include <vanetza/asn1/cam.hpp>
@@ -24,6 +25,19 @@ namespace artery {
             bool operator()(const std::shared_ptr<vanetza::asn1::Cam> &ptr1,
                             const std::shared_ptr<vanetza::asn1::Cam> &ptr2) {
                 return camCompPtr(ptr1, ptr2);
+            }
+        };
+
+
+        struct RecentReported {
+            StationID_t stationId;
+            size_t reportCount;
+            uint64_t lastGenerationTime;
+        };
+
+        struct RecentReportedCompare {
+            bool operator()(const RecentReported &a, const RecentReported &b) const {
+                return a.lastGenerationTime < b.lastGenerationTime;
             }
         };
     }
@@ -54,8 +68,8 @@ namespace artery {
         omnetpp::simsignal_t maNewReport;
         omnetpp::simsignal_t maMisbehaviorAnnouncement;
 
-        omnetpp::cMessage* mSelfMsg;
-
+        omnetpp::cMessage *mSelfMsg;
+        CURL *curl;
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
         std::shared_ptr<const traci::API> mTraciAPI;
         Timer mTimer;
@@ -67,21 +81,21 @@ namespace artery {
 
 
         std::list<std::string> mDetectionAccuracyLabels;
-        std::list<std::tuple<int,int,double>> mDetectionAccuracyData;
+        std::list<std::tuple<int, int, double>> mDetectionAccuracyData;
 
-        int mTotalReportCount;
-        int mNewReport;
-        uint64_t mLastUpdateTime;
+        int mTotalReportCount = 0;
+        bool mNewReport = false;
+        uint64_t mLastUpdateTime = 0;
 
-        int mTrueDetectionCount;
-        int mFalseDetectionCount;
-        double mDetectionRate;
-        int mTrueDetectionAggregateCount;
-        int mFalseDetectionAggregateCount;
-        double mDetectionRateAggregate;
-        int mTrueDetectionCountInst;
-        int mFalseDetectionCountInst;
-        int mDetectionRateCur;
+        int mTrueDetectionCount = 0;
+        int mFalseDetectionCount = 0;
+        double mDetectionRate = 0;
+        int mTrueDetectionAggregateCount = 0;
+        int mFalseDetectionAggregateCount = 0;
+        double mDetectionRateAggregate = 0;
+        int mTrueDetectionCountInst = 0;
+        int mFalseDetectionCountInst = 0;
+        int mDetectionRateCur = 0;
 
 
         ma::Report *parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
@@ -91,7 +105,9 @@ namespace artery {
 
         void updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report);
 
-        std::list<std::tuple<StationID_t ,int,uint64_t>> getRecentReported();
+        std::vector<RecentReported> getRecentReported();
+
+        misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
     };
 } // namespace artery
 

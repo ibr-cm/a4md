@@ -5,7 +5,6 @@
 #include "artery/application/ItsG5Service.h"
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include <vanetza/asn1/asn1c_wrapper.hpp>
-#include <curl/curl.h>
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/application/VehicleDataProvider.h"
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
@@ -41,7 +40,6 @@ namespace artery {
         void handleMessage(omnetpp::cMessage *) override;
 
     private:
-        CURL *curl;
         const VehicleDataProvider *mVehicleDataProvider = nullptr;
         const LocalEnvironmentModel *mLocalEnvironmentModel = nullptr;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;

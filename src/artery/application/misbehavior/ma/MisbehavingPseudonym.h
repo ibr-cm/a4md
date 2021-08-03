@@ -16,11 +16,11 @@ namespace artery {
     public:
         MisbehavingPseudonym(StationID_t stationId, misbehaviorTypes::MisbehaviorTypes misbehaviorType, attackTypes::AttackTypes attackType);
 
-        StationID_t getMStationId() const;
+        StationID_t getStationId() const;
 
-        misbehaviorTypes::MisbehaviorTypes getMMisbehaviorType() const;
+        misbehaviorTypes::MisbehaviorTypes getMisbehaviorType() const;
 
-        attackTypes::AttackTypes getMAttackType() const;
+        attackTypes::AttackTypes getAttackType() const;
 
     private:
         StationID_t mStationId;

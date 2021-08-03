@@ -45,11 +45,9 @@ namespace artery {
 
 
     MisbehaviorDetectionService::MisbehaviorDetectionService() {
-        curl = curl_easy_init();
     }
 
     MisbehaviorDetectionService::~MisbehaviorDetectionService() {
-        curl_easy_cleanup(curl);
         while (!activePoIs.empty()) {
             mTraciAPI->poi.remove(activePoIs.front());
             activePoIs.pop_front();

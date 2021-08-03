@@ -11,6 +11,7 @@
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include <bitset>
 #include <chrono>
+#include <numeric>
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -25,6 +26,7 @@ namespace artery {
     Define_Module(MisbehaviorAuthority)
 
     MisbehaviorAuthority::MisbehaviorAuthority() {
+        curl = curl_easy_init();
         traciInitSignal = cComponent::registerSignal("traci.init");
         traciCloseSignal = cComponent::registerSignal("traci.close");
         maNewReport = cComponent::registerSignal("misbehaviorAuthority.newReport");
@@ -32,6 +34,7 @@ namespace artery {
     }
 
     MisbehaviorAuthority::~MisbehaviorAuthority() {
+        curl_easy_cleanup(curl);
         this->clear();
     }
 
@@ -55,15 +58,17 @@ namespace artery {
         F2MDParameters::misbehaviorAuthorityParameters.maxReportAge = par("maxReportAge");
         F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
+        F2MDParameters::misbehaviorAuthorityParameters.displaySteps = par("displaySteps");
         F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount = par("recentReportedCount");
 
+        mSelfMsg = new cMessage("getDataScheduleMessage");
         scheduleAt(simTime() + 2.0, mSelfMsg);
     }
 
     void MisbehaviorAuthority::handleMessage(omnetpp::cMessage *msg) {
         Enter_Method("handleMessage");
         if (msg == mSelfMsg) {
-            std::list<std::tuple<StationID_t, int, uint64_t>> recentReported = getRecentReported();
+            std::vector<RecentReported> recentReported = getRecentReported();
 
             rapidjson::Document d;
             d.SetObject();
@@ -71,79 +76,140 @@ namespace artery {
             d.AddMember("newReport", mNewReport, allocator);
             d.AddMember("totalReports", mTotalReportCount, allocator);
             d.AddMember("cumulativeDetectionRate", mDetectionRate, allocator);
-            //TODO reactionsData / getRadarData()
+
+            // getRadarData
+            rapidjson::Value reactionsData(rapidjson::kObjectType);
+            std::vector<int> reactionsBenign(5, 0);
+            std::vector<int> reactionsMalicious(5, 0);
+
+            for (auto reportedPseudonym : mReportedPseudonyms) {
+                misbehaviorTypes::MisbehaviorTypes misbehaviorType = reportedPseudonym.second->getActualMisbehaviorType();
+                if (misbehaviorType == misbehaviorTypes::Benign) {
+                    reactionsBenign[static_cast<int>(reportedPseudonym.second->getReactionType())]++;
+                } else if (misbehaviorType == misbehaviorTypes::LocalAttacker ||
+                           misbehaviorType == misbehaviorTypes::GlobalAttacker) {
+                    reactionsMalicious[static_cast<int>(reportedPseudonym.second->getReactionType())]++;
+                }
+            }
+            rapidjson::Value reactionsBenignJson;
+            rapidjson::Value reactionsMaliciousJson;
+            reactionsBenignJson.SetArray();
+            reactionsMaliciousJson.SetArray();
+
+            int sumReactionsBenign = std::accumulate(reactionsBenign.begin(), reactionsBenign.end(), 0);
+            int sumReactionsMalicious = std::accumulate(reactionsMalicious.begin(), reactionsMalicious.end(), 0);
+            if (sumReactionsBenign > 0) {
+                for (auto &reaction : reactionsBenign) {
+                    reactionsBenignJson.PushBack(100.0 * reaction / sumReactionsBenign, allocator);
+                }
+            } else {
+                for (auto &reaction : reactionsBenign) {
+                    reactionsBenignJson.PushBack(0, allocator);
+                }
+            }
+            if (sumReactionsMalicious > 0) {
+                for (auto &reaction : reactionsMalicious) {
+                    reactionsMaliciousJson.PushBack(100 * reaction / sumReactionsMalicious, allocator);
+                }
+            } else {
+                for (auto &reaction : reactionsMalicious) {
+                    reactionsMaliciousJson.PushBack(0, allocator);
+                }
+            }
+            reactionsData.AddMember("benign", reactionsBenignJson, allocator);
+            reactionsData.AddMember("malicious", reactionsMaliciousJson, allocator);
+            d.AddMember("reactionsData", reactionsData, allocator);
+
 
             rapidjson::Value recentlyReportedData(rapidjson::kObjectType);
-            {
-                rapidjson::Value labels;
-                rapidjson::Value data;
-                labels.SetArray();
-                data.SetArray();
-                for (auto r : recentReported) {
-                    labels.PushBack(std::get<0>(r), allocator);
-                    data.PushBack(std::get<1>(r), allocator);
-                }
-                recentlyReportedData.AddMember("labels", labels, allocator);
-                recentlyReportedData.AddMember("data", data, allocator);
+            rapidjson::Value labels;
+            rapidjson::Value data;
+            labels.SetArray();
+            data.SetArray();
+            for (auto r : recentReported) {
+                labels.PushBack(r.stationId, allocator);
+                data.PushBack(r.reportCount, allocator);
             }
+            recentlyReportedData.AddMember("labels", labels, allocator);
+            recentlyReportedData.AddMember("data", data, allocator);
             d.AddMember("recentlyReportedData", recentlyReportedData, allocator);
 
             rapidjson::Value detectionRatesData(rapidjson::kObjectType);
-            {
-                rapidjson::Value labels;
-                rapidjson::Value accurate;
-                rapidjson::Value notAccurate;
-                rapidjson::Value rate;
-                labels.SetArray();
-                accurate.SetArray();
-                notAccurate.SetArray();
-                rate.SetArray();
-                for (const auto &label : mDetectionAccuracyLabels) {
-                    rapidjson::Value v;
-                    v.SetString(label.c_str(), label.length(), allocator);
-                    labels.PushBack(v, allocator);
-                }
-                for (const auto &data : mDetectionAccuracyData) {
-                    accurate.PushBack(std::get<0>(data), allocator);
-                    notAccurate.PushBack(std::get<1>(data) * -1, allocator);
-                    rate.PushBack(std::get<2>(data), allocator);
-                }
+            rapidjson::Value detectionRatesLabels;
+            rapidjson::Value accurate;
+            rapidjson::Value notAccurate;
+            rapidjson::Value rate;
+            detectionRatesLabels.SetArray();
+            accurate.SetArray();
+            notAccurate.SetArray();
+            rate.SetArray();
+            for (const auto &label : mDetectionAccuracyLabels) {
+                rapidjson::Value v;
+                v.SetString(label.c_str(), label.length(), allocator);
+                detectionRatesLabels.PushBack(v, allocator);
             }
+            for (const auto &dAData : mDetectionAccuracyData) {
+                accurate.PushBack(std::get<0>(dAData), allocator);
+                notAccurate.PushBack(std::get<1>(dAData) * -1, allocator);
+                rate.PushBack(std::get<2>(dAData), allocator);
+            }
+            detectionRatesData.AddMember("labels", detectionRatesLabels, allocator);
+            detectionRatesData.AddMember("accurate", accurate, allocator);
+            detectionRatesData.AddMember("notAccurate", notAccurate, allocator);
+            detectionRatesData.AddMember("rate", rate, allocator);
             d.AddMember("detectionRatesData", detectionRatesData, allocator);
 
             rapidjson::StringBuffer strBuf;
             rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(strBuf);
             d.Accept(writer);
             std::string jsonString = strBuf.GetString();
-            std::cout << jsonString;
+            if (mNewReport) {
+                std::cout << jsonString << std::endl;
+            }
+            if (mTotalReportCount == 45) {
+                std::cout << "";
+            }
+
+            mNewReport = false;
+            scheduleAt(simTime() + 2.0, mSelfMsg);
         }
     }
 
-    bool sortByGenerationTime(const std::tuple<StationID_t, int, uint64_t> &a,
-                              const std::tuple<StationID_t, int, uint64_t> &b) {
-        return std::get<2>(a) < std::get<2>(b);
+
+    bool sortByGenerationTime(RecentReported &a,
+                              RecentReported &b) {
+        return a.lastGenerationTime < b.lastGenerationTime;
     }
 
-    std::list<std::tuple<StationID_t, int, uint64_t>> MisbehaviorAuthority::getRecentReported() {
-        std::list<std::tuple<StationID_t, int, uint64_t>> recentReported;
+    bool sortByStationId(RecentReported &a, RecentReported &b) {
+        return a.stationId > b.stationId;
+    }
+
+    std::vector<RecentReported> MisbehaviorAuthority::getRecentReported() {
+        std::vector<RecentReported> recentReported;
+        if (mTotalReportCount == 45) {
+            std::cout << "";
+        }
         for (auto r : mReportedPseudonyms) {
             auto reportedPseudonym = *r.second;
-            if (reportedPseudonym.getActualMisbehaviorType() != misbehaviorTypes::Benign) {
+            if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 std::sort(recentReported.begin(), recentReported.end(), sortByGenerationTime);
                 if (recentReported.size() < F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount) {
-                    recentReported.emplace_back(reportedPseudonym.getStationId(), reportedPseudonym.getReportCount(),
-                                                reportedPseudonym.getLastReport()->generationTime);
+                    recentReported.emplace_back(
+                            RecentReported{reportedPseudonym.getStationId(), reportedPseudonym.getReportCount(),
+                                           reportedPseudonym.getLastReport()->generationTime});
                 } else {
-                    if (std::get<2>(*recentReported.begin()) < reportedPseudonym.getLastReport()->generationTime) {
-                        recentReported.pop_front();
-                        recentReported.emplace_back(reportedPseudonym.getStationId(),
-                                                    reportedPseudonym.getReportCount(),
-                                                    reportedPseudonym.getLastReport()->generationTime);
+                    if ((*recentReported.begin()).lastGenerationTime <
+                        reportedPseudonym.getLastReport()->generationTime) {
+                        recentReported.erase(recentReported.begin());
+                        recentReported.emplace_back(RecentReported{reportedPseudonym.getStationId(),
+                                                                   reportedPseudonym.getReportCount(),
+                                                                   reportedPseudonym.getLastReport()->generationTime});
                     }
                 }
             }
         }
-        std::sort(recentReported.begin(), recentReported.end(), std::greater<StationID_t>());
+        std::sort(recentReported.begin(), recentReported.end(), sortByStationId);
         return recentReported;
 
     }
@@ -176,7 +242,12 @@ namespace artery {
                 mNewReport = true;
 
                 mReports.emplace(reportPtr->reportId, reportPtr);
-                StationID_t reportedStationId = (*reportPtr->reportedMessage)->header.stationID;
+                StationID_t reportedStationId;
+                if (reportPtr->reportedMessage == nullptr) {
+                    reportedStationId = (*reportPtr->relatedReport->referencedReport->reportedMessage)->header.stationID;
+                } else {
+                    reportedStationId = (*reportPtr->reportedMessage)->header.stationID;
+                }
                 ReportedPseudonym *reportedPseudonym;
                 auto it = mReportedPseudonyms.find(reportedStationId);
                 if (it != mReportedPseudonyms.end()) {
@@ -191,6 +262,15 @@ namespace artery {
         }
     }
 
+    misbehaviorTypes::MisbehaviorTypes MisbehaviorAuthority::getActualMisbehaviorType(const StationID_t &stationId) {
+        auto it = mMisbehavingPseudonyms.find(stationId);
+        if (it != mMisbehavingPseudonyms.end()) {
+            return (*it).second->getMisbehaviorType();
+        } else {
+            return misbehaviorTypes::Benign;
+        }
+    }
+
     void MisbehaviorAuthority::updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report) {
 
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType =
@@ -198,12 +278,19 @@ namespace artery {
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorTypeAggregated =
                 reportedPseudonym.predictMisbehaviorTypeAggregate();
 
-        if (predictedMisbehaviorType == reportedPseudonym.getActualMisbehaviorType()) {
+        misbehaviorTypes::MisbehaviorTypes actualMisbehaviorType;
+//        auto it = mMisbehavingPseudonyms.find(reportedPseudonym.getStationId());
+//        if (it != mMisbehavingPseudonyms.end()) {
+//            actualMisbehaviorType = (*it).second->getMisbehaviorType();
+//        } else {
+//            actualMisbehaviorType = misbehaviorTypes::Benign;
+//        }
+        if (predictedMisbehaviorType == getActualMisbehaviorType(reportedPseudonym.getStationId())) {
             mTrueDetectionCount++;
         } else {
             mFalseDetectionCount++;
         }
-        mDetectionRate = 100 * mTrueDetectionCount / ((double) mTrueDetectionCount / mFalseDetectionCount);
+        mDetectionRate = 100 * mTrueDetectionCount / (double) (mTrueDetectionCount + mFalseDetectionCount);
         if (predictedMisbehaviorTypeAggregated == reportedPseudonym.getActualMisbehaviorType()) {
             mTrueDetectionAggregateCount++;
         } else {
