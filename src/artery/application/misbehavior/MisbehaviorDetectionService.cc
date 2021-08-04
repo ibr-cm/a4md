@@ -139,10 +139,10 @@ namespace artery {
         uint32_t senderStationId = message->header.stationID;
         misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(
                 senderStationId);
-        if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker && senderStationId == 2971333630) {
-            std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
-                      << message->cam.generationDeltaTime << std::endl;
-
+//        if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker && senderStationId == 2971333630) {
+//            std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
+//                      << message->cam.generationDeltaTime << std::endl;
+//
             std::vector<std::bitset<16>> detectionLevelErrorCodes = checkCam(message);
             auto *camPtr = &message;
             DetectedSender &detectedSender = *detectedSenders[senderStationId];
@@ -185,7 +185,7 @@ namespace artery {
             if (detectedSender.getPreviousReportId().empty()) {
                 detectedSender.setReportId(relatedReportId);
             }
-        }
+//        }
     }
 
     std::vector<std::bitset<16>> MisbehaviorDetectionService::checkCam(const vanetza::asn1::Cam &message) {
@@ -205,7 +205,7 @@ namespace artery {
                                                                                mVehicleOutline,
                                                                                surroundingCamObjects);
 
-        std::cout << result->toString(0.5) << std::endl;
+//        std::cout << result->toString(0.5) << std::endl;
         std::vector<std::bitset<16>> detectionLevelErrorCodes = fusionApplication->checkForReport(*result);
         return detectionLevelErrorCodes;
     }

@@ -235,7 +235,6 @@ namespace artery {
         double semiMajorConfidence = (double) posConfidenceEllipse.semiMajorConfidence / 100;
         double semiMinorConfidence = (double) posConfidenceEllipse.semiMinorConfidence / 100;
         double semiMajorOrientation = (double) posConfidenceEllipse.semiMajorOrientation / 10;
-//        point p = point(position.x.value(), position.y.value());
         return createEllipse(position, semiMajorConfidence, semiMinorConfidence, semiMajorOrientation, 36);
     }
 
@@ -243,7 +242,6 @@ namespace artery {
         std::deque<std::vector<Position>> intersectionGeometry;
         boost::geometry::intersection(polygon1, polygon2, intersectionGeometry);
         if (!intersectionGeometry.empty()) {
-            std::cout << boost::geometry::area(polygon1) << " " << boost::geometry::area(polygon2) << std::endl;
             return boost::geometry::area(intersectionGeometry.front());
         } else {
             return 0;
@@ -519,9 +517,6 @@ namespace artery {
 
 
     bool camComp(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2) {
-//        if (message1->cam.generationDeltaTime == 37276 && message2->cam.generationDeltaTime == 37276) {
-//            std::cout << "";
-//        }
         {
             ItsPduHeader header1 = message1->header;
             ItsPduHeader header2 = message2->header;
