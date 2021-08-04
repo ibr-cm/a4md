@@ -58,7 +58,7 @@ namespace artery {
         F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
         F2MDParameters::misbehaviorAuthorityParameters.enableWebGui = par("enableWebGui");
-        F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl = par("webGuiDataUrl").str();
+        F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl = par("webGuiDataUrl").stdstringValue();
         F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval = par("guiJsonDataUpdateInterval");
         F2MDParameters::misbehaviorAuthorityParameters.displaySteps = par("displaySteps");
         F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount = par("recentReportedCount");
@@ -273,7 +273,6 @@ namespace artery {
         std::cout << "Reports per benign pseudonym: " << meanReportsPerBenign << " StdDev: " << sdBenign << std::endl;
     }
 
-
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,
                                              cObject *) {
         if (signal == traciInitSignal) {
@@ -317,6 +316,14 @@ namespace artery {
                     mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
                 }
                 updateDetectionRates(*reportedPseudonym, *reportPtr);
+            }
+        } else if (signal == maMisbehaviorAnnouncement){
+            std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t>*>(obj);
+            auto misbehaviorCaService = check_and_cast<MisbehaviorCaService *>(source);
+            for(const auto &stationId : stationIds){
+                mMisbehavingPseudonyms[stationId] =
+                        new MisbehavingPseudonym(stationId, misbehaviorCaService->getMisbehaviorType(),
+                                                 misbehaviorCaService->getAttackType());
             }
         }
     }

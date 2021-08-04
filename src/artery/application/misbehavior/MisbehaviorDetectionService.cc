@@ -38,7 +38,6 @@ namespace artery {
             "misbehaviorAuthority.newReport");
 
     bool MisbehaviorDetectionService::staticInitializationComplete = false;
-    std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> MisbehaviorDetectionService::mStationIdMisbehaviorTypeMap;
     std::shared_ptr<const traci::API> MisbehaviorDetectionService::mTraciAPI;
     GlobalEnvironmentModel *MisbehaviorDetectionService::mGlobalEnvironmentModel;
     traci::Boundary MisbehaviorDetectionService::mSimulationBoundary;
@@ -137,9 +136,6 @@ namespace artery {
 
     void MisbehaviorDetectionService::detectMisbehavior(vanetza::asn1::Cam &message) {
         uint32_t senderStationId = message->header.stationID;
-        misbehaviorTypes::MisbehaviorTypes senderMisbehaviorType = getMisbehaviorTypeOfStationId(
-                senderStationId);
-//        if (senderMisbehaviorType == misbehaviorTypes::LocalAttacker && senderStationId == 2971333630) {
 //            std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
 //                      << message->cam.generationDeltaTime << std::endl;
 //
@@ -185,7 +181,6 @@ namespace artery {
             if (detectedSender.getPreviousReportId().empty()) {
                 detectedSender.setReportId(relatedReportId);
             }
-//        }
     }
 
     std::vector<std::bitset<16>> MisbehaviorDetectionService::checkCam(const vanetza::asn1::Cam &message) {
@@ -425,26 +420,6 @@ namespace artery {
         relatedReportContainer->omittedReportsNumber = omittedReportsNumber;
     }
 
-    misbehaviorTypes::MisbehaviorTypes MisbehaviorDetectionService::getMisbehaviorTypeOfStationId(uint32_t stationId) {
-        auto search = mStationIdMisbehaviorTypeMap.find(stationId);
-        if (search != mStationIdMisbehaviorTypeMap.end()) {
-            return search->second;
-        } else {
-            return misbehaviorTypes::SIZE_OF_ENUM;
-        }
-    }
-
-    void MisbehaviorDetectionService::addStationIdToVehicleList(uint32_t stationId,
-                                                                misbehaviorTypes::MisbehaviorTypes misbehaviorType) {
-        mStationIdMisbehaviorTypeMap[stationId] = misbehaviorType;
-    }
-
-    void MisbehaviorDetectionService::removeStationIdFromVehicleList(uint32_t stationId) {
-        auto it = mStationIdMisbehaviorTypeMap.find(stationId);
-        if (it != mStationIdMisbehaviorTypeMap.end()) {
-            mStationIdMisbehaviorTypeMap.erase(it);
-        }
-    }
 
     void MisbehaviorDetectionService::visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color,
                                                            const std::string &idPrefix) {

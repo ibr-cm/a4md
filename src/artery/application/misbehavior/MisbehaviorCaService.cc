@@ -40,8 +40,6 @@ namespace artery {
     }
 
     MisbehaviorCaService::~MisbehaviorCaService() {
-        MisbehaviorDetectionService::removeStationIdFromVehicleList(mVehicleDataProvider->getStationId());
-
         while (!activePoIs.empty()) {
             mTraciAPI->poi.remove(activePoIs.front());
             activePoIs.pop_front();
@@ -103,13 +101,15 @@ namespace artery {
         if (attackGridSybilVehicleCount < 1) {
             attackGridSybilVehicleCount = 1;
         }
-        for (int i = 0; i < attackGridSybilVehicleCount; i++) {
-            StationType_t stationId = Identity::randomStationId(getRNG(0));
-            mPseudonyms.push(stationId);
-            MisbehaviorDetectionService::addStationIdToVehicleList(stationId,
-                                                                   mMisbehaviorType);
-
+        std::vector<StationID_t> stationIds;
+        if(mAttackType == attackTypes::GridSybil){
+            for (int i = 0; i < attackGridSybilVehicleCount; i++) {
+                StationType_t stationId = Identity::randomStationId(getRNG(0));
+                mPseudonyms.push(stationId);
+                stationIds.emplace_back(stationId);
+            }
         }
+
         attackGridSybilCurrentVehicleIndex = 0;
         attackGridSybilActualDistanceX = uniform(F2MDParameters::attackParameters.AttackGridSybilDistanceX -
                                                  F2MDParameters::attackParameters.AttackGridSybilDistanceVariation,
@@ -134,8 +134,10 @@ namespace artery {
             mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
-        emit(scSignalMaMisbehaviorAnnouncement,simTime());
-        MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(), mMisbehaviorType);
+        stationIds.emplace_back(mStationId);
+        std::vector<StationID_t> *ptr = &stationIds;
+        auto *cObj = reinterpret_cast<cObject *>(ptr);
+        emit(scSignalMaMisbehaviorAnnouncement,cObj);
     }
 
     void MisbehaviorCaService::initializeStaticParameters() {

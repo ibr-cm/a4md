@@ -34,10 +34,6 @@ namespace artery {
         return std::round(v.value());
     }
 
-    CaService::~CaService() {
-        MisbehaviorDetectionService::removeStationIdFromVehicleList(mVehicleDataProvider->getStationId());
-    }
-
     void CaService::initialize() {
         BaseCaService::initialize();
 
@@ -45,11 +41,6 @@ namespace artery {
         getFacilities().get_const<traci::VehicleController>().getTraCI()->vehicle.setColor(
                 getFacilities().get_const<traci::VehicleController>().getVehicleId(),
                 libsumo::TraCIColor(0, 255, 0, 255));
-
-
-        MisbehaviorDetectionService::addStationIdToVehicleList(mVehicleDataProvider->getStationId(),
-                                                               misbehaviorTypes::Benign);
-
     }
 
     void CaService::trigger() {
@@ -75,7 +66,7 @@ namespace artery {
     void CaService::sendCam(const SimTime &T_now) {
         uint16_t genDeltaTimeMod = countTaiMilliseconds(mTimer->getTimeFor(mVehicleDataProvider->updated()));
         auto cam = createCooperativeAwarenessMessage(genDeltaTimeMod);
-        finalizeAndSendCam(cam,T_now);
+        finalizeAndSendCam(cam, T_now);
     }
 
 } // namespace artery

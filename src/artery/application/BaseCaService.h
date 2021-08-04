@@ -27,13 +27,7 @@ namespace artery {
     public:
         BaseCaService();
 
-//        ~BaseCaService() override;
-
         void initialize() override;
-
-//        void indicate(const vanetza::btp::DataIndication &, std::unique_ptr<vanetza::UpPacket>) override;
-//        virtual void trigger() override;
-
 
     protected:
 
@@ -83,10 +77,6 @@ namespace artery {
         bool mDccRestriction;
         bool mFixedRate;
         long mStationId;
-
-//        double semiMajorConfidence;
-//        double semiMinorConfidence;
-//        double semiMajorOrientationOffset;
 
         static bool staticInitializationComplete;
         static std::shared_ptr<const traci::API> mTraciAPI;

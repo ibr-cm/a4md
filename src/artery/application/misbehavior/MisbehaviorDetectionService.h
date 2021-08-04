@@ -32,10 +32,6 @@ namespace artery {
         void
         receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, omnetpp::cObject *, omnetpp::cObject *) override;
 
-        static void addStationIdToVehicleList(uint32_t stationId, misbehaviorTypes::MisbehaviorTypes misbehaviorType);
-
-        static void removeStationIdFromVehicleList(uint32_t stationId);
-
     protected:
         void handleMessage(omnetpp::cMessage *) override;
 
@@ -50,15 +46,12 @@ namespace artery {
         std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> mTraciAPI;
         static bool staticInitializationComplete;
-        static std::map<uint32_t, misbehaviorTypes::MisbehaviorTypes> mStationIdMisbehaviorTypeMap;
         std::string lastPolyId;
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;
 
-        static misbehaviorTypes::MisbehaviorTypes getMisbehaviorTypeOfStationId(uint32_t);
-
-        void
-        visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color, const std::string &idPrefix);
+        void visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color,
+                                  const std::string &idPrefix);
 
         void initializeParameters();
 
