@@ -182,7 +182,7 @@ namespace artery {
         rapidjson::Writer<rapidjson::StringBuffer> writer(strBuf);
         d.Accept(writer);
         std::string jsonString = strBuf.GetString();
-        curl_easy_setopt(curl, CURLOPT_URL, F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl);
+        curl_easy_setopt(curl, CURLOPT_URL, F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
         CURLcode curlResponse = curl_easy_perform(curl);
         if (curlResponse != CURLE_OK) {
