@@ -225,6 +225,54 @@ namespace artery {
 
     }
 
+    void MisbehaviorAuthority::printReportsPerPseudonym() {
+        int attackerCount = 0;
+        int benignCount = 0;
+        int reportTpCount = 0;
+        int reportFpCount = 0;
+        double meanReportsPerAttacker = 0;
+        double meanReportsPerBenign = 0;
+        double reportTpSdSum = 0;
+        double reportFpSdSum = 0;
+        double sdAttacker = 0;
+        double sdBenign = 0;
+        for (auto r : mReportedPseudonyms) {
+            ReportedPseudonym reportedPseudonym = *r.second;
+            if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
+                attackerCount++;
+                reportTpCount += (int) reportedPseudonym.getReportCount();
+            } else {
+                benignCount++;
+                reportFpCount += (int) reportedPseudonym.getReportCount();
+            }
+        }
+
+        if (reportTpCount > 0) {
+            meanReportsPerAttacker = (double) reportTpCount / attackerCount;
+        }
+        if (reportFpCount > 0) {
+            meanReportsPerBenign = (double) reportFpCount / benignCount;
+        }
+        for (auto r : mReportedPseudonyms) {
+            ReportedPseudonym reportedPseudonym = *r.second;
+            if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
+                reportTpSdSum += pow((int) reportedPseudonym.getReportCount() - meanReportsPerAttacker, 2);
+            } else {
+                reportFpSdSum += pow((int) reportedPseudonym.getReportCount() - meanReportsPerBenign, 2);
+            }
+        }
+        if (reportTpCount > 0) {
+            sdAttacker = sqrt(reportTpSdSum / attackerCount);
+        }
+        if (reportFpCount > 0) {
+            sdBenign = sqrt(reportFpSdSum / benignCount);
+        }
+        std::cout << std::fixed << std::setprecision(2);
+        std::cout << "Reports per malicious pseudonym: " << meanReportsPerAttacker << " StdDev: " << sdAttacker
+                  << std::endl;
+        std::cout << "Reports per benign pseudonym: " << meanReportsPerBenign << " StdDev: " << sdBenign << std::endl;
+    }
+
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,
                                              cObject *) {

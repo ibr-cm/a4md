@@ -118,6 +118,8 @@ namespace artery {
         rapidjson::Value getDetectionRates(rapidjson::Document::AllocatorType &allocator);
 
         void createGuiJsonData();
+
+        void printReportsPerPseudonym();
     };
 } // namespace artery
 
