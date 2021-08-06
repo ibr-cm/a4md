@@ -289,6 +289,26 @@ namespace artery {
         }
     }
 
+    void MisbehaviorAuthority::updateReactionType(ReportedPseudonym &reportedPseudonym) {
+        size_t reportCount = reportedPseudonym.getReportCount();
+        reactionTypes::ReactionTypes newReactionType = reactionTypes::Nothing;
+        if (reportCount > 20) {
+            newReactionType = reactionTypes::Warning;
+        } else if (reportCount > 50) {
+            newReactionType = reactionTypes::Ticket;
+        } else if (reportCount > 250) {
+            newReactionType = reactionTypes::PassiveRevocation;
+        } else if (reportCount > 1250) {
+            newReactionType = reactionTypes::ActiveRevocation;
+        }
+        reactionTypes::ReactionTypes oldReactionType = reportedPseudonym.getReactionType();
+        if(newReactionType != oldReactionType){
+            mReactionsList[oldReactionType].erase(reportedPseudonym.getStationId());
+            mReactionsList[newReactionType].insert(reportedPseudonym.getStationId());
+            reportedPseudonym.setReactionType(newReactionType);
+        }
+    }
+
     void MisbehaviorAuthority::receiveSignal(cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                                              cObject *) {
         if (signal == maNewReport) {
@@ -315,6 +335,7 @@ namespace artery {
                     reportedPseudonym = new ReportedPseudonym(reportPtr);
                     mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
                 }
+                updateReactionType(*reportedPseudonym);
                 updateDetectionRates(*reportedPseudonym, *reportPtr);
             }
         } else if (signal == maMisbehaviorAnnouncement){

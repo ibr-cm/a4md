@@ -84,6 +84,7 @@ namespace artery {
 
         std::list<std::string> mDetectionAccuracyLabels;
         std::list<std::tuple<int, int, double>> mDetectionAccuracyData;
+        std::map<reactionTypes::ReactionTypes,std::set<StationID_t>> mReactionsList;
 
         int mTotalReportCount = 0;
         bool mNewReport = false;
@@ -120,6 +121,8 @@ namespace artery {
         void createGuiJsonData();
 
         void printReportsPerPseudonym();
+
+        void updateReactionType(ReportedPseudonym &reportedPseudonym);
     };
 } // namespace artery
 

@@ -30,7 +30,7 @@ namespace artery {
 
         reactionTypes::ReactionTypes getReactionType(){return mReactionType;};
 
-        void updateReactionType();
+        void setReactionType(reactionTypes::ReactionTypes reactionType);
 
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorType();
 

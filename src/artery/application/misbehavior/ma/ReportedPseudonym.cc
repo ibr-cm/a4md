@@ -20,20 +20,10 @@ namespace artery {
 
     void ReportedPseudonym::addReport(const std::shared_ptr<ma::Report> &report) {
         mReportList.emplace_back(report);
-        updateReactionType();
     }
 
-    void ReportedPseudonym::updateReactionType() {
-        if (mReportList.size() > 20) {
-            mReactionType = reactionTypes::Warning;
-        } else if (mReportList.size() > 50) {
-            mReactionType = reactionTypes::Ticket;
-        } else if (mReportList.size() > 250) {
-            mReactionType = reactionTypes::PassiveRevocation;
-        } else if (mReportList.size() > 1250) {
-            mReactionType = reactionTypes::ActiveRevocation;
-        }
-
+    void ReportedPseudonym::setReactionType(reactionTypes::ReactionTypes reactionType){
+        mReactionType = reactionType;
     }
 
     misbehaviorTypes::MisbehaviorTypes ReportedPseudonym::predictMisbehaviorType() {
