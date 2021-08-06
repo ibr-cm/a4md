@@ -225,21 +225,21 @@ namespace artery {
                                                      lastCam->cam.generationDeltaTime);
             result->consistencyIsChecked = true;
 
-            result->positionConsistency = PositionConsistencyCheck(currentCamPosition, lastCamPosition, camDeltaTime);
-            result->speedConsistency = SpeedConsistencyCheck(currentCamSpeed, lastCamSpeed, camDeltaTime);
+            result->positionConsistency = PositionConsistencyCheck(currentCamPosition, mLastCamPosition, camDeltaTime);
+            result->speedConsistency = SpeedConsistencyCheck(currentCamSpeed, mLastCamSpeed, camDeltaTime);
             result->positionSpeedConsistency =
-                    PositionSpeedConsistencyCheck(currentCamPosition, lastCamPosition, currentCamSpeed, lastCamSpeed,
+                    PositionSpeedConsistencyCheck(currentCamPosition, mLastCamPosition, currentCamSpeed, mLastCamSpeed,
                                                   camDeltaTime);
             result->positionSpeedMaxConsistency =
-                    PositionSpeedMaxConsistencyCheck(currentCamPosition, lastCamPosition, currentCamSpeed, lastCamSpeed,
+                    PositionSpeedMaxConsistencyCheck(currentCamPosition, mLastCamPosition, currentCamSpeed, mLastCamSpeed,
                                                      camDeltaTime);
             result->positionHeadingConsistency =
-                    PositionHeadingConsistencyCheck(currentCamHeading, currentCamPosition, lastCamPosition,
+                    PositionHeadingConsistencyCheck(currentCamHeading, currentCamPosition, mLastCamPosition,
                                                     camDeltaTime, currentCamSpeed);
             KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                          currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
-                         currentCamAccelerationVector, currentCamHeading, lastCamPosition,
-                         lastCamSpeedVector, camDeltaTime, result);
+                         currentCamAccelerationVector, currentCamHeading, mLastCamPosition,
+                         mLastCamSpeedVector, camDeltaTime, result);
             result->frequency = BaseChecks::FrequencyCheck(camDeltaTime);
             result->intersection =
                     IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
@@ -247,16 +247,20 @@ namespace artery {
         } else {
             result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
         }
-        lastCamPosition = currentCamPosition;
-        lastCamSpeed = currentCamSpeed;
-        lastCamSpeedConfidence = currentCamSpeedConfidence;
-        lastCamSpeedVector = currentCamSpeedVector;
+        mLastCamPosition = currentCamPosition;
+        mLastCamSpeed = currentCamSpeed;
+        mLastCamSpeedConfidence = currentCamSpeedConfidence;
+        mLastCamSpeedVector = currentCamSpeedVector;
         return result;
     }
 
     LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                                DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, message) {
-
     }
-}
+
+    LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                               DetectionParameters *detectionParameters)
+            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters) {
+    }
+} // namespace artery

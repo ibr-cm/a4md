@@ -26,6 +26,10 @@ namespace artery {
         BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                    DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
 
+        BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                   DetectionParameters *detectionParameters);
+
+
         virtual CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
                                       const std::vector<Position> &receiverVehicleOutline,
                                       const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
@@ -38,13 +42,13 @@ namespace artery {
         static std::shared_ptr<const traci::API> mTraciAPI;
         DetectionParameters *detectionParameters;
 
-        Position lastCamPosition;
-        PosConfidenceEllipse_t lastCamPositionConfidence;
-        std::vector<Position> lastCamPositionEllipse;
-        double lastCamEllipseRadius;
-        double lastCamSpeed;
-        double lastCamSpeedConfidence;
-        Position lastCamSpeedVector;
+        Position mLastCamPosition;
+        PosConfidenceEllipse_t mLastCamPositionConfidence;
+        std::vector<Position> mLastCamPositionEllipse;
+        double mLastCamEllipseRadius;
+        double mLastCamSpeed;
+        double mLastCamSpeedConfidence;
+        Position mLastCamSpeedVector;
 
 
         double FrequencyCheck(const double &deltaTime) const;
@@ -57,6 +61,8 @@ namespace artery {
                           const double &currentCamHeading, const Position &lastCamPosition,
                           const Position &lastCamSpeedVector, const double camDeltaTime,
                           CheckResult *result);
+
+        void initializeKalmanFilters(const vanetza::asn1::Cam &message);
 
     private:
         Kalman_SVI *kalmanSVI;

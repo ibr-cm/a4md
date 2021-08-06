@@ -18,7 +18,11 @@ namespace artery {
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                               const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) override;
 
-    private:
+    protected:
+
+        LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                     DetectionParameters *detectionParameters);
+
         double PositionPlausibilityCheck(const Position &senderPosition, const double &senderSpeed) const;
 
         double SpeedPlausibilityCheck(const double &speed) const;

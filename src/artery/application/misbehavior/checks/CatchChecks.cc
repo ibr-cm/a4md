@@ -391,28 +391,28 @@ namespace artery {
 
             result->positionConsistency =
                     PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
-                                             lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
+                                             mLastCamPosition, mLastCamPositionEllipse, mLastCamEllipseRadius,
                                              camDeltaTime);
             result->speedConsistency =
-                    SpeedConsistencyCheck(currentCamSpeed, currentCamSpeedConfidence, lastCamSpeed,
-                                          lastCamSpeedConfidence, camDeltaTime);
+                    SpeedConsistencyCheck(currentCamSpeed, currentCamSpeedConfidence, mLastCamSpeed,
+                                          mLastCamSpeedConfidence, camDeltaTime);
 
 
             result->positionSpeedConsistency =
                     PositionSpeedConsistencyCheck(currentCamPosition, currentCamPositionEllipse,
                                                   currentCamEllipseRadius,
-                                                  lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
+                                                  mLastCamPosition, mLastCamPositionEllipse, mLastCamEllipseRadius,
                                                   currentCamSpeed, currentCamSpeedConfidence,
-                                                  lastCamSpeed, lastCamSpeedConfidence, camDeltaTime);
+                                                  mLastCamSpeed, mLastCamSpeedConfidence, camDeltaTime);
             result->positionSpeedMaxConsistency =
-                    PositionSpeedMaxConsistencyCheck(currentCamPosition, currentCamPositionConfidence, lastCamPosition,
-                                                     lastCamPositionConfidence, currentCamSpeed,
-                                                     currentCamSpeedConfidence, lastCamSpeed, lastCamSpeedConfidence,
+                    PositionSpeedMaxConsistencyCheck(currentCamPosition, currentCamPositionConfidence, mLastCamPosition,
+                                                     mLastCamPositionConfidence, currentCamSpeed,
+                                                     currentCamSpeedConfidence, mLastCamSpeed, mLastCamSpeedConfidence,
                                                      camDeltaTime);
             result->positionHeadingConsistency =
                     PositionHeadingConsistencyCheck(currentCamHeading, currentCamHeadingConfidence, currentCamPosition,
-                                                    currentCamPositionConfidence, lastCamPosition,
-                                                    lastCamPositionConfidence, currentCamSpeed,
+                                                    currentCamPositionConfidence, mLastCamPosition,
+                                                    mLastCamPositionConfidence, currentCamSpeed,
                                                     currentCamSpeedConfidence, camDeltaTime);
             if (result->positionHeadingConsistency < 1) {
 //                drawTraciPoi(currentCamPosition, "current", libsumo::TraCIColor(207, 255, 0, 255), mSimulationBoundary,
@@ -427,20 +427,20 @@ namespace artery {
                                       camDeltaTime);
             KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                          currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
-                         currentCamAccelerationVector, currentCamHeading, lastCamPosition,
-                         lastCamSpeedVector, camDeltaTime, result);
+                         currentCamAccelerationVector, currentCamHeading, mLastCamPosition,
+                         mLastCamSpeedVector, camDeltaTime, result);
         } else {
             result->suddenAppearance =
                     SuddenAppearanceCheck(currentCamPosition, currentCamPositionConfidence, receiverPosition,
                                           receiverPositionConfidence);
         }
-        lastCamPosition = currentCamPosition;
-        lastCamPositionConfidence = currentCamPositionConfidence;
-        lastCamPositionEllipse = currentCamPositionEllipse;
-        lastCamEllipseRadius = currentCamEllipseRadius;
-        lastCamSpeed = currentCamSpeed;
-        lastCamSpeedConfidence = currentCamSpeedConfidence;
-        lastCamSpeedVector = currentCamSpeedVector;
+        mLastCamPosition = currentCamPosition;
+        mLastCamPositionConfidence = currentCamPositionConfidence;
+        mLastCamPositionEllipse = currentCamPositionEllipse;
+        mLastCamEllipseRadius = currentCamEllipseRadius;
+        mLastCamSpeed = currentCamSpeed;
+        mLastCamSpeedConfidence = currentCamSpeedConfidence;
+        mLastCamSpeedVector = currentCamSpeedVector;
         return result;
     }
 

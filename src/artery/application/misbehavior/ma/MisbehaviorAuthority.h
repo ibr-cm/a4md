@@ -19,6 +19,8 @@
 #include "artery/application/misbehavior/ma/Report.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include <rapidjson/document.h>
+#include "artery/application/misbehavior/fusion/BaseFusion.h"
+#include "artery/application/misbehavior/ma/LegacyValidate.h"
 
 namespace artery {
 
@@ -75,6 +77,8 @@ namespace artery {
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
         std::shared_ptr<const traci::API> mTraciAPI;
         Timer mTimer;
+        BaseFusion *mFusionApplication;
+        LegacyValidate *mLegacyValidate;
 
         std::map<StationID_t, ReportedPseudonym *> mReportedPseudonyms;
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
@@ -123,6 +127,10 @@ namespace artery {
         void printReportsPerPseudonym();
 
         void updateReactionType(ReportedPseudonym &reportedPseudonym);
+
+        bool validateSemanticLevel2Report(const ma::Report& report);
+
+        bool validateReport(const ma::Report &report);
     };
 } // namespace artery
 

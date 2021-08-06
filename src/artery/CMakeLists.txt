@@ -93,6 +93,7 @@ add_library(core SHARED
     application/misbehavior/ma/MisbehaviorAuthority.cc
     application/misbehavior/ma/ReportedPseudonym.cc
     application/misbehavior/ma/MisbehavingPseudonym.cc
+    application/misbehavior/ma/LegacyValidate.cc
         )
 find_package(CURL REQUIRED)
 find_package(RapidJSON REQUIRED)

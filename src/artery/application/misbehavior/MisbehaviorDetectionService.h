@@ -41,7 +41,7 @@ namespace artery {
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         const Timer *mTimer = nullptr;
 
-        BaseFusion *fusionApplication;
+        BaseFusion *mFusionApplication;
         static traci::Boundary mSimulationBoundary;
         std::map<uint32_t, DetectedSender *> detectedSenders;
         static std::shared_ptr<const traci::API> mTraciAPI;

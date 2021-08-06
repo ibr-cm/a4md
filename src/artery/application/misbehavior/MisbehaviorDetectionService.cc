@@ -70,12 +70,13 @@ namespace artery {
         }
 
 
-        fusionApplication = new ThresholdFusion(0.5);
+        mFusionApplication = new ThresholdFusion(F2MDParameters::detectionParameters.misbehaviorThreshold);
     }
 
     void MisbehaviorDetectionService::initializeParameters() {
 
         F2MDParameters::detectionParameters.checkType = par("checkType");
+        F2MDParameters::detectionParameters.misbehaviorThreshold = par("misbehaviorThreshold");
         F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
         F2MDParameters::detectionParameters.maxPlausibleAcceleration = par("maxPlausibleAcceleration");
         F2MDParameters::detectionParameters.maxPlausibleDeceleration = par("maxPlausibleDeceleration");
@@ -201,7 +202,7 @@ namespace artery {
                                                                                surroundingCamObjects);
 
 //        std::cout << result->toString(0.5) << std::endl;
-        std::vector<std::bitset<16>> detectionLevelErrorCodes = fusionApplication->checkForReport(*result);
+        std::vector<std::bitset<16>> detectionLevelErrorCodes = mFusionApplication->checkForReport(*result);
         return detectionLevelErrorCodes;
     }
 

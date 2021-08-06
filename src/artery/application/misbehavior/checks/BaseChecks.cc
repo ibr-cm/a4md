@@ -43,6 +43,38 @@ namespace artery {
         kalmanVI->setInitial(speedVector.x.value(), speedVector.y.value());
     }
 
+    BaseChecks::BaseChecks(std::shared_ptr<const traci::API> traciAPI,
+                           GlobalEnvironmentModel *globalEnvironmentModel,
+                           DetectionParameters *detectionParameters) :
+            detectionParameters(detectionParameters) {
+        if (!staticInitializationComplete) {
+            staticInitializationComplete = true;
+            mGlobalEnvironmentModel = globalEnvironmentModel;
+            mTraciAPI = std::move(traciAPI);
+            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+        }
+    }
+
+    void BaseChecks::initializeKalmanFilters(const vanetza::asn1::Cam &message){
+        Position position = convertReferencePosition(
+                message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+        double speed =
+                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
+                100.0;
+        double heading =
+                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
+                10.0;
+        Position speedVector = getVector(speed, heading);
+        kalmanSVI = new Kalman_SVI();
+        kalmanSVSI = new Kalman_SC();
+        kalmanSI = new Kalman_SI();
+        kalmanVI = new Kalman_SI();
+        kalmanSVI->setInitial(position.x.value(), position.y.value(), speedVector.x.value(), speedVector.y.value());
+        kalmanSVSI->setInitial(0, speed);
+        kalmanSI->setInitial(position.x.value(), position.y.value());
+        kalmanVI->setInitial(speedVector.x.value(), speedVector.y.value());
+    }
+
     double BaseChecks::FrequencyCheck(const double &deltaTime) const {
         if (deltaTime > detectionParameters->maxCamFrequency * 1000) {
             return 0;

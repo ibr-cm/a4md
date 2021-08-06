@@ -16,7 +16,7 @@ namespace artery {
 
         struct Report;
         struct SemanticDetection {
-            int detectionLevel;
+            detectionLevels::DetectionLevels detectionLevel;
             std::bitset<16> errorCode;
         };
 
