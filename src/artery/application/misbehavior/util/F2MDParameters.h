@@ -117,6 +117,7 @@ namespace artery {
     struct MisbehaviorAuthorityParameters {
         double maxReportAge;
         int reportCountThreshold;
+        int checkType;
         bool enableWebGui;
         std::string webGuiDataUrl;
         double guiJsonDataUpdateInterval;

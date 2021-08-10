@@ -13,15 +13,19 @@ namespace artery {
         LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                      DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
 
+        LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                     DetectionParameters *detectionParameters);
+
         CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
                               const std::vector<Position> &receiverVehicleOutline,
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                               const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) override;
 
+        std::bitset<16> checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
+                                                  const vanetza::asn1::Cam &lastCam) override;
+
     protected:
 
-        LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                     DetectionParameters *detectionParameters);
 
         double PositionPlausibilityCheck(const Position &senderPosition, const double &senderSpeed) const;
 

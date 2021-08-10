@@ -18,6 +18,8 @@
 #include <artery/application/misbehavior/util/F2MDParameters.h>
 #include "artery/traci/VehicleController.h"
 #include "artery/utility/Geometry.h"
+#include "artery/application/misbehavior/fusion/ThresholdFusion.h"
+
 
 namespace artery {
 
@@ -35,12 +37,17 @@ namespace artery {
                                       const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                                       const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) = 0;
 
+        virtual std::bitset<16> checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
+                                                          const vanetza::asn1::Cam &lastCam) = 0;
+
+
     protected:
         static bool staticInitializationComplete;
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         static traci::Boundary mSimulationBoundary;
         static std::shared_ptr<const traci::API> mTraciAPI;
         DetectionParameters *detectionParameters;
+        ThresholdFusion *mThresholdFusion;
 
         Position mLastCamPosition;
         PosConfidenceEllipse_t mLastCamPositionConfidence;

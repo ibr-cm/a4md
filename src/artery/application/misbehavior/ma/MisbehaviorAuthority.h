@@ -20,7 +20,7 @@
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include <rapidjson/document.h>
 #include "artery/application/misbehavior/fusion/BaseFusion.h"
-#include "artery/application/misbehavior/ma/LegacyValidate.h"
+#include <artery/application/misbehavior/checks/BaseChecks.h>
 
 namespace artery {
 
@@ -78,7 +78,7 @@ namespace artery {
         std::shared_ptr<const traci::API> mTraciAPI;
         Timer mTimer;
         BaseFusion *mFusionApplication;
-        LegacyValidate *mLegacyValidate;
+        BaseChecks *mBaseChecks;
 
         std::map<StationID_t, ReportedPseudonym *> mReportedPseudonyms;
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;

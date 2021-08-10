@@ -201,7 +201,7 @@ namespace artery {
                                                                                mVehicleOutline,
                                                                                surroundingCamObjects);
 
-//        std::cout << result->toString(0.5) << std::endl;
+        std::cout << result->toString(0.5) << std::endl;
         std::vector<std::bitset<16>> detectionLevelErrorCodes = mFusionApplication->checkForReport(*result);
         return detectionLevelErrorCodes;
     }

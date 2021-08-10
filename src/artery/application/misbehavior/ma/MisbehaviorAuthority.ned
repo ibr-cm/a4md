@@ -7,6 +7,7 @@ simple MisbehaviorAuthority
 		string datetime;
         double maxReportAge @unit(s) = default(5.0s);
         int reportCountThreshold = default(5);
+        int checkType = default(0);
 
         bool enableWebGui = default(false);
         string webGuiDataUrl = default("http://localhost:9981/updateData");

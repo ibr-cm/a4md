@@ -6,6 +6,7 @@
 #include <utility>
 #include <artery/traci/Cast.h>
 #include "artery/application/misbehavior/util/HelperFunctions.h"
+#include "artery/application/misbehavior/util/DetectionLevels.h"
 
 namespace artery {
 
@@ -447,7 +448,94 @@ namespace artery {
     CatchChecks::CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                              DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message) : BaseChecks(
             std::move(traciAPI), globalEnvironmentModel, detectionParameters, message) {
+    }
 
+    std::bitset<16> CatchChecks::checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
+                                                             const vanetza::asn1::Cam &lastCam) {
+        auto *result = new CheckResult;
+        initializeKalmanFilters(lastCam);
+
+        Position currentCamPosition = convertReferencePosition(
+                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+        PosConfidenceEllipse_t currentCamPositionConfidence =
+                currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+        std::vector<Position> currentCamPositionEllipse = createEllipse(currentCamPosition,
+                                                                        currentCamPositionConfidence);
+        double currentCamEllipseRadius = (double) currentCamPositionConfidence.semiMajorConfidence / 100;
+
+        BasicVehicleContainerHighFrequency_t currentCamHfc =
+                currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+        double currentCamSpeed = (double) currentCamHfc.speed.speedValue / 100.0;
+        double currentCamSpeedConfidence = (double) currentCamHfc.speed.speedConfidence / 100.0;
+        double currentCamAcceleration =
+                (double) currentCamHfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
+        double currentCamHeading = (double) currentCamHfc.heading.headingValue / 10;
+        double currentCamHeadingConfidence = (double) currentCamHfc.heading.headingConfidence / 10.0;
+        Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
+        Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
+
+        Position lastCamPosition = convertReferencePosition(
+                lastCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+        PosConfidenceEllipse_t lastCamPositionConfidence =
+                lastCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+        std::vector<Position> lastCamPositionEllipse = createEllipse(lastCamPosition,
+                                                                     lastCamPositionConfidence);
+        double lastCamEllipseRadius = (double) lastCamPositionConfidence.semiMajorConfidence / 100;
+
+        BasicVehicleContainerHighFrequency_t lastCamHfc =
+                lastCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+        double lastCamSpeed = (double) lastCamHfc.speed.speedValue / 100.0;
+        double lastCamSpeedConfidence = (double) lastCamHfc.speed.speedConfidence / 100.0;
+        double lastCamAcceleration =
+                (double) lastCamHfc.longitudinalAcceleration.longitudinalAccelerationValue / 10.0;
+        double lastCamHeading = (double) lastCamHfc.heading.headingValue / 10;
+        Position lastCamSpeedVector = getVector(lastCamSpeed, lastCamHeading);
+        Position lastCamAccelerationVector = getVector(lastCamAcceleration, currentCamHeading);
+
+        auto camDeltaTime = (double) (uint16_t) (currentCam->cam.generationDeltaTime -
+                                                 lastCam->cam.generationDeltaTime);
+        result->consistencyIsChecked = true;
+
+        result->positionConsistency =
+                PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
+                                         lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
+                                         camDeltaTime);
+        result->speedConsistency =
+                SpeedConsistencyCheck(currentCamSpeed, currentCamSpeedConfidence, lastCamSpeed,
+                                      lastCamSpeedConfidence, camDeltaTime);
+
+
+        result->positionSpeedConsistency =
+                PositionSpeedConsistencyCheck(currentCamPosition, currentCamPositionEllipse,
+                                              currentCamEllipseRadius,
+                                              lastCamPosition, lastCamPositionEllipse, lastCamEllipseRadius,
+                                              currentCamSpeed, currentCamSpeedConfidence,
+                                              lastCamSpeed, lastCamSpeedConfidence, camDeltaTime);
+        result->positionSpeedMaxConsistency =
+                PositionSpeedMaxConsistencyCheck(currentCamPosition, currentCamPositionConfidence, lastCamPosition,
+                                                 lastCamPositionConfidence, currentCamSpeed,
+                                                 currentCamSpeedConfidence, lastCamSpeed, lastCamSpeedConfidence,
+                                                 camDeltaTime);
+        result->positionHeadingConsistency =
+                PositionHeadingConsistencyCheck(currentCamHeading, currentCamHeadingConfidence, currentCamPosition,
+                                                currentCamPositionConfidence, lastCamPosition,
+                                                lastCamPositionConfidence, currentCamSpeed,
+                                                currentCamSpeedConfidence, camDeltaTime);
+        KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
+                     currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
+                     currentCamAccelerationVector, currentCamHeading, lastCamPosition,
+                     lastCamSpeedVector, camDeltaTime, result);
+        result->frequency = BaseChecks::FrequencyCheck(camDeltaTime);
+        std::cout << result->toString(0.5) << std::endl;
+
+        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level2];
+
+    }
+
+    CatchChecks::CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                             DetectionParameters *detectionParameters)
+            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters) {
+        mThresholdFusion = new ThresholdFusion(detectionParameters->misbehaviorThreshold);
     }
 
 

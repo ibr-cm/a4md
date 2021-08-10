@@ -9,7 +9,10 @@
 #include "artery/application/misbehavior/MisbehaviorReportObject.h"
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
 #include "artery/application/misbehavior/util/DetectionLevels.h"
+#include "artery/application/misbehavior/util/CheckTypes.h"
 #include "artery/application/misbehavior/fusion/ThresholdFusion.h"
+#include <artery/application/misbehavior/checks/LegacyChecks.h>
+#include <artery/application/misbehavior/checks/CatchChecks.h>
 #include <bitset>
 #include <chrono>
 #include <numeric>
@@ -59,6 +62,7 @@ namespace artery {
 
         F2MDParameters::misbehaviorAuthorityParameters.maxReportAge = par("maxReportAge");
         F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
+        F2MDParameters::misbehaviorAuthorityParameters.checkType = par("checkType");
         F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
         F2MDParameters::misbehaviorAuthorityParameters.enableWebGui = par("enableWebGui");
         F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl = par("webGuiDataUrl").stdstringValue();
@@ -85,8 +89,15 @@ namespace artery {
         if (signal == traciInitSignal) {
             auto core = check_and_cast<traci::Core *>(source);
             mTraciAPI = core->getAPI();
-            mLegacyValidate = new LegacyValidate(mTraciAPI, mGlobalEnvironmentModel,
-                                                 &F2MDParameters::detectionParameters);
+            switch (F2MDParameters::misbehaviorAuthorityParameters.checkType) {
+                case checkTypes::LegacyChecks:
+                    mBaseChecks = new LegacyChecks(mTraciAPI, mGlobalEnvironmentModel,
+                                                   &F2MDParameters::detectionParameters);
+                    break;
+                case checkTypes::CatchChecks:
+                    mBaseChecks = new CatchChecks(mTraciAPI, mGlobalEnvironmentModel,
+                                                   &F2MDParameters::detectionParameters);
+            }
         } else if (signal == traciCloseSignal) {
             clear();
         }
@@ -161,11 +172,13 @@ namespace artery {
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages = report.evidence.reportedMessages;
         for (int i = 0; i < reportedMessages.size() - 1; i++) {
-            actualErrorCodes |= mLegacyValidate->checkSemanticLevel2Report(*reportedMessages[i],
-                                                                           *reportedMessages[i + 1]);
+            actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*reportedMessages[i],
+                                                                       *reportedMessages[i + 1]);
         }
-        actualErrorCodes |= mLegacyValidate->checkSemanticLevel2Report(*reportedMessages.back(),
-                                                                       *report.reportedMessage);
+        actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*reportedMessages.back(),
+                                                                   *report.reportedMessage);
+        std::cout << "reported: " << reportedErrorCodes.to_string() << std::endl;
+        std::cout << "actual:   " << actualErrorCodes.to_string() << std::endl;
         for (int i = 0; i < actualErrorCodes.size(); i++) {
             if (reportedErrorCodes[i] == 1 && actualErrorCodes[i] == 0) {
                 return false;
@@ -181,7 +194,6 @@ namespace artery {
                     break;
                 case detectionLevels::Level2:
                     return validateSemanticLevel2Report(report);
-                    break;
                 case detectionLevels::Level3:
                     break;
                 case detectionLevels::Level4:
@@ -190,6 +202,7 @@ namespace artery {
                     break;
             }
         }
+        return false;
     }
 
     misbehaviorTypes::MisbehaviorTypes MisbehaviorAuthority::getActualMisbehaviorType(const StationID_t &stationId) {
