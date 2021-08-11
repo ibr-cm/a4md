@@ -11,18 +11,23 @@ namespace artery {
         LegacyChecks() = delete;
 
         LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                     DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
+                     DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message);
 
         LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                     DetectionParameters *detectionParameters);
+                     DetectionParameters *detectionParameters, const Timer *timer);
 
         CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
                               const std::vector<Position> &receiverVehicleOutline,
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-                              const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) override;
+                              const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) override;
+
+        std::bitset<16> checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam) override;
 
         std::bitset<16> checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
                                                   const vanetza::asn1::Cam &lastCam) override;
+
+        std::bitset<16> checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
+                                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
     protected:
 
@@ -32,7 +37,7 @@ namespace artery {
         double SpeedPlausibilityCheck(const double &speed) const;
 
         double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                          const vector<vanetza::asn1::Cam *> &surroundingCamObjects);
+                                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects);
 
         double RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const;
 
@@ -54,9 +59,9 @@ namespace artery {
                                                const double &currentSpeed) const;
 
         double IntersectionCheck(const std::vector<Position> &receiverVehicleOutline,
-                                 const std::vector<vanetza::asn1::Cam *> &relevantCams,
+                                 const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams,
                                  const Position &senderPosition, const double &senderLength,
-                                 const double &senderWidth, const double &senderHeading, const double &deltaTime);
+                                 const double &senderWidth, const double &senderHeading);
 
         double SuddenAppearanceCheck(const Position &senderPosition, const Position &receiverPosition) const;
 

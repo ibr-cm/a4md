@@ -10,12 +10,14 @@ namespace artery {
     GlobalEnvironmentModel *BaseChecks::mGlobalEnvironmentModel;
     std::shared_ptr<const traci::API> BaseChecks::mTraciAPI;
     traci::Boundary BaseChecks::mSimulationBoundary;
+    const Timer *BaseChecks::mTimer;
 
     using namespace omnetpp;
 
     BaseChecks::BaseChecks(std::shared_ptr<const traci::API> traciAPI,
                            GlobalEnvironmentModel *globalEnvironmentModel,
                            DetectionParameters *detectionParameters,
+                           const Timer *timer,
                            const vanetza::asn1::Cam &message) :
             detectionParameters(detectionParameters) {
         if (!staticInitializationComplete) {
@@ -23,6 +25,7 @@ namespace artery {
             mGlobalEnvironmentModel = globalEnvironmentModel;
             mTraciAPI = std::move(traciAPI);
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+            mTimer = timer;
         }
         Position position = convertReferencePosition(
                 message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
@@ -45,13 +48,15 @@ namespace artery {
 
     BaseChecks::BaseChecks(std::shared_ptr<const traci::API> traciAPI,
                            GlobalEnvironmentModel *globalEnvironmentModel,
-                           DetectionParameters *detectionParameters) :
+                           DetectionParameters *detectionParameters,
+                           const Timer *timer) :
             detectionParameters(detectionParameters) {
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
             mGlobalEnvironmentModel = globalEnvironmentModel;
             mTraciAPI = std::move(traciAPI);
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
+            mTimer = timer;
         }
     }
 

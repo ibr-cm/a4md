@@ -23,12 +23,14 @@ namespace artery {
     class DetectedSender {
     public:
         DetectedSender(const std::shared_ptr<const traci::API> &traciAPI,
-                       GlobalEnvironmentModel *globalEnvironmentModel, DetectionParameters *detectionParameters,
+                       GlobalEnvironmentModel *globalEnvironmentModel,
+                       DetectionParameters *detectionParameters,
+                       const Timer *timer,
                        const vanetza::asn1::Cam &message);
 
         CheckResult *addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
                                     const std::vector<Position> &receiverVehicleOutline,
-                                    const std::vector<vanetza::asn1::Cam *> &relevantCams);
+                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams);
 
         StationID_t getStationId() const { return mStationId; };
 

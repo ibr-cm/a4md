@@ -92,11 +92,11 @@ namespace artery {
             switch (F2MDParameters::misbehaviorAuthorityParameters.checkType) {
                 case checkTypes::LegacyChecks:
                     mBaseChecks = new LegacyChecks(mTraciAPI, mGlobalEnvironmentModel,
-                                                   &F2MDParameters::detectionParameters);
+                                                   &F2MDParameters::detectionParameters, &mTimer);
                     break;
                 case checkTypes::CatchChecks:
                     mBaseChecks = new CatchChecks(mTraciAPI, mGlobalEnvironmentModel,
-                                                   &F2MDParameters::detectionParameters);
+                                                  &F2MDParameters::detectionParameters, &mTimer);
             }
         } else if (signal == traciCloseSignal) {
             clear();
@@ -149,7 +149,7 @@ namespace artery {
                     reportedPseudonym = new ReportedPseudonym(reportPtr);
                     mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
                 }
-                if(validateReport(*reportPtr)){
+                if (validateReport(*reportPtr)) {
                     updateReactionType(*reportedPseudonym);
                     updateDetectionRates(*reportedPseudonym, *reportPtr);
                 } else {
@@ -167,6 +167,21 @@ namespace artery {
         }
     }
 
+    bool compareErrorCodes(std::bitset<16> reportedErrorCodes, std::bitset<16> actualErrorCodes) {
+        for (int i = 0; i < actualErrorCodes.size(); i++) {
+            if (reportedErrorCodes[i] == 1 && actualErrorCodes[i] == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool MisbehaviorAuthority::validateSemanticLevel1Report(const ma::Report &report) {
+        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel1Report(*report.reportedMessage);
+        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
+        return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
+    }
+
     bool MisbehaviorAuthority::validateSemanticLevel2Report(const ma::Report &report) {
         std::bitset<16> actualErrorCodes;
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
@@ -177,25 +192,27 @@ namespace artery {
         }
         actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*reportedMessages.back(),
                                                                    *report.reportedMessage);
-        std::cout << "reported: " << reportedErrorCodes.to_string() << std::endl;
-        std::cout << "actual:   " << actualErrorCodes.to_string() << std::endl;
-        for (int i = 0; i < actualErrorCodes.size(); i++) {
-            if (reportedErrorCodes[i] == 1 && actualErrorCodes[i] == 0) {
-                return false;
-            }
-        }
-        return true;
+        return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
+    }
+
+    bool MisbehaviorAuthority::validateSemanticLevel3Report(const ma::Report &report) {
+        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel3Report(*report.reportedMessage,
+                                                                                  report.evidence.neighbourMessages);
+        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages = report.evidence.neighbourMessages;
+
+        return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
     bool MisbehaviorAuthority::validateReport(const ma::Report &report) {
         if (report.detectionType.semantic != nullptr) {
             switch (report.detectionType.semantic->detectionLevel) {
                 case detectionLevels::Level1:
-                    break;
+                    return validateSemanticLevel1Report(report);
                 case detectionLevels::Level2:
                     return validateSemanticLevel2Report(report);
                 case detectionLevels::Level3:
-                    break;
+                    return validateSemanticLevel3Report(report);
                 case detectionLevels::Level4:
                     break;
                 default:

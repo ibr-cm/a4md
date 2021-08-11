@@ -56,7 +56,7 @@ namespace artery {
         void initializeParameters();
 
 
-        std::vector<vanetza::asn1::Cam *> getSurroundingCamObjects(StationID_t senderStationId);
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> getSurroundingCamObjects(StationID_t senderStationId);
 
         std::vector<std::bitset<16>> checkCam(const vanetza::asn1::Cam &message);
 

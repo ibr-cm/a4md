@@ -12,6 +12,7 @@
 #include <artery/application/misbehavior/checks/kalman/Kalman_SC.h>
 #include <artery/application/misbehavior/checks/kalman/Kalman_SI.h>
 #include <artery/application/misbehavior/checks/BaseChecks.h>
+#include "artery/application/Timer.h"
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/envmod/GlobalEnvironmentModel.h>
 #include <artery/application/VehicleDataProvider.h>
@@ -26,19 +27,24 @@ namespace artery {
     class BaseChecks {
     public:
         BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                   DetectionParameters *detectionParameters, const vanetza::asn1::Cam &message);
+                   DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message);
 
         BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                   DetectionParameters *detectionParameters);
+                   DetectionParameters *detectionParameters, const Timer *timer);
 
 
         virtual CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
                                       const std::vector<Position> &receiverVehicleOutline,
                                       const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-                                      const std::vector<vanetza::asn1::Cam *> &surroundingCamObjects) = 0;
+                                      const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) = 0;
+
+        virtual std::bitset<16> checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam) = 0;
 
         virtual std::bitset<16> checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
                                                           const vanetza::asn1::Cam &lastCam) = 0;
+
+        virtual std::bitset<16> checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
+                                                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) = 0;
 
 
     protected:
@@ -46,6 +52,7 @@ namespace artery {
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         static traci::Boundary mSimulationBoundary;
         static std::shared_ptr<const traci::API> mTraciAPI;
+        static const Timer *mTimer;
         DetectionParameters *detectionParameters;
         ThresholdFusion *mThresholdFusion;
 

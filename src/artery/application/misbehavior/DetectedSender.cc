@@ -12,6 +12,7 @@ namespace artery {
     DetectedSender::DetectedSender(const std::shared_ptr<const traci::API> &traciAPI,
                                    GlobalEnvironmentModel *globalEnvironmentModel,
                                    DetectionParameters *detectionParameters,
+                                   const Timer *timer,
                                    const vanetza::asn1::Cam &message) {
         mStationId = message->header.stationID;
         mHasBeenReported = false;
@@ -19,10 +20,10 @@ namespace artery {
         mOmittedReportsCumulated = 0;
         switch (detectionParameters->checkType) {
             case checkTypes::LegacyChecks:
-                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, message);
+                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, message);
                 break;
             case checkTypes::CatchChecks:
-                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters, message);
+                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters,timer, message);
         }
     }
 
@@ -30,7 +31,7 @@ namespace artery {
     CheckResult *
     DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
                                    const std::vector<Position> &receiverVehicleOutline,
-                                   const std::vector<vanetza::asn1::Cam *> &relevantCams) {
+                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams) {
         CheckResult *result;
         if (!checkResults.empty()) {
             result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message,

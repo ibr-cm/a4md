@@ -128,9 +128,13 @@ namespace artery {
 
         void updateReactionType(ReportedPseudonym &reportedPseudonym);
 
+        bool validateSemanticLevel1Report(const ma::Report &report);
+
         bool validateSemanticLevel2Report(const ma::Report& report);
 
         bool validateReport(const ma::Report &report);
+
+        bool validateSemanticLevel3Report(const ma::Report &report);
     };
 } // namespace artery
 

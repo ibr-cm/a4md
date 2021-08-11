@@ -16,7 +16,7 @@ namespace artery {
         std::vector<std::bitset<16>> detectionLevelErrorCodes(4);
 
         if (checkResult.rangePlausibility < threshold) {
-            detectionLevelErrorCodes[detectionLevels::Level1][0] = true;
+            detectionLevelErrorCodes[detectionLevels::Level4][0] = true;
         }
         if (checkResult.speedPlausibility < threshold) {
             detectionLevelErrorCodes[detectionLevels::Level1][2] = true;
