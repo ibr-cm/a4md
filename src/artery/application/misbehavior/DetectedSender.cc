@@ -48,7 +48,7 @@ namespace artery {
 
     bool DetectedSender::checkOmittedReportsLimit(const bitset<16> &reportedErrorCodes) {
         if (!mHasBeenReported) {
-            std::cout << "  hasn't been reported yet" << std::endl;
+//            std::cout << "  hasn't been reported yet" << std::endl;
             return true;
         }
         if (F2MDParameters::reportParameters.omittedReportsCountPerErrorCode) {

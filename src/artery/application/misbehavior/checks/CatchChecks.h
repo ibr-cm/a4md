@@ -17,7 +17,7 @@ namespace artery {
                     DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message);
 
         CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                    DetectionParameters *detectionParameters, const Timer *timer);
+                    DetectionParameters *detectionParameters, double misbehaviorThreshold, const Timer *timer);
 
         CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
                               const std::vector<Position> &receiverVehicleOutline,
@@ -31,6 +31,10 @@ namespace artery {
 
         std::bitset<16> checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
                                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
+
+        std::bitset<16>
+        checkSemanticLevel4Report(const vanetza::asn1::Cam &currentCam, const Position &receiverPosition,
+                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
     protected:
         double PositionPlausibilityCheck(const Position &senderPosition,

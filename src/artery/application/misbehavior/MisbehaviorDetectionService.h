@@ -41,11 +41,13 @@ namespace artery {
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         const Timer *mTimer = nullptr;
 
-        BaseFusion *mFusionApplication;
-        static traci::Boundary mSimulationBoundary;
-        std::map<uint32_t, DetectedSender *> detectedSenders;
-        static std::shared_ptr<const traci::API> mTraciAPI;
         static bool staticInitializationComplete;
+        static traci::Boundary mSimulationBoundary;
+        static std::shared_ptr<const traci::API> mTraciAPI;
+
+        std::shared_ptr<vanetza::asn1::Cam> mLastSentCam;
+        BaseFusion *mFusionApplication;
+        std::map<uint32_t, DetectedSender *> detectedSenders;
         std::string lastPolyId;
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;

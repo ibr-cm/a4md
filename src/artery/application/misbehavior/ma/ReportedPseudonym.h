@@ -24,7 +24,9 @@ namespace artery {
 
         std::vector<std::shared_ptr<ma::Report>> getReports() { return mReportList; };
 
-        size_t getReportCount() { return mReportList.size(); };
+        int getReportCount() { return (int) mReportList.size(); };
+
+        int getValidReportCount() {return mValidReportCount;};
 
         std::shared_ptr<ma::Report> getLastReport(){return mReportList.back();};
 
@@ -40,6 +42,7 @@ namespace artery {
     private:
         StationID_t mStationId;
         std::vector<std::shared_ptr<ma::Report>> mReportList;
+        int mValidReportCount;
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
         attackTypes::AttackTypes mActualAttackType;
         reactionTypes::ReactionTypes mReactionType;

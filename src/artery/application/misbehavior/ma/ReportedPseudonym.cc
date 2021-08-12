@@ -20,6 +20,9 @@ namespace artery {
 
     void ReportedPseudonym::addReport(const std::shared_ptr<ma::Report> &report) {
         mReportList.emplace_back(report);
+        if(report->isValid){
+            mValidReportCount++;
+        }
     }
 
     void ReportedPseudonym::setReactionType(reactionTypes::ReactionTypes reactionType){
@@ -28,7 +31,7 @@ namespace artery {
 
     misbehaviorTypes::MisbehaviorTypes ReportedPseudonym::predictMisbehaviorType() {
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType;
-        if (mReportList.size() > F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold) {
+        if (mValidReportCount > F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold) {
             predictedMisbehaviorType = misbehaviorTypes::LocalAttacker;
         } else {
             predictedMisbehaviorType = misbehaviorTypes::Benign;

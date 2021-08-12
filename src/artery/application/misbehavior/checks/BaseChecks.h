@@ -46,6 +46,10 @@ namespace artery {
         virtual std::bitset<16> checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
                                                           const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) = 0;
 
+        virtual std::bitset<16>
+        checkSemanticLevel4Report(const vanetza::asn1::Cam &currentCam, const Position &receiverPosition,
+                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) = 0;
+
 
     protected:
         static bool staticInitializationComplete;

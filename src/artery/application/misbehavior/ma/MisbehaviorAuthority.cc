@@ -58,11 +58,10 @@ namespace artery {
         }
         mGlobalEnvironmentModel = dynamic_cast<GlobalEnvironmentModel *>(globalEnvMod);
 
-        mFusionApplication = new ThresholdFusion(0.5);
-
         F2MDParameters::misbehaviorAuthorityParameters.maxReportAge = par("maxReportAge");
         F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.checkType = par("checkType");
+        F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold = par("misbehaviorThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
         F2MDParameters::misbehaviorAuthorityParameters.enableWebGui = par("enableWebGui");
         F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl = par("webGuiDataUrl").stdstringValue();
@@ -89,14 +88,19 @@ namespace artery {
         if (signal == traciInitSignal) {
             auto core = check_and_cast<traci::Core *>(source);
             mTraciAPI = core->getAPI();
+            mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
             switch (F2MDParameters::misbehaviorAuthorityParameters.checkType) {
                 case checkTypes::LegacyChecks:
                     mBaseChecks = new LegacyChecks(mTraciAPI, mGlobalEnvironmentModel,
-                                                   &F2MDParameters::detectionParameters, &mTimer);
+                                                   &F2MDParameters::detectionParameters,
+                                                   F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold,
+                                                   &mTimer);
                     break;
                 case checkTypes::CatchChecks:
                     mBaseChecks = new CatchChecks(mTraciAPI, mGlobalEnvironmentModel,
-                                                  &F2MDParameters::detectionParameters, &mTimer);
+                                                  &F2MDParameters::detectionParameters,
+                                                  F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold,
+                                                  &mTimer);
             }
         } else if (signal == traciCloseSignal) {
             clear();
@@ -104,7 +108,7 @@ namespace artery {
     }
 
     void MisbehaviorAuthority::updateReactionType(ReportedPseudonym &reportedPseudonym) {
-        size_t reportCount = reportedPseudonym.getReportCount();
+        size_t reportCount = reportedPseudonym.getValidReportCount();
         reactionTypes::ReactionTypes newReactionType = reactionTypes::Nothing;
         if (reportCount > 20) {
             newReactionType = reactionTypes::Warning;
@@ -129,17 +133,25 @@ namespace artery {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
             std::shared_ptr<ma::Report> reportPtr(parseReport(misbehaviorReport));
+//            std::cout << "parsed report" << std::endl;
             if (reportPtr != nullptr) {
                 mTotalReportCount++;
                 mNewReport = true;
-
-                mReports.emplace(reportPtr->reportId, reportPtr);
-                StationID_t reportedStationId;
                 if (reportPtr->reportedMessage == nullptr) {
-                    reportedStationId = (*reportPtr->relatedReport->referencedReport->reportedMessage)->header.stationID;
-                } else {
-                    reportedStationId = (*reportPtr->reportedMessage)->header.stationID;
+                    reportPtr->reportedMessage = reportPtr->relatedReport->referencedReport->reportedMessage;
                 }
+                reportPtr->isValid = validateReportReason(*reportPtr);
+                if(!reportPtr->isValid){
+                    std::cout << "######### report validation failed" << std::endl;
+                }
+                mReports.emplace(reportPtr->reportId, reportPtr);
+                
+                StationID_t reportedStationId;
+//                    reportedStationId = (*reportPtr->relatedReport->referencedReport->reportedMessage)->header.stationID;
+//                } else {
+                    reportedStationId = (*reportPtr->reportedMessage)->header.stationID;
+//                }
+                
                 ReportedPseudonym *reportedPseudonym;
                 auto it = mReportedPseudonyms.find(reportedStationId);
                 if (it != mReportedPseudonyms.end()) {
@@ -149,12 +161,10 @@ namespace artery {
                     reportedPseudonym = new ReportedPseudonym(reportPtr);
                     mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
                 }
-                if (validateReport(*reportPtr)) {
-                    updateReactionType(*reportedPseudonym);
-                    updateDetectionRates(*reportedPseudonym, *reportPtr);
-                } else {
-                    std::cout << "######### report validation failed" << std::endl;
-                }
+                
+                updateReactionType(*reportedPseudonym);
+                updateDetectionRates(*reportedPseudonym, *reportPtr);
+                std::cout << "processed report" << std::endl;
             }
         } else if (signal == maMisbehaviorAnnouncement) {
             std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t> *>(obj);
@@ -199,12 +209,21 @@ namespace artery {
         std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel3Report(*report.reportedMessage,
                                                                                   report.evidence.neighbourMessages);
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
-        std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages = report.evidence.neighbourMessages;
 
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateReport(const ma::Report &report) {
+    bool MisbehaviorAuthority::validateSemanticLevel4Report(const ma::Report &report) {
+        Position senderPosition = convertReferencePosition(report.evidence.senderInfo->referencePosition,
+                                                           mSimulationBoundary, mTraciAPI);
+        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel4Report(*report.reportedMessage,
+                                                                                  senderPosition,
+                                                                                  report.evidence.neighbourMessages);
+        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
+        return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
+    }
+
+    bool MisbehaviorAuthority::validateReportReason(const ma::Report &report) {
         if (report.detectionType.semantic != nullptr) {
             switch (report.detectionType.semantic->detectionLevel) {
                 case detectionLevels::Level1:
@@ -214,7 +233,7 @@ namespace artery {
                 case detectionLevels::Level3:
                     return validateSemanticLevel3Report(report);
                 case detectionLevels::Level4:
-                    break;
+                    return validateSemanticLevel4Report(report);
                 default:
                     break;
             }
@@ -238,7 +257,6 @@ namespace artery {
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorTypeAggregated =
                 reportedPseudonym.predictMisbehaviorTypeAggregate();
 
-        misbehaviorTypes::MisbehaviorTypes actualMisbehaviorType;
         if (predictedMisbehaviorType == getActualMisbehaviorType(reportedPseudonym.getStationId())) {
             mTrueDetectionCount++;
         } else {
@@ -389,21 +407,36 @@ namespace artery {
                                 parseMessageEvidenceContainer(*neighbourMessageContainer,
                                                               report->evidence.neighbourMessages);
                             }
-//                            std::cout
-//                                    << "invalid report, neighbourMessageContainer (messageEvidenceContainer) missing!"
-//                                    << std::endl;
-//                            return nullptr;
                         }
+                        break;
                     }
                     case detectionLevels::Level4: {
-                        std::cout << "Nothing to do, DetectionLevel 4 not implemented" << std::endl;
-//                        return nullptr;
+                        if (reportContainer.evidenceContainer == nullptr) {
+                            std::cout << "invalid report, evidenceContainer missing!" << std::endl;
+                            return nullptr;
+                        } else if (reportContainer.evidenceContainer->senderInfoContainer == nullptr &&
+                                   reportContainer.evidenceContainer->senderSensorContainer == nullptr) {
+                            std::cout << "invalid report, senderInfo and senderSensor missing!" << std::endl;
+                            return nullptr;
+                        } else {
+                            if (reportContainer.evidenceContainer->senderInfoContainer != nullptr) {
+                                report->evidence.senderInfo = std::make_shared<SenderInfoContainer_t>
+                                        (*reportContainer.evidenceContainer->senderInfoContainer);
+                            }
+                            if (reportContainer.evidenceContainer->senderSensorContainer != nullptr) {
+                                report->evidence.senderSensors = std::make_shared<SenderSensorContainer_t>
+                                        (*reportContainer.evidenceContainer->senderSensorContainer);
+                            }
+                        }
                     }
+                    default:
+                        std::cout << "invalid report, invalid detectionLevel" << std::endl;
+                        break;
                 }
             }
         } else {
             std::cout << "Nothing to do, only SemanticDetection is implemented" << std::endl;
-//            return nullptr;
+            return nullptr;
 
         }
         return report;
@@ -415,6 +448,12 @@ namespace artery {
             auto *ieee1609Dot2Content = ((EtsiTs103097Data_t *) messageEvidenceContainer.list.array[i])->content;
             if (ieee1609Dot2Content->present == Ieee1609Dot2Content_PR_unsecuredData) {
                 auto *evidenceCam = (vanetza::asn1::Cam *) ieee1609Dot2Content->choice.unsecuredData.buf;
+                if((*evidenceCam)->header.messageID != 2){
+                    std::cout << "";
+                }
+                if((*evidenceCam)->header.stationID == 0){
+                    std::cout << "";
+                }
                 std::cout << "    previous genDeltaTime: " << (*evidenceCam)->cam.generationDeltaTime
                           << std::endl;
 
@@ -561,14 +600,14 @@ namespace artery {
                 std::sort(recentReported.begin(), recentReported.end(), sortByGenerationTime);
                 if (recentReported.size() < F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount) {
                     recentReported.emplace_back(
-                            RecentReported{reportedPseudonym.getStationId(), reportedPseudonym.getReportCount(),
+                            RecentReported{reportedPseudonym.getStationId(), reportedPseudonym.getValidReportCount(),
                                            reportedPseudonym.getLastReport()->generationTime});
                 } else {
                     if ((*recentReported.begin()).lastGenerationTime <
                         reportedPseudonym.getLastReport()->generationTime) {
                         recentReported.erase(recentReported.begin());
                         recentReported.emplace_back(RecentReported{reportedPseudonym.getStationId(),
-                                                                   reportedPseudonym.getReportCount(),
+                                                                   reportedPseudonym.getValidReportCount(),
                                                                    reportedPseudonym.getLastReport()->generationTime});
                     }
                 }
@@ -594,10 +633,10 @@ namespace artery {
             ReportedPseudonym reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 attackerCount++;
-                reportTpCount += (int) reportedPseudonym.getReportCount();
+                reportTpCount += (int) reportedPseudonym.getValidReportCount();
             } else {
                 benignCount++;
-                reportFpCount += (int) reportedPseudonym.getReportCount();
+                reportFpCount += (int) reportedPseudonym.getValidReportCount();
             }
         }
 
@@ -610,9 +649,9 @@ namespace artery {
         for (auto r : mReportedPseudonyms) {
             ReportedPseudonym reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
-                reportTpSdSum += pow((int) reportedPseudonym.getReportCount() - meanReportsPerAttacker, 2);
+                reportTpSdSum += pow((int) reportedPseudonym.getValidReportCount() - meanReportsPerAttacker, 2);
             } else {
-                reportFpSdSum += pow((int) reportedPseudonym.getReportCount() - meanReportsPerBenign, 2);
+                reportFpSdSum += pow((int) reportedPseudonym.getValidReportCount() - meanReportsPerBenign, 2);
             }
         }
         if (reportTpCount > 0) {

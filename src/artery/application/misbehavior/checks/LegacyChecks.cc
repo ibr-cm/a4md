@@ -37,7 +37,7 @@ namespace artery {
                                     (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
-                for (const auto& cam : surroundingCamObjects) {
+                for (const auto &cam : surroundingCamObjects) {
                     Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
                             (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                             mTraciAPI));
@@ -167,17 +167,24 @@ namespace artery {
                                     const double &senderWidth, const double &senderHeading) {
         std::vector<Position> senderOutline = getVehicleOutline(senderPosition, Angle::from_degree(senderHeading),
                                                                 senderLength, senderWidth);
+//        drawTraciPolygon(receiverVehicleOutline,"receiver",libsumo::TraCIColor(255, 0, 255, 255),mSimulationBoundary,mTraciAPI);
+//        drawTraciPolygon(senderOutline,"sender",libsumo::TraCIColor(207, 255, 0, 255),mSimulationBoundary,mTraciAPI);
         if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
             return 0;
         }
-        for (const auto& currentCam : relevantCams) {
+        for (const auto &currentCam : relevantCams) {
 
-            auto camDeltaTime = (double) (uint16_t) ((uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) -
-                    (*currentCam)->cam.generationDeltaTime);
+            auto camDeltaTime = ((double) (uint16_t) ((uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) -
+                                                     (*currentCam)->cam.generationDeltaTime)) / 1000;
             std::vector<Position> outline = getVehicleOutline((*currentCam), mSimulationBoundary, mTraciAPI);
-            double factor = intersectionFactor(senderOutline, outline) *
+            double iFactor = intersectionFactor(senderOutline, outline);
+//            std::cout << "intersectionFactor: " << iFactor << std::endl;
+            double factor = iFactor *
                             ((detectionParameters->maxIntersectionDeltaTime - camDeltaTime) /
                              detectionParameters->maxIntersectionDeltaTime);
+//            if(factor > 0.5){
+//                std::cout << "intersection failed" << std::endl;
+//            }
             return factor > 0.5 ? 0 : 1;
         }
         return 1;
@@ -259,7 +266,7 @@ namespace artery {
         return result;
     }
 
-    std::bitset<16> LegacyChecks::checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam){
+    std::bitset<16> LegacyChecks::checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam) {
 
         auto *result = new CheckResult;
 
@@ -272,7 +279,7 @@ namespace artery {
     }
 
     std::bitset<16> LegacyChecks::checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
-                                                              const vanetza::asn1::Cam &lastCam) {
+                                                            const vanetza::asn1::Cam &lastCam) {
         auto *result = new CheckResult;
         initializeKalmanFilters(lastCam);
 
@@ -328,7 +335,7 @@ namespace artery {
     }
 
     std::bitset<16> LegacyChecks::checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
-                                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams){
+                                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
         auto *result = new CheckResult;
 
         Position currentCamPosition = convertReferencePosition(
@@ -341,7 +348,8 @@ namespace artery {
         double currentCamVehicleWidth = (double) currentHfc.vehicleWidth / 10;
 
 
-        std::vector<Position> currentCamOutline = getVehicleOutline(currentCamPosition, Angle::from_degree(currentCamHeading),
+        std::vector<Position> currentCamOutline = getVehicleOutline(currentCamPosition,
+                                                                    Angle::from_degree(currentCamHeading),
                                                                     currentCamVehicleLength, currentCamVehicleWidth);
         result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
         result->intersection =
@@ -351,14 +359,29 @@ namespace artery {
         return mThresholdFusion->checkForReport(*result)[detectionLevels::Level3];
     }
 
-    LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                               DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message)
-            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters,timer, message) {
+    std::bitset<16>
+    LegacyChecks::checkSemanticLevel4Report(const vanetza::asn1::Cam &currentCam, const Position &receiverPosition,
+                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
+        auto *result = new CheckResult;
+        Position currentCamPosition = convertReferencePosition(
+                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+
+        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
+                                                                   neighbourCams);
+        result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
+
+        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level4];
     }
 
     LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                               DetectionParameters *detectionParameters, const Timer *timer)
+                               DetectionParameters *detectionParameters, const Timer *timer,
+                               const vanetza::asn1::Cam &message)
+            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer, message) {
+    }
+
+    LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                               DetectionParameters *detectionParameters,double misbehaviorThreshold, const Timer *timer)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer) {
-        mThresholdFusion = new ThresholdFusion(detectionParameters->misbehaviorThreshold);
+        mThresholdFusion = new ThresholdFusion(misbehaviorThreshold);
     }
 } // namespace artery

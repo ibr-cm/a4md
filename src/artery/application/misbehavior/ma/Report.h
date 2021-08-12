@@ -46,8 +46,8 @@ namespace artery {
         struct Evidence {
             std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages;
             std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages;
-            SenderInfoContainer_t *senderInfo;
-            SenderSensorContainer_t *senderSensors;
+            std::shared_ptr<SenderInfoContainer_t> senderInfo;
+            std::shared_ptr<SenderSensorContainer_t> senderSensors;
         };
 
 
@@ -58,6 +58,7 @@ namespace artery {
             DetectionType detectionType;
             RelatedReport *relatedReport;
             Evidence evidence;
+            bool isValid;
         };
     }
 

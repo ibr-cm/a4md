@@ -32,10 +32,9 @@ namespace artery {
             }
         };
 
-
         struct RecentReported {
             StationID_t stationId;
-            size_t reportCount;
+            int reportCount;
             uint64_t lastGenerationTime;
         };
 
@@ -75,6 +74,7 @@ namespace artery {
         omnetpp::cMessage *mSelfMsg;
         CURL *curl;
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
+        traci::Boundary mSimulationBoundary;
         std::shared_ptr<const traci::API> mTraciAPI;
         Timer mTimer;
         BaseFusion *mFusionApplication;
@@ -88,7 +88,7 @@ namespace artery {
 
         std::list<std::string> mDetectionAccuracyLabels;
         std::list<std::tuple<int, int, double>> mDetectionAccuracyData;
-        std::map<reactionTypes::ReactionTypes,std::set<StationID_t>> mReactionsList;
+        std::map<reactionTypes::ReactionTypes, std::set<StationID_t>> mReactionsList;
 
         int mTotalReportCount = 0;
         bool mNewReport = false;
@@ -130,11 +130,13 @@ namespace artery {
 
         bool validateSemanticLevel1Report(const ma::Report &report);
 
-        bool validateSemanticLevel2Report(const ma::Report& report);
-
-        bool validateReport(const ma::Report &report);
+        bool validateSemanticLevel2Report(const ma::Report &report);
 
         bool validateSemanticLevel3Report(const ma::Report &report);
+
+        bool validateSemanticLevel4Report(const ma::Report &report);
+
+        bool validateReportReason(const ma::Report &report);
     };
 } // namespace artery
 

@@ -572,15 +572,29 @@ namespace artery {
         return mThresholdFusion->checkForReport(*result)[detectionLevels::Level3];
     }
 
+    std::bitset<16>
+    CatchChecks::checkSemanticLevel4Report(const vanetza::asn1::Cam &currentCam, const Position &receiverPosition,
+                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
+        auto *result = new CheckResult;
+//        Position currentCamPosition = convertReferencePosition(
+//                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+//
+//        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
+//                                                                   neighbourCams);
+//        result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
+
+        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level4];
+    }
+
     CatchChecks::CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                              DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer, message) {
     }
 
     CatchChecks::CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                             DetectionParameters *detectionParameters, const Timer *timer)
+                             DetectionParameters *detectionParameters,double misbehaviorThreshold, const Timer *timer)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer) {
-        mThresholdFusion = new ThresholdFusion(detectionParameters->misbehaviorThreshold);
+        mThresholdFusion = new ThresholdFusion(misbehaviorThreshold);
     }
 
 
