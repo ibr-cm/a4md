@@ -76,6 +76,8 @@ namespace artery {
         mLocalDynamicMap = &getFacilities().get_mutable<artery::LocalDynamicMap>();
         mVehicleController = &getFacilities().get_const<traci::VehicleController>();
 
+        mVehicleLength = (long) (mVehicleController->getLength().value() * 10);
+        mVehicleWidth = (long) (mVehicleController->getWidth().value() * 10);
         mStationId = mVehicleDataProvider->station_id();
         WATCH(mStationId);
 
@@ -220,10 +222,10 @@ namespace artery {
         if (bvc.yawRate.yawRateValue < -32766 || bvc.yawRate.yawRateValue > 32766) {
             bvc.yawRate.yawRateValue = YawRateValue_unavailable;
         }
-        bvc.vehicleLength.vehicleLengthValue = (long) (mVehicleController->getLength().value() * 10);
+        bvc.vehicleLength.vehicleLengthValue = mVehicleLength;
         bvc.vehicleLength.vehicleLengthConfidenceIndication =
                 VehicleLengthConfidenceIndication_noTrailerPresent;
-        bvc.vehicleWidth = (long) (mVehicleController->getWidth().value() * 10);
+        bvc.vehicleWidth = mVehicleWidth;
 
         std::string error;
         if (!message.validate(error)) {

@@ -74,6 +74,9 @@ namespace artery {
         vanetza::units::Angle mHeadingDelta;
         vanetza::units::Length mPositionDelta;
         vanetza::units::Velocity mSpeedDelta;
+        VehicleWidth_t mVehicleWidth;
+        VehicleLengthValue_t mVehicleLength;
+
         bool mDccRestriction;
         bool mFixedRate;
         long mStationId;
