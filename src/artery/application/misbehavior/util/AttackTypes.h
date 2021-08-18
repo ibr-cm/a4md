@@ -39,7 +39,7 @@ namespace artery {
             DataReplaySybil = 17,
             DoSRandomSybil = 18,
             DoSDisruptiveSybil = 19,
-            MAStress = 20,
+            FakeReport = 20,
             SIZE_OF_ENUM
         };
 
@@ -60,7 +60,7 @@ namespace artery {
                                                               Disruptive, DataReplay, StaleMessages, DoS, DoSRandom,
                                                               DoSDisruptive,
                                                               GridSybil, DataReplaySybil, DoSRandomSybil,
-                                                              DoSDisruptiveSybil, MAStress};
+                                                              DoSDisruptiveSybil, FakeReport};
 
         static_assert(sizeof(attackTypes::intAttacks) / sizeof(attackTypes::AttackTypes) == attackTypes::SIZE_OF_ENUM,
                       "sizes dont match");
