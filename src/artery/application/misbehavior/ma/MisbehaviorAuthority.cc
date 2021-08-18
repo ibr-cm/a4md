@@ -2,7 +2,6 @@
 // Created by bastian on 05.07.21.
 //
 
-#include <artery/application/CaObject.h>
 #include "MisbehaviorAuthority.h"
 #include "traci/Core.h"
 #include "artery/traci/Cast.h"
@@ -18,7 +17,6 @@
 #include <numeric>
 
 #include <rapidjson/stringbuffer.h>
-#include <rapidjson/prettywriter.h>
 #include <rapidjson/writer.h>
 
 
@@ -61,6 +59,12 @@ namespace artery {
         F2MDParameters::misbehaviorAuthorityParameters.maxReportAge = par("maxReportAge");
         F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.checkType = par("checkType");
+
+        F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval = par("reportCleanupInterval");
+        F2MDParameters::misbehaviorAuthorityParameters.reportCleanupAge = par("reportCleanupAge");
+        F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionTime = par("reportCamRetentionTime");
+        F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionCleanupInterval = par("reportCamRetentionCleanupInterval");
+
         F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold = par("misbehaviorThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
         F2MDParameters::misbehaviorAuthorityParameters.enableWebGui = par("enableWebGui");
@@ -70,17 +74,49 @@ namespace artery {
         F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount = par("recentReportedCount");
 
         if (F2MDParameters::misbehaviorAuthorityParameters.enableWebGui) {
-            mSelfMsg = new cMessage("getDataScheduleMessage");
-            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval, mSelfMsg);
+            mMsgGuiUpdate = new cMessage("getDataScheduleMessage");
+            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval,
+                       mMsgGuiUpdate);
         }
+        mMsgReportCleanup = new cMessage("reportCleanupMessage");
+        scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval,
+                   mMsgReportCleanup);
     }
 
     void MisbehaviorAuthority::handleMessage(omnetpp::cMessage *msg) {
         Enter_Method("handleMessage");
-        if (msg == mSelfMsg) {
+        if (msg == mMsgGuiUpdate) {
             createGuiJsonData();
-            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval, mSelfMsg);
+            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval,
+                       mMsgGuiUpdate);
+        } else if (msg == mMsgReportCleanup) {
+            removeOldReports();
+            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval,
+                       mMsgReportCleanup);
         }
+    }
+
+    void MisbehaviorAuthority::removeOldReports() {
+        std::cout << "old report count: " << mReports.size() << std::endl;
+        std::cout << "old cam count: " << mCams.size() << std::endl;
+        for (auto it = mReports.begin(); it != mReports.end();) {
+            auto report = it->second;
+            if (countTaiMilliseconds(mTimer.getTimeFor(simTime())) - report->generationTime>
+                uint64_t(F2MDParameters::misbehaviorAuthorityParameters.reportCleanupAge * 1000)) {
+                if (report->referencedBy.empty()) {
+                    report->reportedPseudonym->removeReport(report);
+                    mReports.erase(it++);
+                    if(report->reportedMessage != nullptr){
+                        mCams.erase(report->reportedMessage);
+                    }
+                    continue;
+                }
+            }
+            it++;
+        }
+        std::cout << "new report count: " << mReports.size() << std::endl;
+        std::cout << "new cam count: " << mCams.size() << std::endl;
+
     }
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,
@@ -132,39 +168,36 @@ namespace artery {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
-            std::shared_ptr<ma::Report> reportPtr(parseReport(misbehaviorReport));
-//            std::cout << "parsed report" << std::endl;
-            if (reportPtr != nullptr) {
+            std::shared_ptr<ma::Report> report(parseReport(misbehaviorReport));
+            if (report != nullptr) {
                 mTotalReportCount++;
                 mNewReport = true;
-                if (reportPtr->reportedMessage == nullptr) {
-                    reportPtr->reportedMessage = reportPtr->relatedReport->referencedReport->reportedMessage;
+                if (report->reportedMessage == nullptr) {
+                    report->reportedMessage = report->relatedReport->referencedReport->reportedMessage;
                 }
-                reportPtr->isValid = validateReportReason(*reportPtr);
-                if(!reportPtr->isValid){
+                report->isValid = validateReportReason(*report);
+                if (!report->isValid) {
                     std::cout << "######### report validation failed" << std::endl;
                 }
-                mReports.emplace(reportPtr->reportId, reportPtr);
-                
+                mReports.emplace(report->reportId, report);
+
+
                 StationID_t reportedStationId;
-//                    reportedStationId = (*reportPtr->relatedReport->referencedReport->reportedMessage)->header.stationID;
-//                } else {
-                    reportedStationId = (*reportPtr->reportedMessage)->header.stationID;
-//                }
-                
-                ReportedPseudonym *reportedPseudonym;
+                reportedStationId = (*report->reportedMessage)->header.stationID;
+
+                std::shared_ptr<ReportedPseudonym> reportedPseudonym;
                 auto it = mReportedPseudonyms.find(reportedStationId);
                 if (it != mReportedPseudonyms.end()) {
-                    mReportedPseudonyms[reportedStationId]->addReport(reportPtr);
+                    mReportedPseudonyms[reportedStationId]->addReport(report);
                     reportedPseudonym = it->second;
                 } else {
-                    reportedPseudonym = new ReportedPseudonym(reportPtr);
+                    reportedPseudonym = std::make_shared<ReportedPseudonym>(*new ReportedPseudonym(report));
                     mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
                 }
-                
+                report->reportedPseudonym = reportedPseudonym;
+
                 updateReactionType(*reportedPseudonym);
-                updateDetectionRates(*reportedPseudonym, *reportPtr);
-                std::cout << "processed report" << std::endl;
+                updateDetectionRates(*reportedPseudonym, *report);
             }
         } else if (signal == maMisbehaviorAnnouncement) {
             std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t> *>(obj);
@@ -297,8 +330,9 @@ namespace artery {
         }
     }
 
-    ma::Report *MisbehaviorAuthority::parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport) {
-        auto *report = new ma::Report();
+    std::shared_ptr<ma::Report>
+    MisbehaviorAuthority::parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport) {
+        std::shared_ptr<ma::Report> report(new ma::Report());
         ReportMetadataContainer reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
         long generationTime;
         asn_INTEGER2long(&reportMetadataContainer.generationTime, &generationTime);
@@ -308,7 +342,6 @@ namespace artery {
             return nullptr;
         }
         std::string reportId = ia5stringToString(reportMetadataContainer.reportID);
-        std::cout << "received report: " << reportId << " " << generationTime << std::endl;
         if (reportId.empty()) {
             return nullptr;
         }
@@ -318,11 +351,12 @@ namespace artery {
         if (reportMetadataContainer.relatedReportContainer != nullptr) {
             RelatedReportContainer_t relatedReportContainer = *reportMetadataContainer.relatedReportContainer;
             std::string relatedReportId = ia5stringToString(relatedReportContainer.relatedReportID);
-            std::cout << "  relatedReportId: " << relatedReportId << " " << std::endl;
             auto it = mReports.find(relatedReportId);
             if (it != mReports.end()) {
                 report->relatedReport = new ma::RelatedReport;
-                report->relatedReport->referencedReport = it->second;
+                std::shared_ptr<ma::Report> referencedReport = it->second;
+                referencedReport->referencedBy.emplace_back(report);
+                report->relatedReport->referencedReport = referencedReport;
                 report->relatedReport->omittedReportsNumber = relatedReportContainer.omittedReportsNumber;
             } else {
                 return nullptr;
@@ -337,8 +371,6 @@ namespace artery {
                 Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessage.content;
                 if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
                     auto *cam = (vanetza::asn1::Cam *) ieee1609Dot2Content.choice.unsecuredData.buf;
-                    std::cout << "  reported StationID: " << (*cam)->header.stationID << std::endl;
-                    std::cout << "  genDeltaTime: " << (*cam)->cam.generationDeltaTime << std::endl;
                     auto camPtr = std::make_shared<vanetza::asn1::Cam>(*cam);
                     auto it = mCams.find(camPtr);
                     if (it == mCams.end()) {
@@ -347,7 +379,7 @@ namespace artery {
                         camPtr = (*it);
                     }
                     report->reportedMessage = camPtr;
-                } else if (report->relatedReport == nullptr) {
+                } else if (report->relatedReport == nullptr || report->relatedReport->referencedReport->generationTime != report->generationTime) {
                     return nullptr;
                 }
             }
@@ -363,11 +395,6 @@ namespace artery {
                 report->detectionType.semantic = semantic;
                 semantic->detectionLevel = static_cast<detectionLevels::DetectionLevels>(semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM);
                 semantic->errorCode = (std::bitset<16>) semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM.buf;
-
-                std::cout << "  detection level: "
-                          << detectionLevels::DetectionLevelStrings[semantic->detectionLevel]
-                          << std::endl;
-                std::cout << "  " << semantic->errorCode.to_string() << std::endl;
 
                 switch (semantic->detectionLevel) {
                     case detectionLevels::Level1: {
@@ -389,7 +416,6 @@ namespace artery {
                             std::cout << "invalid report, reportedMessageContainer is empty" << std::endl;
                             return nullptr;
                         }
-                        std::cout << "  evidenceCams: " << std::endl;
                         parseMessageEvidenceContainer(*reportedMessageContainer, report->evidence.reportedMessages);
                         break;
                     }
@@ -403,7 +429,6 @@ namespace artery {
                             if (neighbourMessageContainer->list.count == 0) {
                                 std::cout << "neighbourMessageContainer is empty" << std::endl;
                             } else {
-                                std::cout << "  neighbourCams: " << std::endl;
                                 parseMessageEvidenceContainer(*neighbourMessageContainer,
                                                               report->evidence.neighbourMessages);
                             }
@@ -448,15 +473,6 @@ namespace artery {
             auto *ieee1609Dot2Content = ((EtsiTs103097Data_t *) messageEvidenceContainer.list.array[i])->content;
             if (ieee1609Dot2Content->present == Ieee1609Dot2Content_PR_unsecuredData) {
                 auto *evidenceCam = (vanetza::asn1::Cam *) ieee1609Dot2Content->choice.unsecuredData.buf;
-                if((*evidenceCam)->header.messageID != 2){
-                    std::cout << "";
-                }
-                if((*evidenceCam)->header.stationID == 0){
-                    std::cout << "";
-                }
-                std::cout << "    previous genDeltaTime: " << (*evidenceCam)->cam.generationDeltaTime
-                          << std::endl;
-
                 auto camPtr = std::make_shared<vanetza::asn1::Cam>(*evidenceCam);
                 auto it = mCams.find(camPtr);
                 if (it == mCams.end()) {

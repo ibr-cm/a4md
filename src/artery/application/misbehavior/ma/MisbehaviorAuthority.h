@@ -71,7 +71,8 @@ namespace artery {
         omnetpp::simsignal_t maNewReport;
         omnetpp::simsignal_t maMisbehaviorAnnouncement;
 
-        omnetpp::cMessage *mSelfMsg;
+        omnetpp::cMessage *mMsgGuiUpdate;
+        omnetpp::cMessage *mMsgReportCleanup;
         CURL *curl;
         GlobalEnvironmentModel *mGlobalEnvironmentModel;
         traci::Boundary mSimulationBoundary;
@@ -80,7 +81,7 @@ namespace artery {
         BaseFusion *mFusionApplication;
         BaseChecks *mBaseChecks;
 
-        std::map<StationID_t, ReportedPseudonym *> mReportedPseudonyms;
+        std::map<StationID_t, std::shared_ptr<ReportedPseudonym>> mReportedPseudonyms;
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
         std::map<std::string, std::shared_ptr<ma::Report>> mReports;
         std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
@@ -105,7 +106,7 @@ namespace artery {
         int mDetectionRateCur = 0;
 
 
-        ma::Report *parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
+        std::shared_ptr<ma::Report> parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
 
         void parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
                                            std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages);
@@ -137,6 +138,8 @@ namespace artery {
         bool validateSemanticLevel4Report(const ma::Report &report);
 
         bool validateReportReason(const ma::Report &report);
+
+        void removeOldReports();
     };
 } // namespace artery
 

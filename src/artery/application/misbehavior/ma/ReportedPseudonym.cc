@@ -19,10 +19,15 @@ namespace artery {
     }
 
     void ReportedPseudonym::addReport(const std::shared_ptr<ma::Report> &report) {
-        mReportList.emplace_back(report);
+        mCurrentReportList.emplace_back(report);
         if(report->isValid){
             mValidReportCount++;
         }
+    }
+
+
+    void ReportedPseudonym::removeReport(const std::shared_ptr<ma::Report> &report) {
+        mCurrentReportList.erase(std::remove(mCurrentReportList.begin(), mCurrentReportList.end(), report), mCurrentReportList.end());
     }
 
     void ReportedPseudonym::setReactionType(reactionTypes::ReactionTypes reactionType){

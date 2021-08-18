@@ -9,9 +9,11 @@
 #include "vanetza/asn1/cam.hpp"
 #include <bitset>
 #include "artery/application/misbehavior/util/DetectionLevels.h"
+#include "artery/application/misbehavior/ma/ReportedPseudonym.h"
 
 namespace artery {
 
+    class ReportedPseudonym;
     namespace ma {
 
         struct Report;
@@ -55,10 +57,12 @@ namespace artery {
             std::string reportId;
             uint64_t generationTime;
             std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
+            std::shared_ptr<ReportedPseudonym> reportedPseudonym;
             DetectionType detectionType;
             RelatedReport *relatedReport;
             Evidence evidence;
             bool isValid;
+            std::vector<std::shared_ptr<Report>> referencedBy;
         };
     }
 

@@ -9,6 +9,10 @@ simple MisbehaviorAuthority
         int reportCountThreshold = default(5);
         int checkType = default(0);
         double misbehaviorThreshold = default(0.5);
+        double reportCleanupInterval @unit(s) = default(600s);
+        double reportCleanupAge @unit(s) = default(1800s);
+        double reportCamRetentionTime @unit(s) = default(10s);
+        double reportCamRetentionCleanupInterval @unit(s) = default(10s);
 
         bool enableWebGui = default(false);
         string webGuiDataUrl = default("http://localhost:9981/updateData");

@@ -11,6 +11,7 @@
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/util/ReactionTypes.h"
 #include "artery/application/misbehavior/ma/Report.h"
+#include "artery/application/misbehavior/ma/ReportedPseudonym.h"
 #include <map>
 
 namespace artery {
@@ -22,13 +23,15 @@ namespace artery {
 
         void addReport(const std::shared_ptr<ma::Report> &report);
 
-        std::vector<std::shared_ptr<ma::Report>> getReports() { return mReportList; };
+        void removeReport(const std::shared_ptr<ma::Report> &report);
 
-        int getReportCount() { return (int) mReportList.size(); };
+        std::vector<std::shared_ptr<ma::Report>> getReports() { return mCurrentReportList; };
+
+        int getReportCount() { return (int) mCurrentReportList.size(); };
 
         int getValidReportCount() {return mValidReportCount;};
 
-        std::shared_ptr<ma::Report> getLastReport(){return mReportList.back();};
+        std::shared_ptr<ma::Report> getLastReport(){return mCurrentReportList.back();};
 
         reactionTypes::ReactionTypes getReactionType(){return mReactionType;};
 
@@ -41,11 +44,12 @@ namespace artery {
 
     private:
         StationID_t mStationId;
-        std::vector<std::shared_ptr<ma::Report>> mReportList;
-        int mValidReportCount;
+        std::vector<std::shared_ptr<ma::Report>> mCurrentReportList;
+        int mValidReportCount = 0;
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
         attackTypes::AttackTypes mActualAttackType;
         reactionTypes::ReactionTypes mReactionType;
+        std::map<std::string,int> mReportScores;
 
     };
 } //namespace artery
