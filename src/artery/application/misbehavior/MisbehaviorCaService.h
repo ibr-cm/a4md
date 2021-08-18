@@ -68,7 +68,7 @@ namespace artery {
         std::queue<uint32_t> mPseudonyms;
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
-        std::map<uint32_t, std::queue<vanetza::asn1::Cam>> receivedMessages;
+        std::map<uint32_t, std::queue<std::shared_ptr<vanetza::asn1::Cam>>> receivedMessages;
         std::list<std::string> activePoIs;
 
         long AttackConstantPositionLatitudeMicrodegrees;
@@ -79,7 +79,7 @@ namespace artery {
         vanetza::units::Velocity AttackConstantSpeedOffsetValue;
         bool attackEventualStopHasStopped;
         ReferencePosition_t attackEventualStopPosition;
-        uint32_t attackDataReplayCurrentStationId;
+        int64_t attackDataReplayCurrentStationId;
         int attackGridSybilVehicleCount;
         double attackGridSybilActualDistanceX;
         double attackGridSybilActualDistanceY;

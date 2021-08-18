@@ -5,7 +5,6 @@
 */
 
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
-#include "artery/application/misbehavior/MisbehaviorDetectionService.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include "artery/application/CaObject.h"
 #include "artery/application/Asn1PacketVisitor.h"
@@ -102,7 +101,7 @@ namespace artery {
             attackGridSybilVehicleCount = 1;
         }
         std::vector<StationID_t> stationIds;
-        if(mAttackType == attackTypes::GridSybil){
+        if (mAttackType == attackTypes::GridSybil) {
             for (int i = 0; i < attackGridSybilVehicleCount; i++) {
                 StationType_t stationId = Identity::randomStationId(getRNG(0));
                 mPseudonyms.push(stationId);
@@ -137,7 +136,7 @@ namespace artery {
         stationIds.emplace_back(mStationId);
         std::vector<StationID_t> *ptr = &stationIds;
         auto *cObj = reinterpret_cast<cObject *>(ptr);
-        emit(scSignalMaMisbehaviorAnnouncement,cObj);
+        emit(scSignalMaMisbehaviorAnnouncement, cObj);
     }
 
     void MisbehaviorCaService::initializeStaticParameters() {
@@ -243,7 +242,8 @@ namespace artery {
                 case attackTypes::DataReplay:
                 case attackTypes::DoSDisruptive:
                 case attackTypes::GridSybil: {
-                    receivedMessages[message->header.stationID].push(message);
+                    std::shared_ptr<vanetza::asn1::Cam> camPtr(new vanetza::asn1::Cam(message));
+                    receivedMessages[message->header.stationID].push(camPtr);
                     break;
                 }
                 default:
@@ -279,26 +279,6 @@ namespace artery {
             visualizeCamPosition(cam);
         }
         finalizeAndSendCam(cam, T_now);
-    }
-
-    long setValueToRange(long value, long lower, long upper) {
-        if (value <= lower) {
-            return lower;
-        } else if (value >= upper) {
-            return upper;
-        } else {
-            return value;
-        }
-    }
-
-    void
-    addOffsetToCamParameter(cRNG *rng, long *camParameter, long unavailabilityValue, double variance, long lower,
-                            long upper) {
-        if (*camParameter < unavailabilityValue) {
-            int offset = intuniform(rng, (int) (-variance * (double) *camParameter),
-                                    (int) (+variance * (double) *camParameter));
-            *camParameter = (long) setValueToRange((int) (*camParameter + offset), lower, upper);
-        }
     }
 
     vanetza::asn1::Cam MisbehaviorCaService::createAttackCAM(uint16_t genDeltaTime) {
@@ -457,7 +437,7 @@ namespace artery {
                 int index = (int) uniform(0, (double) receivedMessages.size());
                 std::advance(it, index);
                 if (!it->second.empty()) {
-                    message = it->second.front();
+                    message = *it->second.front();
                     it->second.pop();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
@@ -569,7 +549,7 @@ namespace artery {
                             }
                         }
                         attackDataReplayCurrentStationId = mostReceivedStationId;
-                        message = receivedMessages[attackDataReplayCurrentStationId].front();
+                        message = *receivedMessages[attackDataReplayCurrentStationId].front();
                         receivedMessages[attackDataReplayCurrentStationId].pop();
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
@@ -579,7 +559,7 @@ namespace artery {
                     }
                 } else {
                     if (!receivedMessages[attackDataReplayCurrentStationId].empty()) {
-                        message = receivedMessages[attackDataReplayCurrentStationId].front();
+                        message = *receivedMessages[attackDataReplayCurrentStationId].front();
                         receivedMessages[attackDataReplayCurrentStationId].pop();
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
@@ -620,7 +600,7 @@ namespace artery {
                 int index = (int) uniform(0, (double) receivedMessages.size());
                 std::advance(it, index);
                 if (!it->second.empty()) {
-                    message = it->second.front();
+                    message = *it->second.front();
                     it->second.pop();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
@@ -633,7 +613,7 @@ namespace artery {
                 }
                 break;
             }
-            case attackTypes::MAStress: {
+            case attackTypes::FakeReport: {
                 break;
             }
             default:
@@ -648,25 +628,28 @@ namespace artery {
         if (attackDataReplayCurrentStationId == -1) {
             auto it = receivedMessages.begin();
             if (it != receivedMessages.end()) {
-                uint32_t mostReceivedStationId = -1;
-                unsigned long maxSize = 0;
+                int64_t mostReceivedStationId = -1;
+                int maxSize = 0;
                 for (; it != receivedMessages.end(); ++it) {
-                    if (receivedMessages[it->first].size() > maxSize) {
-                        maxSize = receivedMessages[it->first].size();
+                    if ((int) it->second.size() > maxSize) {
+                        maxSize = (int) it->second.size();
                         mostReceivedStationId = it->first;
                     }
                 }
                 attackDataReplayCurrentStationId = mostReceivedStationId;
-                message = receivedMessages[attackDataReplayCurrentStationId].front();
+                message = *(receivedMessages[attackDataReplayCurrentStationId].front());
                 receivedMessages[attackDataReplayCurrentStationId].pop();
+                if (maxSize == 1) {
+                    receivedMessages.erase(attackDataReplayCurrentStationId);
+                }
             } else {
                 message = vanetza::asn1::Cam();
             }
         } else {
             if (!receivedMessages[attackDataReplayCurrentStationId].empty() &&
-                receivedMessages[attackDataReplayCurrentStationId].front()->cam.generationDeltaTime <
+                (*receivedMessages[attackDataReplayCurrentStationId].front())->cam.generationDeltaTime <
                 (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
-                message = receivedMessages[attackDataReplayCurrentStationId].front();
+                message = *receivedMessages[attackDataReplayCurrentStationId].front();
                 receivedMessages[attackDataReplayCurrentStationId].pop();
             } else {
                 receivedMessages.erase(attackDataReplayCurrentStationId);
@@ -701,10 +684,6 @@ namespace artery {
                 (double) cam->cam.camParameters.basicContainer.referencePosition.longitude / 10000000.0,
                 (double) cam->cam.camParameters.basicContainer.referencePosition.latitude / 10000000.0};
         traci::TraCIPosition traciPosition = mVehicleController->getTraCI()->convert2D(traciGeoPosition);
-        if (mAttackType == attackTypes::GridSybil) {
-        } else {
-
-        }
         mTraciAPI->poi.add(poiId, traciPosition.x, traciPosition.y, color,
                            poiId, 5, "", 0,
                            0, 0);
