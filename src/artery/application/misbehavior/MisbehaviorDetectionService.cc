@@ -148,7 +148,7 @@ namespace artery {
 //        if (mVehicleDataProvider->getStationId() == 2461922647) {
 //        if (mVehicleDataProvider->getStationId() == 2539418353 && countTaiMilliseconds(mTimer->getCurrentTime()) > 297175918726) {
         if (message->header.stationID == 0) {
-            std::cout << "";
+//            std::cout << "";
         }
 
         std::vector<std::bitset<16>> detectionLevelErrorCodes = checkCam(message);
@@ -211,7 +211,6 @@ namespace artery {
                                                                                mVehicleDataProvider,
                                                                                mVehicleOutline,
                                                                                surroundingCamObjects);
-
 //        std::cout << result->toString(0.5) << std::endl;
         std::vector<std::bitset<16>> detectionLevelErrorCodes = mFusionApplication->checkForReport(*result);
         return detectionLevelErrorCodes;

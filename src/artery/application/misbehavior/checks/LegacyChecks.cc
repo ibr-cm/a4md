@@ -281,7 +281,7 @@ namespace artery {
     std::bitset<16> LegacyChecks::checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
                                                             const vanetza::asn1::Cam &lastCam) {
         auto *result = new CheckResult;
-        initializeKalmanFilters(lastCam);
+//        initializeKalmanFilters(lastCam);
 
         Position currentCamPosition = convertReferencePosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);

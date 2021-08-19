@@ -63,7 +63,8 @@ namespace artery {
         F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval = par("reportCleanupInterval");
         F2MDParameters::misbehaviorAuthorityParameters.reportCleanupAge = par("reportCleanupAge");
         F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionTime = par("reportCamRetentionTime");
-        F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionCleanupInterval = par("reportCamRetentionCleanupInterval");
+        F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionCleanupInterval = par(
+                "reportCamRetentionCleanupInterval");
 
         F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold = par("misbehaviorThreshold");
         F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
@@ -97,16 +98,16 @@ namespace artery {
     }
 
     void MisbehaviorAuthority::removeOldReports() {
-        std::cout << "old report count: " << mReports.size() << std::endl;
-        std::cout << "old cam count: " << mCams.size() << std::endl;
+//        std::cout << "old report count: " << mReports.size() << std::endl;
+//        std::cout << "old cam count: " << mCams.size() << std::endl;
         for (auto it = mReports.begin(); it != mReports.end();) {
             auto report = it->second;
-            if (countTaiMilliseconds(mTimer.getTimeFor(simTime())) - report->generationTime>
+            if (countTaiMilliseconds(mTimer.getTimeFor(simTime())) - report->generationTime >
                 uint64_t(F2MDParameters::misbehaviorAuthorityParameters.reportCleanupAge * 1000)) {
                 if (report->referencedBy.empty()) {
                     report->reportedPseudonym->removeReport(report);
                     mReports.erase(it++);
-                    if(report->reportedMessage != nullptr){
+                    if (report->reportedMessage != nullptr) {
                         mCams.erase(report->reportedMessage);
                     }
                     continue;
@@ -114,8 +115,8 @@ namespace artery {
             }
             it++;
         }
-        std::cout << "new report count: " << mReports.size() << std::endl;
-        std::cout << "new cam count: " << mCams.size() << std::endl;
+//        std::cout << "new report count: " << mReports.size() << std::endl;
+//        std::cout << "new cam count: " << mCams.size() << std::endl;
 
     }
 
@@ -229,12 +230,18 @@ namespace artery {
         std::bitset<16> actualErrorCodes;
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages = report.evidence.reportedMessages;
-        for (int i = 0; i < reportedMessages.size() - 1; i++) {
+        mBaseChecks->initializeKalmanFilters(*reportedMessages.front());
+        for (int i = (int) reportedMessages.size() - 1; i > 0; i--) {
+//            std::cout << "current genDeltaTime: " << (*reportedMessages[i])->cam.generationDeltaTime << std::endl;
+//            std::cout << "last genDeltaTime: " << (*reportedMessages[i - 1])->cam.generationDeltaTime << std::endl;
+
             actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*reportedMessages[i],
-                                                                       *reportedMessages[i + 1]);
+                                                                       *reportedMessages[i - 1]);
         }
-        actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*reportedMessages.back(),
-                                                                   *report.reportedMessage);
+//        std::cout << "current genDeltaTime: " << (*report.reportedMessage)->cam.generationDeltaTime << std::endl;
+//        std::cout << "last genDeltaTime: " << (*reportedMessages.back())->cam.generationDeltaTime << std::endl;
+        actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*report.reportedMessage,
+                                                                   *reportedMessages.back());
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
@@ -379,7 +386,8 @@ namespace artery {
                         camPtr = (*it);
                     }
                     report->reportedMessage = camPtr;
-                } else if (report->relatedReport == nullptr || report->relatedReport->referencedReport->generationTime != report->generationTime) {
+                } else if (report->relatedReport == nullptr ||
+                           report->relatedReport->referencedReport->generationTime != report->generationTime) {
                     return nullptr;
                 }
             }
