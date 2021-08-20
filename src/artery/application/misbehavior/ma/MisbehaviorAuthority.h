@@ -83,8 +83,9 @@ namespace artery {
 
         std::map<StationID_t, std::shared_ptr<ReportedPseudonym>> mReportedPseudonyms;
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
-        std::map<std::string, std::shared_ptr<ma::Report>> mReports;
+        std::map<std::string, std::shared_ptr<ma::Report>> mCurrentReports;
         std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
+        std::map<std::string,std::shared_ptr<ReportSummary>> mReports;
 
 
         std::list<std::string> mDetectionAccuracyLabels;
@@ -113,9 +114,9 @@ namespace artery {
 
         void updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report);
 
-        std::vector<RecentReported> getRecentReported();
-
         misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
+
+/*        std::vector<RecentReported> getRecentReported();
 
         rapidjson::Value getRadarData(rapidjson::Document::AllocatorType &allocator);
 
@@ -125,7 +126,7 @@ namespace artery {
 
         void createGuiJsonData();
 
-        void printReportsPerPseudonym();
+        void printReportsPerPseudonym();*/
 
         void updateReactionType(ReportedPseudonym &reportedPseudonym);
 

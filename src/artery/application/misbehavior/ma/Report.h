@@ -41,7 +41,7 @@ namespace artery {
         };
 
         struct RelatedReport {
-            std::shared_ptr<Report> referencedReport;
+            std::string referencedReportId;
             long omittedReportsNumber;
         };
 
@@ -62,7 +62,8 @@ namespace artery {
             RelatedReport *relatedReport;
             Evidence evidence;
             bool isValid;
-            std::vector<std::shared_ptr<Report>> referencedBy;
+            double score;
+//            std::vector<std::shared_ptr<Report>> referencedBy;
         };
     }
 

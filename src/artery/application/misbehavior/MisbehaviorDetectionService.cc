@@ -145,11 +145,6 @@ namespace artery {
 //            std::cout << std::endl << mVehicleDataProvider->getStationId() << " <-- " << senderStationId << ": "
 //                      << message->cam.generationDeltaTime << std::endl;
 //
-//        if (mVehicleDataProvider->getStationId() == 2461922647) {
-//        if (mVehicleDataProvider->getStationId() == 2539418353 && countTaiMilliseconds(mTimer->getCurrentTime()) > 297175918726) {
-        if (message->header.stationID == 0) {
-//            std::cout << "";
-        }
 
         std::vector<std::bitset<16>> detectionLevelErrorCodes = checkCam(message);
         auto *camPtr = &message;
@@ -159,7 +154,7 @@ namespace artery {
 
         for (detectionLevels::DetectionLevels detectionLevel : detectionLevels::DetectionLevelVector) {
             std::bitset<16> errorCode = detectionLevelErrorCodes[(int) detectionLevel];
-            if (errorCode.any()) {
+            if (errorCode.any() && detectedSender.checkOmittedReportsLimit(errorCode)) {
                 std::string reportId = generateReportId(senderStationId);
                 vanetza::asn1::MisbehaviorReport misbehaviorReport =
                         createReport(detectionLevel, reportId, relatedReportId, camPtr,
@@ -175,10 +170,12 @@ namespace artery {
                             relatedReportId, 0);
                 }
                 camPtr = nullptr;
-                if (detectedSender.checkOmittedReportsLimit(errorCode)) {
-                    reportedErrorCodes |= errorCode;
-                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
-                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                reportedErrorCodes |= errorCode;
+                MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                relatedReportId = reportId;
+                if (detectedSender.getPreviousReportId().empty()) {
+                    detectedSender.setReportId(relatedReportId);
                 }
             }
         }
@@ -190,13 +187,11 @@ namespace artery {
             }
         }
         detectedSender.incrementOmittedReports(detectionLevelErrorCodes, reportedErrorCodes);
-        if (detectedSender.getPreviousReportId().empty()) {
-            detectedSender.setReportId(relatedReportId);
-        }
     }
 
     std::vector<std::bitset<16>> MisbehaviorDetectionService::checkCam(const vanetza::asn1::Cam &message) {
 
+//        std::cout << "Result MisbehaviorDetectionService" << std::endl;
         uint32_t senderStationId = message->header.stationID;
         std::vector<Position> mVehicleOutline = getVehicleOutline(mVehicleDataProvider, mVehicleController);
 

@@ -15,22 +15,14 @@ namespace artery {
         for (int misbehaviorType = 0; misbehaviorType < misbehaviorTypes::SIZE_OF_ENUM; misbehaviorType++) {
             mPredictedMisbehaviorTypeCount[static_cast<misbehaviorTypes::MisbehaviorTypes>(misbehaviorType)] = 0;
         }
-        addReport(report);
     }
 
-    void ReportedPseudonym::addReport(const std::shared_ptr<ma::Report> &report) {
-        mCurrentReportList.emplace_back(report);
-        if(report->isValid){
-            mValidReportCount++;
-        }
+    void ReportedPseudonym::addReport(const std::shared_ptr<ReportSummary> &reportSummary) {
+        mTotalScore += reportSummary->score;
+        mReports.emplace(reportSummary->id, reportSummary);
     }
 
-
-    void ReportedPseudonym::removeReport(const std::shared_ptr<ma::Report> &report) {
-        mCurrentReportList.erase(std::remove(mCurrentReportList.begin(), mCurrentReportList.end(), report), mCurrentReportList.end());
-    }
-
-    void ReportedPseudonym::setReactionType(reactionTypes::ReactionTypes reactionType){
+    void ReportedPseudonym::setReactionType(reactionTypes::ReactionTypes reactionType) {
         mReactionType = reactionType;
     }
 

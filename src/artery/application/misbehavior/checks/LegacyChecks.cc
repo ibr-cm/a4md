@@ -175,7 +175,7 @@ namespace artery {
         for (const auto &currentCam : relevantCams) {
 
             auto camDeltaTime = ((double) (uint16_t) ((uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) -
-                                                     (*currentCam)->cam.generationDeltaTime)) / 1000;
+                                                      (*currentCam)->cam.generationDeltaTime)) / 1000;
             std::vector<Position> outline = getVehicleOutline((*currentCam), mSimulationBoundary, mTraciAPI);
             double iFactor = intersectionFactor(senderOutline, outline);
 //            std::cout << "intersectionFactor: " << iFactor << std::endl;
@@ -330,7 +330,6 @@ namespace artery {
                      currentCamAccelerationVector, currentCamHeading, lastCamPosition,
                      lastCamSpeedVector, camDeltaTime, result);
         result->frequency = BaseChecks::FrequencyCheck(camDeltaTime);
-
         return mThresholdFusion->checkForReport(*result)[detectionLevels::Level2];
     }
 
@@ -355,7 +354,6 @@ namespace artery {
         result->intersection =
                 IntersectionCheck(currentCamOutline, neighbourCams, currentCamPosition,
                                   currentCamVehicleLength, currentCamVehicleWidth, currentCamHeading);
-
         return mThresholdFusion->checkForReport(*result)[detectionLevels::Level3];
     }
 
@@ -380,7 +378,8 @@ namespace artery {
     }
 
     LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                               DetectionParameters *detectionParameters,double misbehaviorThreshold, const Timer *timer)
+                               DetectionParameters *detectionParameters, double misbehaviorThreshold,
+                               const Timer *timer)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer) {
         mThresholdFusion = new ThresholdFusion(misbehaviorThreshold);
     }

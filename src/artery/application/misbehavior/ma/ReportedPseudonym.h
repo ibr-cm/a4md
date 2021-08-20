@@ -11,29 +11,39 @@
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/util/ReactionTypes.h"
 #include "artery/application/misbehavior/ma/Report.h"
-#include "artery/application/misbehavior/ma/ReportedPseudonym.h"
 #include <map>
 
 namespace artery {
+
+    struct ReportSummary {
+        std::string id;
+        double score;
+        ma::DetectionType detectionType;
+        std::shared_ptr<ReportedPseudonym> reportedPseudonym;
+        uint64_t generationTime;
+
+        ReportSummary(const std::string &id, double score, const ma::DetectionType &detectionType,
+                      const std::shared_ptr<ReportedPseudonym> &reportedPseudonym, uint64_t generationTime)
+                : id(id),
+                  score(score),
+                  detectionType(detectionType),
+                  reportedPseudonym(reportedPseudonym),
+                  generationTime(generationTime) {}
+    };
+
     class ReportedPseudonym {
     public:
         explicit ReportedPseudonym(const std::shared_ptr<ma::Report> &report);
 
         StationID_t getStationId() const { return mStationId; };
 
-        void addReport(const std::shared_ptr<ma::Report> &report);
+        void addReport(const std::shared_ptr<ReportSummary> &reportSummary);
 
-        void removeReport(const std::shared_ptr<ma::Report> &report);
+        int getReportCount() { return (int) mReports.size(); };
 
-        std::vector<std::shared_ptr<ma::Report>> getReports() { return mCurrentReportList; };
+        int getTotalScore() { return mTotalScore; };
 
-        int getReportCount() { return (int) mCurrentReportList.size(); };
-
-        int getValidReportCount() {return mValidReportCount;};
-
-        std::shared_ptr<ma::Report> getLastReport(){return mCurrentReportList.back();};
-
-        reactionTypes::ReactionTypes getReactionType(){return mReactionType;};
+        reactionTypes::ReactionTypes getReactionType() { return mReactionType; };
 
         void setReactionType(reactionTypes::ReactionTypes reactionType);
 
@@ -44,12 +54,12 @@ namespace artery {
 
     private:
         StationID_t mStationId;
-        std::vector<std::shared_ptr<ma::Report>> mCurrentReportList;
         int mValidReportCount = 0;
+        double mTotalScore = 0;
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
         attackTypes::AttackTypes mActualAttackType;
         reactionTypes::ReactionTypes mReactionType;
-        std::map<std::string,int> mReportScores;
+        std::map<std::string, std::shared_ptr<ReportSummary>> mReports;
 
     };
 } //namespace artery
