@@ -99,6 +99,11 @@ namespace artery {
                                                  const bitset<16> &errorCode);
 
         void detectMisbehavior(vanetza::asn1::Cam &message);
+
+        vanetza::asn1::MisbehaviorReport
+        createLevel4Report(const string &reportId, const vanetza::asn1::Cam *reportedMessage,
+                           const bitset<16> &semanticDetectionErrorCodeCAM,
+                           DetectedSender &detectedSender);
     };
 
 } // namespace artery

@@ -311,6 +311,20 @@ namespace artery {
     }
 
     vanetza::asn1::MisbehaviorReport
+    MisbehaviorDetectionService::createLevel4Report(const std::string &reportId,
+                                                    const vanetza::asn1::Cam *reportedMessage,
+                                                    const bitset<16> &semanticDetectionErrorCodeCAM,
+                                                    DetectedSender &detectedSender) {
+        vanetza::asn1::MisbehaviorReport misbehaviorReport = createBasicMisbehaviorReport(reportId, reportedMessage);
+        auto *evidenceContainer = new EvidenceContainer_t();
+        misbehaviorReport->reportContainer.evidenceContainer = evidenceContainer;
+        auto *senderInfoContainer = new SenderInfoContainer_t();
+        evidenceContainer->senderInfoContainer = senderInfoContainer;
+        fillSenderInfoContainer(*senderInfoContainer);
+        return misbehaviorReport;
+    }
+
+    vanetza::asn1::MisbehaviorReport
     MisbehaviorDetectionService::createReport(detectionLevels::DetectionLevels detectionLevel,
                                               const std::string &reportId, std::string &relatedReportId,
                                               const vanetza::asn1::Cam *reportedMessage, std::bitset<16> errorCode,
@@ -329,6 +343,8 @@ namespace artery {
                                                        detectedSender);
                 break;
             case detectionLevels::Level4:
+                misbehaviorReport = createLevel4Report(reportId, reportedMessage, errorCode,
+                                                       detectedSender);
                 break;
             default:
                 break;
