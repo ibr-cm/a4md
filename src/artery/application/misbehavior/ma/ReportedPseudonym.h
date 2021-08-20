@@ -11,25 +11,10 @@
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/util/ReactionTypes.h"
 #include "artery/application/misbehavior/ma/Report.h"
+#include "artery/application/misbehavior/ma/ReportSummary.h"
 #include <map>
 
 namespace artery {
-
-    struct ReportSummary {
-        std::string id;
-        double score;
-        ma::DetectionType detectionType;
-        std::shared_ptr<ReportedPseudonym> reportedPseudonym;
-        uint64_t generationTime;
-
-        ReportSummary(const std::string &id, double score, const ma::DetectionType &detectionType,
-                      const std::shared_ptr<ReportedPseudonym> &reportedPseudonym, uint64_t generationTime)
-                : id(id),
-                  score(score),
-                  detectionType(detectionType),
-                  reportedPseudonym(reportedPseudonym),
-                  generationTime(generationTime) {}
-    };
 
     class ReportedPseudonym {
     public:
@@ -37,11 +22,13 @@ namespace artery {
 
         StationID_t getStationId() const { return mStationId; };
 
-        void addReport(const std::shared_ptr<ReportSummary> &reportSummary);
+        void addReport(const std::shared_ptr<ma::ReportSummary> &reportSummary, uint64_t generationTime);
 
         int getReportCount() { return (int) mReports.size(); };
 
         int getTotalScore() { return mTotalScore; };
+
+        uint64_t getPreviousReportGenerationTime() { return mLastReportGenerationTime; };
 
         reactionTypes::ReactionTypes getReactionType() { return mReactionType; };
 
@@ -59,7 +46,8 @@ namespace artery {
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
         attackTypes::AttackTypes mActualAttackType;
         reactionTypes::ReactionTypes mReactionType;
-        std::map<std::string, std::shared_ptr<ReportSummary>> mReports;
+        uint64_t mLastReportGenerationTime;
+        std::map<std::string, std::shared_ptr<ma::ReportSummary>> mReports;
 
     };
 } //namespace artery

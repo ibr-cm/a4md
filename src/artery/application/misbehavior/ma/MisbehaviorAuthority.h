@@ -17,6 +17,7 @@
 #include "artery/application/misbehavior/ma/ReportedPseudonym.h"
 #include "artery/application/misbehavior/ma/MisbehavingPseudonym.h"
 #include "artery/application/misbehavior/ma/Report.h"
+#include "artery/application/misbehavior/ma/ReportSummary.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include <rapidjson/document.h>
 #include "artery/application/misbehavior/fusion/BaseFusion.h"
@@ -85,7 +86,7 @@ namespace artery {
         std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
         std::map<std::string, std::shared_ptr<ma::Report>> mCurrentReports;
         std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
-        std::map<std::string,std::shared_ptr<ReportSummary>> mReports;
+        std::map<std::string,std::shared_ptr<ma::ReportSummary>> mReports;
 
 
         std::list<std::string> mDetectionAccuracyLabels;

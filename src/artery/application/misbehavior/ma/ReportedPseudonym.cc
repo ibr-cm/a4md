@@ -17,9 +17,10 @@ namespace artery {
         }
     }
 
-    void ReportedPseudonym::addReport(const std::shared_ptr<ReportSummary> &reportSummary) {
+    void ReportedPseudonym::addReport(const std::shared_ptr<ma::ReportSummary> &reportSummary, uint64_t generationTime) {
         mTotalScore += reportSummary->score;
         mReports.emplace(reportSummary->id, reportSummary);
+        mLastReportGenerationTime = generationTime;
     }
 
     void ReportedPseudonym::setReactionType(reactionTypes::ReactionTypes reactionType) {

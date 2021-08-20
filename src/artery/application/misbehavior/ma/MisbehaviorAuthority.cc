@@ -110,6 +110,8 @@ namespace artery {
             }
             it++;
         }
+        std::cout << "mReports: " << mReports.size() << std::endl;
+        std::cout << "mReportedPseudonyms: " << mReportedPseudonyms.size() << std::endl;
     }
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,
@@ -189,10 +191,9 @@ namespace artery {
                 }
                 report->reportedPseudonym = reportedPseudonym;
 
-                auto reportSummary = std::make_shared<ReportSummary>(
-                        *new ReportSummary(report->reportId, report->score, report->detectionType,
-                                           report->reportedPseudonym, report->generationTime));
-                reportedPseudonym->addReport(reportSummary);
+                auto reportSummary = std::make_shared<ma::ReportSummary>(
+                        *new ma::ReportSummary(report->reportId, report->score, report->reportedPseudonym));
+                reportedPseudonym->addReport(reportSummary,report->generationTime);
                 mReports.emplace(reportSummary->id, reportSummary);
                 mCurrentReports.emplace(report->reportId, report);
 
@@ -372,7 +373,7 @@ namespace artery {
                     report->reportedMessage = camPtr;
                 }
             } else if (report->relatedReport == nullptr ||
-                       mReports[report->relatedReport->referencedReportId]->generationTime != report->generationTime) {
+                       mReports[report->relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() != report->generationTime) {
                 return nullptr;
             } else {
                 auto it = mCurrentReports.find(report->relatedReport->referencedReportId);
