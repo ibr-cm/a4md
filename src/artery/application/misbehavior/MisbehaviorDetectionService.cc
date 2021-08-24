@@ -79,6 +79,7 @@ namespace artery {
 
         F2MDParameters::detectionParameters.checkType = par("checkType");
         F2MDParameters::detectionParameters.misbehaviorThreshold = par("misbehaviorThreshold");
+        F2MDParameters::detectionParameters.resultArrayMaxSize = par("resultArrayMaxSize");
         F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
         F2MDParameters::detectionParameters.maxPlausibleAcceleration = par("maxPlausibleAcceleration");
         F2MDParameters::detectionParameters.maxPlausibleDeceleration = par("maxPlausibleDeceleration");
@@ -155,7 +156,7 @@ namespace artery {
         for (detectionLevels::DetectionLevels detectionLevel : detectionLevels::DetectionLevelVector) {
             std::bitset<16> errorCode = detectionLevelErrorCodes[(int) detectionLevel];
             if (errorCode.any() && detectedSender.checkOmittedReportsLimit(errorCode)) {
-                std::string reportId = generateReportId(senderStationId);
+                std::string reportId(generateReportId(senderStationId));
                 vanetza::asn1::MisbehaviorReport misbehaviorReport =
                         createReport(detectionLevel, reportId, relatedReportId, camPtr,
                                      detectionLevelErrorCodes[(int) detectionLevel], detectedSender);
@@ -202,10 +203,10 @@ namespace artery {
                                                                   &F2MDParameters::detectionParameters,
                                                                   mTimer, message);
         }
-        CheckResult *result = detectedSenders[senderStationId]->addAndCheckCam(message,
-                                                                               mVehicleDataProvider,
-                                                                               mVehicleOutline,
-                                                                               surroundingCamObjects);
+        std::shared_ptr<CheckResult> result = detectedSenders[senderStationId]->addAndCheckCam(message,
+                                                                                               mVehicleDataProvider,
+                                                                                               mVehicleOutline,
+                                                                                               surroundingCamObjects);
 //        std::cout << result->toString(0.5) << std::endl;
         std::vector<std::bitset<16>> detectionLevelErrorCodes = mFusionApplication->checkForReport(*result);
         return detectionLevelErrorCodes;
@@ -243,7 +244,8 @@ namespace artery {
                                                     const bitset<16> &semanticDetectionErrorCodeCAM,
                                                     DetectedSender &detectedSender) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createBasicMisbehaviorReport(reportId, reportedMessage);
-        std::vector<CheckResult *> results = detectedSender.getResults();
+        std::list<std::shared_ptr<CheckResult>> resultsList = detectedSender.getResults();
+        std::vector<std::shared_ptr<CheckResult>> results{resultsList.begin(), resultsList.end()};
         misbehaviorReport->reportContainer.evidenceContainer = new EvidenceContainer_t();
         auto *reportedMessageContainer = new MessageEvidenceContainer_t();
         misbehaviorReport->reportContainer.evidenceContainer->reportedMessageContainer = reportedMessageContainer;
@@ -252,12 +254,13 @@ namespace artery {
                     std::min((int) results.size() - 1, F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
 //            for (int i = (int) results.size() - 2; i >= (int) results.size() - limit - 1; i--) {
             for (int i = (int) results.size() - limit - 1; i < results.size() - 1; i++) {
-                auto *singleMessageContainer = new EtsiTs103097Data_t();
-                singleMessageContainer->content = new Ieee1609Dot2Content_t();
+                auto *singleMessageContainer = vanetza::asn1::allocate<EtsiTs103097Data_t>();
+                singleMessageContainer->content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
                 singleMessageContainer->content->present = Ieee1609Dot2Content_PR_unsecuredData;
+                auto *encodedMessage = new vanetza::ByteBuffer(results[i]->cam.encode());
                 OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
-                                     (const char *) &results[i]->cam,
-                                     (int) results[i]->cam.size());
+                                     (const char *) encodedMessage->data(),
+                                     (int) encodedMessage->size());
                 ASN_SEQUENCE_ADD(reportedMessageContainer, singleMessageContainer);
             }
 
@@ -292,13 +295,13 @@ namespace artery {
             auto *neighbourMessageContainer = new MessageEvidenceContainer_t();
             evidenceContainer->neighbourMessageContainer = neighbourMessageContainer;
             for (const auto &cam : overlappingCams) {
-                auto *singleMessageContainer = new EtsiTs103097Data_t();
-                singleMessageContainer->content = new Ieee1609Dot2Content_t();
+                auto *singleMessageContainer = vanetza::asn1::allocate<EtsiTs103097Data_t>();
+                singleMessageContainer->content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
                 singleMessageContainer->content->present = Ieee1609Dot2Content_PR_unsecuredData;
-                auto *msg = new vanetza::asn1::Cam(*cam);
+                auto *encodedMessage = new vanetza::ByteBuffer(cam->encode());
                 OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
-                                     (const char *) msg,
-                                     (int) msg->size());
+                                     (const char *) encodedMessage->data(),
+                                     (int) encodedMessage->size());
                 ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
             }
         }
@@ -364,11 +367,10 @@ namespace artery {
                 reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
         reportedMessage.protocolVersion = 3;
         if (cam != nullptr) {
-            auto *ieee1609Dot2Content = new Ieee1609Dot2Content_t();
-            reportedMessage.content = ieee1609Dot2Content;
-            ieee1609Dot2Content->present = Ieee1609Dot2Content_PR_unsecuredData;
-            Opaque_t &unsecuredData = ieee1609Dot2Content->choice.unsecuredData;
-            OCTET_STRING_fromBuf(&unsecuredData, (const char *) cam, (int) cam->size());
+            reportedMessage.content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
+            reportedMessage.content->present = Ieee1609Dot2Content_PR_unsecuredData;
+            auto *encodedMessage = new vanetza::ByteBuffer(cam->encode());
+            OCTET_STRING_fromBuf(&reportedMessage.content->choice.unsecuredData, reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
         }
 
         std::string error;

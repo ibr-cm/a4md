@@ -19,7 +19,7 @@ namespace artery {
         CatchChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                     DetectionParameters *detectionParameters, double misbehaviorThreshold, const Timer *timer);
 
-        CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
+        std::shared_ptr<CheckResult> checkCAM(const VehicleDataProvider *receiverVDP,
                               const std::vector<Position> &receiverVehicleOutline,
                               const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                               const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) override;

@@ -11,6 +11,19 @@ if(POLICY CMP0079)
         cmake_policy(SET CMP0079 NEW)
     endif()
 endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -O0 -g")
+
+
+
+
+
+# LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
+
+
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1 -fno-omit-frame-pointer -g")
+#add_compile_options("-fsanitize=address")
+#link_libraries("-fsanitize=address")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_CXX_STANDARD 11)

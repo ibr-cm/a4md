@@ -199,7 +199,7 @@ namespace artery {
         }
     }
 
-    CheckResult *LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP,
+    std::shared_ptr<CheckResult> LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP,
                                         const std::vector<Position> &receiverVehicleOutline,
                                         const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                                         const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) {
@@ -223,7 +223,7 @@ namespace artery {
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
 
-        auto *result = new CheckResult;
+        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
         result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
         result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
         result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
@@ -268,7 +268,7 @@ namespace artery {
 
     std::bitset<16> LegacyChecks::checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam) {
 
-        auto *result = new CheckResult;
+        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
 
         BasicVehicleContainerHighFrequency_t currentHfc =
                 currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
@@ -280,7 +280,7 @@ namespace artery {
 
     std::bitset<16> LegacyChecks::checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
                                                             const vanetza::asn1::Cam &lastCam) {
-        auto *result = new CheckResult;
+        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
 //        initializeKalmanFilters(lastCam);
 
         Position currentCamPosition = convertReferencePosition(
@@ -335,7 +335,7 @@ namespace artery {
 
     std::bitset<16> LegacyChecks::checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
                                                             const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
-        auto *result = new CheckResult;
+        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
 
         Position currentCamPosition = convertReferencePosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
@@ -360,7 +360,7 @@ namespace artery {
     std::bitset<16>
     LegacyChecks::checkSemanticLevel4Report(const vanetza::asn1::Cam &currentCam, const Position &receiverPosition,
                                             const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
-        auto *result = new CheckResult;
+        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
         Position currentCamPosition = convertReferencePosition(
                 currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
 

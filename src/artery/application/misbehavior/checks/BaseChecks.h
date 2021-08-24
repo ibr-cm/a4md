@@ -34,7 +34,7 @@ namespace artery {
 
         void initializeKalmanFilters(const vanetza::asn1::Cam &message);
 
-        virtual CheckResult *checkCAM(const VehicleDataProvider *receiverVDP,
+        virtual std::shared_ptr<CheckResult> checkCAM(const VehicleDataProvider *receiverVDP,
                                       const std::vector<Position> &receiverVehicleOutline,
                                       const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
                                       const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) = 0;
@@ -79,7 +79,7 @@ namespace artery {
                           const double &currentCamAcceleration, const Position &currentCamAccelerationVector,
                           const double &currentCamHeading, const Position &lastCamPosition,
                           const Position &lastCamSpeedVector, const double camDeltaTime,
-                          CheckResult *result);
+                          const std::shared_ptr<CheckResult> &result);
 
 
     private:

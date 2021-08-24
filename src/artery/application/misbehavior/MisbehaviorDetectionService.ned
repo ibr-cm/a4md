@@ -9,6 +9,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         // ### detection parameters
         int checkType = default(0);
         double misbehaviorThreshold = default(0.5);
+        int resultArrayMaxSize = default(15);
 
         // in meters per second
         double maxPlausibleSpeed = default(60);
@@ -41,6 +42,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double kalmanSpeedRange = default(4.0);
 
         // ### report parameters
+        // makes no sense to make this bigger than resultArrayMaxSize
         int evidenceContainerMaxCamCount = default(5);
         int omittedReportsCount = default(5);
         bool omittedReportsCountPerErrorCode = default(false);

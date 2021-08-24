@@ -255,7 +255,7 @@ namespace artery {
                                   const double &currentCamAcceleration, const Position &currentCamAccelerationVector,
                                   const double &currentCamHeading, const Position &lastCamPosition,
                                   const Position &lastCamSpeedVector, const double camDeltaTime,
-                                  CheckResult *result) {
+                                  const std::shared_ptr<CheckResult> &result) {
         double returnValue[2];
         KalmanPositionSpeedConsistencyCheck(currentCamPosition, currentCamPositionConfidence, currentCamSpeedVector,
                                             currentCamAccelerationVector,

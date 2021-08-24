@@ -110,8 +110,8 @@ namespace artery {
             }
             it++;
         }
-        std::cout << "mReports: " << mReports.size() << std::endl;
-        std::cout << "mReportedPseudonyms: " << mReportedPseudonyms.size() << std::endl;
+//        std::cout << "mReports: " << mReports.size() * sizeof(ma::ReportSummary) << std::endl;
+//        std::cout << "mReportedPseudonyms: " << mReportedPseudonyms.size() * sizeof(ReportedPseudonym) << std::endl;
     }
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,
@@ -167,11 +167,13 @@ namespace artery {
             if (report != nullptr) {
                 mTotalReportCount++;
                 mNewReport = true;
-                uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
-                if (currentTime - report->generationTime >
-                    (uint64_t) F2MDParameters::misbehaviorAuthorityParameters.maxReportAge * 1000) {
-                    std::cout << "######### report too old" << std::endl;
-                }
+//                uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
+//                if (currentTime - report->generationTime >
+//                    (uint64_t) F2MDParameters::misbehaviorAuthorityParameters.maxReportAge * 1000) {
+//                    std::cout << "######### report too old" << std::endl;
+//                    std::cout << "current: " << currentTime << std::endl;
+//                    std::cout << "report:  " << report->generationTime << std::endl;
+//                }
                 report->isValid = validateReportReason(*report);
                 if (!report->isValid) {
                     std::cout << "######### report validation failed" << std::endl;
@@ -193,7 +195,7 @@ namespace artery {
 
                 auto reportSummary = std::make_shared<ma::ReportSummary>(
                         *new ma::ReportSummary(report->reportId, report->score, report->reportedPseudonym));
-                reportedPseudonym->addReport(reportSummary,report->generationTime);
+                reportedPseudonym->addReport(reportSummary, report->generationTime);
                 mReports.emplace(reportSummary->id, reportSummary);
                 mCurrentReports.emplace(report->reportId, report);
 
@@ -373,7 +375,8 @@ namespace artery {
                     report->reportedMessage = camPtr;
                 }
             } else if (report->relatedReport == nullptr ||
-                       mReports[report->relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() != report->generationTime) {
+                       mReports[report->relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() !=
+                       report->generationTime) {
                 return nullptr;
             } else {
                 auto it = mCurrentReports.find(report->relatedReport->referencedReportId);
