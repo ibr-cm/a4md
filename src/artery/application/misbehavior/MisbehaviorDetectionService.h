@@ -88,7 +88,7 @@ namespace artery {
 
         void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
 
-        static void fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer,
+        static void fillRelatedReportContainer(RelatedReportContainer_t *&relatedReportContainer,
                                                const std::string &relatedReportId, const int &omittedReportsNumber);
 
         string generateReportId(const StationID_t &senderStationId);

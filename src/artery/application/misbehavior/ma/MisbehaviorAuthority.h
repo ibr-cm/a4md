@@ -117,17 +117,6 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
 
-/*        std::vector<RecentReported> getRecentReported();
-
-        rapidjson::Value getRadarData(rapidjson::Document::AllocatorType &allocator);
-
-        rapidjson::Value getRecentReported(rapidjson::Document::AllocatorType &allocator);
-
-        rapidjson::Value getDetectionRates(rapidjson::Document::AllocatorType &allocator);
-
-        void createGuiJsonData();
-
-        void printReportsPerPseudonym();*/
 
         void updateReactionType(ReportedPseudonym &reportedPseudonym);
 
@@ -142,6 +131,21 @@ namespace artery {
         bool validateReportReason(const ma::Report &report);
 
         void removeOldReports();
+
+        shared_ptr<vanetza::asn1::Cam> getCamFromOpaque(const Opaque_t &data);
+
+
+/*        std::vector<RecentReported> getRecentReported();
+
+        rapidjson::Value getRadarData(rapidjson::Document::AllocatorType &allocator);
+
+        rapidjson::Value getRecentReported(rapidjson::Document::AllocatorType &allocator);
+
+        rapidjson::Value getDetectionRates(rapidjson::Document::AllocatorType &allocator);
+
+        void createGuiJsonData();
+
+        void printReportsPerPseudonym();*/
     };
 } // namespace artery
 

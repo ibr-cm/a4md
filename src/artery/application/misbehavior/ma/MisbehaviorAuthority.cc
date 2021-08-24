@@ -178,6 +178,8 @@ namespace artery {
                 if (!report->isValid) {
                     std::cout << "######### report validation failed" << std::endl;
                 }
+
+                // isValid * evidence * reporter-trust * report-age
                 report->score = report->isValid ? 1 : 0;
                 mCurrentReports.emplace(report->reportId, report);
 
@@ -364,15 +366,7 @@ namespace artery {
             if (reportedMessage.content != nullptr) {
                 Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessage.content;
                 if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
-                    auto *cam = (vanetza::asn1::Cam *) ieee1609Dot2Content.choice.unsecuredData.buf;
-                    auto camPtr = std::make_shared<vanetza::asn1::Cam>(*cam);
-                    auto it = mCams.find(camPtr);
-                    if (it == mCams.end()) {
-                        mCams.insert(camPtr);
-                    } else {
-                        camPtr = (*it);
-                    }
-                    report->reportedMessage = camPtr;
+                    report->reportedMessage = getCamFromOpaque(ieee1609Dot2Content.choice.unsecuredData);
                 }
             } else if (report->relatedReport == nullptr ||
                        mReports[report->relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() !=
@@ -495,19 +489,24 @@ namespace artery {
         for (int i = 0; i < messageEvidenceContainer.list.count; i++) {
             auto *ieee1609Dot2Content = ((EtsiTs103097Data_t *) messageEvidenceContainer.list.array[i])->content;
             if (ieee1609Dot2Content->present == Ieee1609Dot2Content_PR_unsecuredData) {
-                auto *evidenceCam = (vanetza::asn1::Cam *) ieee1609Dot2Content->choice.unsecuredData.buf;
-                auto camPtr = std::make_shared<vanetza::asn1::Cam>(*evidenceCam);
-                auto it = mCams.find(camPtr);
-                if (it == mCams.end()) {
-                    mCams.insert(camPtr);
-                } else {
-                    camPtr = (*it);
-                }
-                messages.emplace_back(camPtr);
+                messages.emplace_back(getCamFromOpaque(ieee1609Dot2Content->choice.unsecuredData));
             } else {
                 std::cout << "ignoring CAM, only unsigned CAMs can be processed" << std::endl;
             }
         }
+    }
+
+    std::shared_ptr<vanetza::asn1::Cam> MisbehaviorAuthority::getCamFromOpaque(const Opaque_t &data){
+        std::shared_ptr<vanetza::asn1::Cam> cam(new vanetza::asn1::Cam());
+        cam->decode(vanetza::ByteBuffer(data.buf, data.buf + data.size));
+
+        auto it = mCams.find(cam);
+        if (it == mCams.end()) {
+            mCams.insert(cam);
+        } else {
+            cam = (*it);
+        }
+        return cam;
     }
 
 /* rapidjson::Value MisbehaviorAuthority::getRadarData(rapidjson::Document::AllocatorType &allocator) {

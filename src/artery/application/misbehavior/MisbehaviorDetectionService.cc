@@ -165,7 +165,6 @@ namespace artery {
                 if (relatedReportId.empty()) {
                     relatedReportId = reportId;
                 } else {
-                    misbehaviorReport->reportMetadataContainer.relatedReportContainer = new RelatedReportContainer_t();
                     fillRelatedReportContainer(
                             misbehaviorReport->reportMetadataContainer.relatedReportContainer,
                             relatedReportId, 0);
@@ -244,12 +243,13 @@ namespace artery {
                                                     const bitset<16> &semanticDetectionErrorCodeCAM,
                                                     DetectedSender &detectedSender) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createBasicMisbehaviorReport(reportId, reportedMessage);
+        EvidenceContainer_t *&evidenceContainer = misbehaviorReport->reportContainer.evidenceContainer;
+        misbehaviorReport->reportContainer.evidenceContainer = vanetza::asn1::allocate<EvidenceContainer_t>();
         std::list<std::shared_ptr<CheckResult>> resultsList = detectedSender.getResults();
         std::vector<std::shared_ptr<CheckResult>> results{resultsList.begin(), resultsList.end()};
-        misbehaviorReport->reportContainer.evidenceContainer = new EvidenceContainer_t();
-        auto *reportedMessageContainer = new MessageEvidenceContainer_t();
-        misbehaviorReport->reportContainer.evidenceContainer->reportedMessageContainer = reportedMessageContainer;
         if (results.size() > 1) {
+            MessageEvidenceContainer_t *&reportedMessageContainer = evidenceContainer->reportedMessageContainer;
+            reportedMessageContainer = vanetza::asn1::allocate<MessageEvidenceContainer_t>();
             int limit =
                     std::min((int) results.size() - 1, F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
 //            for (int i = (int) results.size() - 2; i >= (int) results.size() - limit - 1; i--) {
@@ -274,8 +274,9 @@ namespace artery {
                                                     const bitset<16> &semanticDetectionErrorCodeCAM,
                                                     DetectedSender &detectedSender) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createBasicMisbehaviorReport(reportId, reportedMessage);
-        auto *evidenceContainer = new EvidenceContainer_t();
-        misbehaviorReport->reportContainer.evidenceContainer = evidenceContainer;
+        EvidenceContainer_t *&evidenceContainer = misbehaviorReport->reportContainer.evidenceContainer;
+        evidenceContainer = vanetza::asn1::allocate<EvidenceContainer_t>();
+
         std::vector<Position> senderOutline = getVehicleOutline(detectedSender.getResults().back()->cam,
                                                                 mSimulationBoundary,
                                                                 mTraciAPI);
@@ -292,8 +293,8 @@ namespace artery {
             }
         }
         if (!overlappingCams.empty()) {
-            auto *neighbourMessageContainer = new MessageEvidenceContainer_t();
-            evidenceContainer->neighbourMessageContainer = neighbourMessageContainer;
+            MessageEvidenceContainer_t *&neighbourMessageContainer = evidenceContainer->neighbourMessageContainer;
+            neighbourMessageContainer = vanetza::asn1::allocate<MessageEvidenceContainer_t>();
             for (const auto &cam : overlappingCams) {
                 auto *singleMessageContainer = vanetza::asn1::allocate<EtsiTs103097Data_t>();
                 singleMessageContainer->content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
@@ -314,10 +315,10 @@ namespace artery {
                                                     const bitset<16> &semanticDetectionErrorCodeCAM,
                                                     DetectedSender &detectedSender) {
         vanetza::asn1::MisbehaviorReport misbehaviorReport = createBasicMisbehaviorReport(reportId, reportedMessage);
-        auto *evidenceContainer = new EvidenceContainer_t();
-        misbehaviorReport->reportContainer.evidenceContainer = evidenceContainer;
-        auto *senderInfoContainer = new SenderInfoContainer_t();
-        evidenceContainer->senderInfoContainer = senderInfoContainer;
+        EvidenceContainer_t *&evidenceContainer = misbehaviorReport->reportContainer.evidenceContainer;
+        evidenceContainer = vanetza::asn1::allocate<EvidenceContainer_t>();
+        SenderInfoContainer_t *&senderInfoContainer = evidenceContainer->senderInfoContainer;
+        senderInfoContainer = vanetza::asn1::allocate<SenderInfoContainer_t>();
         fillSenderInfoContainer(*senderInfoContainer);
         return misbehaviorReport;
     }
@@ -370,7 +371,8 @@ namespace artery {
             reportedMessage.content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
             reportedMessage.content->present = Ieee1609Dot2Content_PR_unsecuredData;
             auto *encodedMessage = new vanetza::ByteBuffer(cam->encode());
-            OCTET_STRING_fromBuf(&reportedMessage.content->choice.unsecuredData, reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
+            OCTET_STRING_fromBuf(&reportedMessage.content->choice.unsecuredData,
+                                 reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
         }
 
         std::string error;
@@ -433,9 +435,10 @@ namespace artery {
         senderInfoContainer.yawRate.yawRateConfidence = YawRateConfidence_unavailable;
     }
 
-    void MisbehaviorDetectionService::fillRelatedReportContainer(RelatedReportContainer_t *relatedReportContainer,
+    void MisbehaviorDetectionService::fillRelatedReportContainer(RelatedReportContainer_t *&relatedReportContainer,
                                                                  const std::string &relatedReportId,
                                                                  const int &omittedReportsNumber) {
+        relatedReportContainer = vanetza::asn1::allocate<RelatedReportContainer_t>();
         OCTET_STRING_fromBuf(&relatedReportContainer->relatedReportID, relatedReportId.c_str(),
                              (int) strlen(relatedReportId.c_str()));
         relatedReportContainer->omittedReportsNumber = omittedReportsNumber;
