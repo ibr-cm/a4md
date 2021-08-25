@@ -28,6 +28,8 @@ namespace artery {
 
         int getTotalScore() { return mTotalScore; };
 
+        int getValidReportCount() {return mValidReportCount;};
+
         uint64_t getPreviousReportGenerationTime() { return mLastReportGenerationTime; };
 
         reactionTypes::ReactionTypes getReactionType() { return mReactionType; };
