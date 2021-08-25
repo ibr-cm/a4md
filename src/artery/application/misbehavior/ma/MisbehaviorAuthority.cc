@@ -9,11 +9,13 @@
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include "artery/application/misbehavior/util/CheckTypes.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 #include "artery/application/misbehavior/fusion/ThresholdFusion.h"
 #include <artery/application/misbehavior/checks/LegacyChecks.h>
 #include <artery/application/misbehavior/checks/CatchChecks.h>
 #include <bitset>
 #include <chrono>
+#include <memory>
 #include <numeric>
 
 #include <rapidjson/stringbuffer.h>
@@ -158,6 +160,7 @@ namespace artery {
         }
     }
 
+
     void MisbehaviorAuthority::receiveSignal(cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                                              cObject *) {
         if (signal == maNewReport) {
@@ -168,19 +171,41 @@ namespace artery {
                 mTotalReportCount++;
                 mNewReport = true;
                 uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
-                if (currentTime - report->generationTime >
-                    (uint64_t) F2MDParameters::misbehaviorAuthorityParameters.maxReportAge * 1000) {
+                double reportScore = 1;
+                double reportAge = min((double) (currentTime - report->generationTime) / 1000.0,
+                                       F2MDParameters::misbehaviorAuthorityParameters.maxReportAge);
+                if (reportAge > F2MDParameters::misbehaviorAuthorityParameters.maxReportAge) {
                     std::cout << "######### report too old" << std::endl;
                     std::cout << "current: " << currentTime << std::endl;
                     std::cout << "report:  " << report->generationTime << std::endl;
                 }
-                report->isValid = validateReportReason(*report);
-                if (!report->isValid) {
-                    std::cout << "######### report validation failed" << std::endl;
+                reportScore *= 1 - normalizeValue(reportAge, 0,
+                                                  F2MDParameters::misbehaviorAuthorityParameters.maxReportAge);
+                if (reportScore > 0) {
+                    report->isValid = validateReportReason(*report);
+                    reportScore *= report->isValid;
+                    if (!report->isValid) {
+                        std::cout << "######### report validation failed" << std::endl;
+                    }
                 }
+                StationID_t reporterStationId = std::stoull(split(report->reportId, '_')[1]);
+                std::shared_ptr<ReportingPseudonym> reporter;
+                {
+                    auto it = mReportingPseudonyms.find(reporterStationId);
+                    if (it == mReportingPseudonyms.end()) {
+                        reporter = std::make_shared<ReportingPseudonym>(reporterStationId);
+                        mReportingPseudonyms[reporterStationId] = reporter;
+                    } else {
+                        reporter = it->second;
+                    }
+                }
+                reportScore *= reporter->getAverageReportScore();
+                if (reportScore < 1) {
+                    std::cout << "";
+                }
+                report->score = reportScore;
+                reporter->addReport(*report);
 
-                // isValid * evidence * reporter-trust * report-age
-                report->score = report->isValid ? 1 : 0;
                 mCurrentReports.emplace(report->reportId, report);
 
                 StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
@@ -208,9 +233,9 @@ namespace artery {
             std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t> *>(obj);
             auto misbehaviorCaService = check_and_cast<MisbehaviorCaService *>(source);
             for (const auto &stationId : stationIds) {
-                mMisbehavingPseudonyms[stationId] = new MisbehavingPseudonym(stationId,
-                                                                             misbehaviorCaService->getMisbehaviorType(),
-                                                                             misbehaviorCaService->getAttackType());
+                mMisbehavingPseudonyms[stationId] = std::make_shared<MisbehavingPseudonym>(stationId,
+                                                                                           misbehaviorCaService->getMisbehaviorType(),
+                                                                                           misbehaviorCaService->getAttackType());
             }
         }
     }
@@ -514,7 +539,7 @@ namespace artery {
         std::vector<int> reactionsBenign(5, 0);
         std::vector<int> reactionsMalicious(5, 0);
 
-        for (const auto& reportedPseudonym : mReportedPseudonyms) {
+        for (const auto &reportedPseudonym : mReportedPseudonyms) {
             misbehaviorTypes::MisbehaviorTypes misbehaviorType = getActualMisbehaviorType(
                     reportedPseudonym.second->getStationId());
             if (misbehaviorType == misbehaviorTypes::Benign) {
@@ -632,7 +657,7 @@ namespace artery {
 
     std::vector<RecentReported> MisbehaviorAuthority::getRecentReported() {
         std::vector<RecentReported> recentReported;
-        for (const auto& r : mReportedPseudonyms) {
+        for (const auto &r : mReportedPseudonyms) {
             auto reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 std::sort(recentReported.begin(), recentReported.end(), sortByGenerationTime);
@@ -666,7 +691,7 @@ namespace artery {
         double reportFpSdSum = 0;
         double sdAttacker = 0;
         double sdBenign = 0;
-        for (const auto& r : mReportedPseudonyms) {
+        for (const auto &r : mReportedPseudonyms) {
             ReportedPseudonym reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 attackerCount++;
@@ -683,7 +708,7 @@ namespace artery {
         if (reportFpCount > 0) {
             meanReportsPerBenign = (double) reportFpCount / benignCount;
         }
-        for (const auto& r : mReportedPseudonyms) {
+        for (const auto &r : mReportedPseudonyms) {
             ReportedPseudonym reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 reportTpSdSum += pow((int) reportedPseudonym.getValidReportCount() - meanReportsPerAttacker, 2);

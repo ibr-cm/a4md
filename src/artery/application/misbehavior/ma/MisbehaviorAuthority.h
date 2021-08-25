@@ -22,6 +22,7 @@
 #include <rapidjson/document.h>
 #include "artery/application/misbehavior/fusion/BaseFusion.h"
 #include <artery/application/misbehavior/checks/BaseChecks.h>
+#include <artery/application/misbehavior/ma/ReportingPseudonym.h>
 
 namespace artery {
 
@@ -83,7 +84,9 @@ namespace artery {
         BaseChecks *mBaseChecks;
 
         std::map<StationID_t, std::shared_ptr<ReportedPseudonym>> mReportedPseudonyms;
-        std::map<StationID_t, MisbehavingPseudonym *> mMisbehavingPseudonyms;
+        std::map<StationID_t, std::shared_ptr<MisbehavingPseudonym>> mMisbehavingPseudonyms;
+        std::map<StationID_t, std::shared_ptr<ReportingPseudonym>> mReportingPseudonyms;
+
         std::map<std::string, std::shared_ptr<ma::Report>> mCurrentReports;
         std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
         std::map<std::string, std::shared_ptr<ma::ReportSummary>> mReports;

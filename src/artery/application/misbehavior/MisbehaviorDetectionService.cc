@@ -384,7 +384,7 @@ namespace artery {
 
     std::string MisbehaviorDetectionService::generateReportId(const StationID_t &senderStationId) {
         return {std::to_string(senderStationId) + "_" +
-                std::to_string(countTaiMilliseconds(mTimer->getCurrentTime())) + "_" +
+                std::to_string(mVehicleDataProvider->getStationId()) + "_" +
                 std::to_string(intrand(UINT32_MAX))};
     }
 

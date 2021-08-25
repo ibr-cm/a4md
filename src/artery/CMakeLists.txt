@@ -92,6 +92,7 @@ add_library(core SHARED
     application/misbehavior/DetectedSender.cc
     application/misbehavior/ma/MisbehaviorAuthority.cc
     application/misbehavior/ma/ReportedPseudonym.cc
+    application/misbehavior/ma/ReportingPseudonym.cc
     application/misbehavior/ma/MisbehavingPseudonym.cc
         )
 find_package(CURL REQUIRED)
