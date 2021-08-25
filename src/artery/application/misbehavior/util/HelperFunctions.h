@@ -98,6 +98,10 @@ namespace artery {
     bool camCompPtr(const std::shared_ptr<vanetza::asn1::Cam> &ptr1, const std::shared_ptr<vanetza::asn1::Cam> &ptr2);
 
     bool camEquiv(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2);
+
+    double normalizeValue(double value, double min, double max);
+
+    std::vector<std::string> split(const std::string &s, char delimiter);
 }
 
 #endif //ARTERY_HELPERFUNCTIONS_H
