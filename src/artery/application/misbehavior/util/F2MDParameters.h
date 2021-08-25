@@ -120,10 +120,17 @@ namespace artery {
         int reportCountThreshold;
         double misbehaviorThreshold;
         int checkType;
+
         double reportCleanupInterval;
         double reportCleanupAge;
         double reportCamRetentionTime;
         double reportCamRetentionCleanupInterval;
+
+        bool considerReportAge;
+        bool considerReportValidity;
+        bool considerReporterScore;
+        bool considerEvidenceScore;
+        int evidenceScoreMaxCamCount;
 
         bool enableWebGui;
         std::string webGuiDataUrl;

@@ -16,6 +16,9 @@
 
 namespace artery {
 
+    namespace ma{
+        struct Report;
+    }
     class ReportedPseudonym {
     public:
         explicit ReportedPseudonym(const std::shared_ptr<ma::Report> &report);

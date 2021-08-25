@@ -57,32 +57,40 @@ namespace artery {
             throw cRuntimeError("globalEnvMod not found");
         }
         mGlobalEnvironmentModel = dynamic_cast<GlobalEnvironmentModel *>(globalEnvMod);
+        mParameters = &F2MDParameters::misbehaviorAuthorityParameters;
 
-        F2MDParameters::misbehaviorAuthorityParameters.maxReportAge = par("maxReportAge");
-        F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold = par("reportCountThreshold");
-        F2MDParameters::misbehaviorAuthorityParameters.checkType = par("checkType");
+        mParameters->maxReportAge = par("maxReportAge");
+        mParameters->reportCountThreshold = par("reportCountThreshold");
+        mParameters->checkType = par("checkType");
 
-        F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval = par("reportCleanupInterval");
-        F2MDParameters::misbehaviorAuthorityParameters.reportCleanupAge = par("reportCleanupAge");
-        F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionTime = par("reportCamRetentionTime");
-        F2MDParameters::misbehaviorAuthorityParameters.reportCamRetentionCleanupInterval = par(
+        mParameters->reportCleanupInterval = par("reportCleanupInterval");
+        mParameters->reportCleanupAge = par("reportCleanupAge");
+        mParameters->reportCamRetentionTime = par("reportCamRetentionTime");
+        mParameters->reportCamRetentionCleanupInterval = par(
                 "reportCamRetentionCleanupInterval");
 
-        F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold = par("misbehaviorThreshold");
-        F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep = par("updateTimeStep");
-        F2MDParameters::misbehaviorAuthorityParameters.enableWebGui = par("enableWebGui");
-        F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl = par("webGuiDataUrl").stdstringValue();
-        F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval = par("guiJsonDataUpdateInterval");
-        F2MDParameters::misbehaviorAuthorityParameters.displaySteps = par("displaySteps");
-        F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount = par("recentReportedCount");
+        mParameters->considerReporterScore = par("considerReporterScore");
+        mParameters->considerEvidenceScore = par("considerEvidenceScore");
+        mParameters->considerReportAge = par("considerReportAge");
+        mParameters->considerReportValidity = par("considerReportValidity");
+        mParameters->evidenceScoreMaxCamCount = par("evidenceScoreMaxCamCount");
 
-        if (F2MDParameters::misbehaviorAuthorityParameters.enableWebGui) {
+
+        mParameters->misbehaviorThreshold = par("misbehaviorThreshold");
+        mParameters->updateTimeStep = par("updateTimeStep");
+        mParameters->enableWebGui = par("enableWebGui");
+        mParameters->webGuiDataUrl = par("webGuiDataUrl").stdstringValue();
+        mParameters->guiJsonDataUpdateInterval = par("guiJsonDataUpdateInterval");
+        mParameters->displaySteps = par("displaySteps");
+        mParameters->recentReportedCount = par("recentReportedCount");
+
+        if (mParameters->enableWebGui) {
             mMsgGuiUpdate = new cMessage("getDataScheduleMessage");
-            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval,
+            scheduleAt(simTime() + mParameters->guiJsonDataUpdateInterval,
                        mMsgGuiUpdate);
         }
         mMsgReportCleanup = new cMessage("reportCleanupMessage");
-        scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval,
+        scheduleAt(simTime() + mParameters->reportCleanupInterval,
                    mMsgReportCleanup);
     }
 
@@ -90,11 +98,11 @@ namespace artery {
         Enter_Method("handleMessage");
         if (msg == mMsgGuiUpdate) {
             createGuiJsonData();
-            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.guiJsonDataUpdateInterval,
+            scheduleAt(simTime() + mParameters->guiJsonDataUpdateInterval,
                        mMsgGuiUpdate);
         } else if (msg == mMsgReportCleanup) {
             removeOldReports();
-            scheduleAt(simTime() + F2MDParameters::misbehaviorAuthorityParameters.reportCleanupInterval,
+            scheduleAt(simTime() + mParameters->reportCleanupInterval,
                        mMsgReportCleanup);
         }
     }
@@ -103,7 +111,7 @@ namespace artery {
         for (auto it = mCurrentReports.begin(); it != mCurrentReports.end();) {
             auto report = it->second;
             if (countTaiMilliseconds(mTimer.getTimeFor(simTime())) - report->generationTime >
-                uint64_t(F2MDParameters::misbehaviorAuthorityParameters.reportCleanupAge * 1000)) {
+                uint64_t(mParameters->reportCleanupAge * 1000)) {
                 mCurrentReports.erase(it++);
                 if (report->reportedMessage != nullptr) {
                     mCams.erase(report->reportedMessage);
@@ -122,17 +130,17 @@ namespace artery {
             auto core = check_and_cast<traci::Core *>(source);
             mTraciAPI = core->getAPI();
             mSimulationBoundary = traci::Boundary{mTraciAPI->simulation.getNetBoundary()};
-            switch (F2MDParameters::misbehaviorAuthorityParameters.checkType) {
+            switch (mParameters->checkType) {
                 case checkTypes::LegacyChecks:
                     mBaseChecks = new LegacyChecks(mTraciAPI, mGlobalEnvironmentModel,
                                                    &F2MDParameters::detectionParameters,
-                                                   F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold,
+                                                   mParameters->misbehaviorThreshold,
                                                    &mTimer);
                     break;
                 case checkTypes::CatchChecks:
                     mBaseChecks = new CatchChecks(mTraciAPI, mGlobalEnvironmentModel,
                                                   &F2MDParameters::detectionParameters,
-                                                  F2MDParameters::misbehaviorAuthorityParameters.misbehaviorThreshold,
+                                                  mParameters->misbehaviorThreshold,
                                                   &mTimer);
             }
         } else if (signal == traciCloseSignal) {
@@ -168,66 +176,8 @@ namespace artery {
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
             std::shared_ptr<ma::Report> report(parseReport(misbehaviorReport));
             if (report != nullptr) {
-                mTotalReportCount++;
-                mNewReport = true;
-                uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
-                double reportScore = 1;
-                double reportAge = min((double) (currentTime - report->generationTime) / 1000.0,
-                                       F2MDParameters::misbehaviorAuthorityParameters.maxReportAge);
-                if (reportAge > F2MDParameters::misbehaviorAuthorityParameters.maxReportAge) {
-                    std::cout << "######### report too old" << std::endl;
-                    std::cout << "current: " << currentTime << std::endl;
-                    std::cout << "report:  " << report->generationTime << std::endl;
-                }
-                reportScore *= 1 - normalizeValue(reportAge, 0,
-                                                  F2MDParameters::misbehaviorAuthorityParameters.maxReportAge);
-                if (reportScore > 0) {
-                    report->isValid = validateReportReason(*report);
-                    reportScore *= report->isValid;
-                    if (!report->isValid) {
-                        std::cout << "######### report validation failed" << std::endl;
-                    }
-                }
-                StationID_t reporterStationId = std::stoull(split(report->reportId, '_')[1]);
-                std::shared_ptr<ReportingPseudonym> reporter;
-                {
-                    auto it = mReportingPseudonyms.find(reporterStationId);
-                    if (it == mReportingPseudonyms.end()) {
-                        reporter = std::make_shared<ReportingPseudonym>(reporterStationId);
-                        mReportingPseudonyms[reporterStationId] = reporter;
-                    } else {
-                        reporter = it->second;
-                    }
-                }
-                reportScore *= reporter->getAverageReportScore();
-                if (reportScore < 1) {
-                    std::cout << "";
-                }
-                report->score = reportScore;
-                reporter->addReport(*report);
+                processReport(report);
 
-                mCurrentReports.emplace(report->reportId, report);
-
-                StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
-
-                std::shared_ptr<ReportedPseudonym> reportedPseudonym;
-                auto it = mReportedPseudonyms.find(reportedStationId);
-                if (it != mReportedPseudonyms.end()) {
-                    reportedPseudonym = it->second;
-                } else {
-                    reportedPseudonym = std::make_shared<ReportedPseudonym>(*new ReportedPseudonym(report));
-                    mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
-                }
-                report->reportedPseudonym = reportedPseudonym;
-
-                auto reportSummary = std::make_shared<ma::ReportSummary>(
-                        *new ma::ReportSummary(report->reportId, report->score, report->reportedPseudonym));
-                reportedPseudonym->addReport(reportSummary, report->generationTime);
-                mReports.emplace(reportSummary->id, reportSummary);
-                mCurrentReports.emplace(report->reportId, report);
-
-                updateReactionType(*reportedPseudonym);
-                updateDetectionRates(*reportedPseudonym, *report);
             }
         } else if (signal == maMisbehaviorAnnouncement) {
             std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t> *>(obj);
@@ -239,6 +189,86 @@ namespace artery {
             }
         }
     }
+
+    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<ma::Report> &report) {
+
+
+        uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
+        double ageScore = 1;
+        double evidenceScore = 1;
+        double validityScore = 1;
+        double reporterScore = 1;
+
+        if (mParameters->considerReportAge) {
+            double reportAge = min((double) (currentTime - report->generationTime) / 1000.0,
+                                   mParameters->maxReportAge);
+            ageScore = 1 - normalizeValue(reportAge, 0, mParameters->maxReportAge);
+        }
+        if (mParameters->considerReportValidity) {
+            validityScore = report->isValid;
+        }
+        if (mParameters->considerReporterScore) {
+            reporterScore = report->reportingPseudonym->getAverageReportScore();
+        }
+
+        if (mParameters->considerEvidenceScore) {
+            if (report->detectionType.present == ma::detectionTypes::SemanticType &&
+                report->detectionType.semantic->detectionLevel == detectionLevels::Level2) {
+                int evidenceCamCount = (int) report->evidence.reportedMessages.size();
+                if (evidenceCamCount < mParameters->evidenceScoreMaxCamCount) {
+                    evidenceScore = normalizeValue(evidenceCamCount, 1, mParameters->evidenceScoreMaxCamCount);
+                }
+            }
+        }
+
+        double reportScore = ageScore * validityScore * reporterScore * evidenceScore;
+        return reportScore;
+    }
+
+    void MisbehaviorAuthority::processReport(const std::shared_ptr<ma::Report> &report) {
+        mTotalReportCount++;
+        mNewReport = true;
+        report->isValid = validateReportReason(*report);
+        std::shared_ptr<ReportingPseudonym> reporter;
+        {
+            StationID_t reporterStationId = std::stoull(split(report->reportId, '_')[1]);
+            auto it = mReportingPseudonyms.find(reporterStationId);
+            if (it == mReportingPseudonyms.end()) {
+                reporter = std::make_shared<ReportingPseudonym>(reporterStationId);
+                mReportingPseudonyms[reporterStationId] = reporter;
+            } else {
+                reporter = it->second;
+            }
+        }
+        report->reportingPseudonym = reporter;
+        report->score = scoreReport(report);
+        reporter->addReport(*report);
+
+        std::shared_ptr<ReportedPseudonym> reportedPseudonym;
+        {
+            StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
+            auto it = mReportedPseudonyms.find(reportedStationId);
+            if (it != mReportedPseudonyms.end()) {
+                reportedPseudonym = it->second;
+            } else {
+                reportedPseudonym = std::make_shared<ReportedPseudonym>(*new ReportedPseudonym(report));
+                mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
+            }
+        }
+        report->reportedPseudonym = reportedPseudonym;
+
+        auto reportSummary = std::make_shared<ma::ReportSummary>(
+                *new ma::ReportSummary(report->reportId,
+                                       report->score,
+                                       report->reportedPseudonym));
+        reportedPseudonym->addReport(reportSummary, report->generationTime);
+        mReports.emplace(reportSummary->id, reportSummary);
+        mCurrentReports.emplace(report->reportId, report);
+
+        updateReactionType(*reportedPseudonym);
+        updateDetectionRates(*reportedPseudonym, *report);
+    }
+
 
     bool compareErrorCodes(std::bitset<16> reportedErrorCodes, std::bitset<16> actualErrorCodes) {
         for (int i = 0; i < actualErrorCodes.size(); i++) {
@@ -336,7 +366,7 @@ namespace artery {
         mDetectionRateAggregate = 100 * mTrueDetectionAggregateCount /
                                   ((double) mTrueDetectionAggregateCount + mFalseDetectionAggregateCount);
         if (report.generationTime - mLastUpdateTime >
-            (long) F2MDParameters::misbehaviorAuthorityParameters.updateTimeStep * 1000) {
+            (long) mParameters->updateTimeStep * 1000) {
             mLastUpdateTime = report.generationTime;
             auto time = (std::time_t) (report.generationTime / 1000 + 1072915200 - 5);
             std::tm t_tm = *std::gmtime(&time);
@@ -353,7 +383,7 @@ namespace artery {
             mFalseDetectionCountInst = mFalseDetectionCount;
             auto data = std::make_tuple(trueDetectionCurrent, falseDetectionCurrent, mDetectionRateCur);
             mDetectionAccuracyData.emplace_back(data);
-            if (mDetectionAccuracyData.size() > F2MDParameters::misbehaviorAuthorityParameters.displaySteps) {
+            if (mDetectionAccuracyData.size() > mParameters->displaySteps) {
                 mDetectionAccuracyData.pop_front();
                 mDetectionAccuracyLabels.pop_front();
             }
@@ -638,7 +668,7 @@ namespace artery {
         rapidjson::Writer<rapidjson::StringBuffer> writer(strBuf);
         d.Accept(writer);
         std::string jsonString = strBuf.GetString();
-        curl_easy_setopt(curl, CURLOPT_URL, F2MDParameters::misbehaviorAuthorityParameters.webGuiDataUrl.c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, mParameters->webGuiDataUrl.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
         CURLcode curlResponse = curl_easy_perform(curl);
         if (curlResponse != CURLE_OK) {
@@ -661,7 +691,7 @@ namespace artery {
             auto reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 std::sort(recentReported.begin(), recentReported.end(), sortByGenerationTime);
-                if (recentReported.size() < F2MDParameters::misbehaviorAuthorityParameters.recentReportedCount) {
+                if (recentReported.size() < mParameters->recentReportedCount) {
                     recentReported.emplace_back(
                             RecentReported{reportedPseudonym.getStationId(), reportedPseudonym.getTotalScore(),
                                            reportedPseudonym.getPreviousReportGenerationTime()});

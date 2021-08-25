@@ -10,10 +10,12 @@
 #include <bitset>
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include "artery/application/misbehavior/ma/ReportedPseudonym.h"
+#include "artery/application/misbehavior/ma/ReportingPseudonym.h"
 
 namespace artery {
 
     class ReportedPseudonym;
+    class ReportingPseudonym;
     namespace ma {
 
         struct Report;
@@ -58,6 +60,7 @@ namespace artery {
             uint64_t generationTime;
             std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
             std::shared_ptr<ReportedPseudonym> reportedPseudonym;
+            std::shared_ptr<ReportingPseudonym> reportingPseudonym;
             DetectionType detectionType;
             RelatedReport *relatedReport;
             Evidence evidence;

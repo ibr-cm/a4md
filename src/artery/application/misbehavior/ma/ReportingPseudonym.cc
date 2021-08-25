@@ -2,26 +2,22 @@
 // Created by bastian on 25.08.21.
 //
 
-#include "ReportedPseudonym.h"
 #include "ReportingPseudonym.h"
-
 
 namespace artery {
 
-
-    ReportingPseudonym::ReportingPseudonym(StationID_t stationId) : mStationId(stationId){
+    ReportingPseudonym::ReportingPseudonym(StationID_t stationId) : mStationId(stationId) {
 
     }
 
-
-    void ReportingPseudonym::addReport(const ma::Report& report){
+    void ReportingPseudonym::addReport(const ma::Report &report) {
         mTotalReportCount++;
         mTotalReportScore += report.score;
     }
 
-    double ReportingPseudonym::getAverageReportScore() const{
-        if(mTotalReportCount > 0){
-            return mTotalReportScore/mTotalReportCount;
+    double ReportingPseudonym::getAverageReportScore() const {
+        if (mTotalReportCount > 0) {
+            return mTotalReportScore / mTotalReportCount;
         } else {
             return 1;
         }

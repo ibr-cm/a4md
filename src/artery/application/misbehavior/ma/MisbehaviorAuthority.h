@@ -15,6 +15,7 @@
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/ma/ReportedPseudonym.h"
+#include <artery/application/misbehavior/ma/ReportingPseudonym.h>
 #include "artery/application/misbehavior/ma/MisbehavingPseudonym.h"
 #include "artery/application/misbehavior/ma/Report.h"
 #include "artery/application/misbehavior/ma/ReportSummary.h"
@@ -22,7 +23,6 @@
 #include <rapidjson/document.h>
 #include "artery/application/misbehavior/fusion/BaseFusion.h"
 #include <artery/application/misbehavior/checks/BaseChecks.h>
-#include <artery/application/misbehavior/ma/ReportingPseudonym.h>
 
 namespace artery {
 
@@ -82,6 +82,7 @@ namespace artery {
         Timer mTimer;
         BaseFusion *mFusionApplication;
         BaseChecks *mBaseChecks;
+        MisbehaviorAuthorityParameters *mParameters;
 
         std::map<StationID_t, std::shared_ptr<ReportedPseudonym>> mReportedPseudonyms;
         std::map<StationID_t, std::shared_ptr<MisbehavingPseudonym>> mMisbehavingPseudonyms;
@@ -149,6 +150,10 @@ namespace artery {
         void createGuiJsonData();
 
         void printReportsPerPseudonym();
+
+        void processReport(const shared_ptr<ma::Report>& report);
+
+        double scoreReport(const shared_ptr<ma::Report> &report);
     };
 } // namespace artery
 
