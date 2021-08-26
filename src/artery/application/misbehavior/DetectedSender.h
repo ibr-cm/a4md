@@ -26,16 +26,16 @@ namespace artery {
                        GlobalEnvironmentModel *globalEnvironmentModel,
                        DetectionParameters *detectionParameters,
                        const Timer *timer,
-                       const vanetza::asn1::Cam &message);
+                       const shared_ptr<vanetza::asn1::Cam> &message);
 
-        std::shared_ptr<CheckResult> addAndCheckCam(const vanetza::asn1::Cam &message,
+        std::shared_ptr<CheckResult> addAndCheckCam(const shared_ptr<vanetza::asn1::Cam> &message,
                                                     const VehicleDataProvider *receiverVDP,
                                                     const std::vector<Position> &receiverVehicleOutline,
                                                     const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams);
 
         StationID_t getStationId() const { return mStationId; };
 
-        std::list<std::shared_ptr<CheckResult>> getResults() { return mCheckResults; };
+        std::list<std::shared_ptr<vanetza::asn1::Cam>> getCams() { return mCams; };
 
         bool hasBeenReported() const { return mHasBeenReported; };
 
@@ -55,9 +55,9 @@ namespace artery {
 
     private:
         BaseChecks *baseChecks;
-        int mCheckResultsSize;
+        int mCamsArraySize;
 
-        std::list<std::shared_ptr<CheckResult>> mCheckResults;
+        std::list<std::shared_ptr<vanetza::asn1::Cam>> mCams;
         Position mPosition;
         StationID_t mStationId;
         bool mHasBeenReported;

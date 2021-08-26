@@ -77,7 +77,7 @@ namespace artery {
 
         int checkType;
         double misbehaviorThreshold;
-        int resultArrayMaxSize;
+        int detectedSenderCamArrayMaxSize;
 
         double maxPlausibleSpeed;
         double maxPlausibleAcceleration;

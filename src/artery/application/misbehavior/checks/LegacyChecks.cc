@@ -37,7 +37,7 @@ namespace artery {
                                     (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
-                for (const auto &cam : surroundingCamObjects) {
+                for (const auto &cam: surroundingCamObjects) {
                     Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
                             (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                             mTraciAPI));
@@ -172,7 +172,7 @@ namespace artery {
         if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
             return 0;
         }
-        for (const auto &currentCam : relevantCams) {
+        for (const auto &currentCam: relevantCams) {
 
             auto camDeltaTime = ((double) (uint16_t) ((uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) -
                                                       (*currentCam)->cam.generationDeltaTime)) / 1000;
@@ -200,9 +200,10 @@ namespace artery {
     }
 
     std::shared_ptr<CheckResult> LegacyChecks::checkCAM(const VehicleDataProvider *receiverVDP,
-                                        const std::vector<Position> &receiverVehicleOutline,
-                                        const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-                                        const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) {
+                                                        const std::vector<Position> &receiverVehicleOutline,
+                                                        const vanetza::asn1::Cam &currentCam,
+                                                        const std::shared_ptr<vanetza::asn1::Cam> lastCamPtr,
+                                                        const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) {
         const Position &receiverPosition = convertReferencePosition(receiverVDP->approximateReferencePosition(),
                                                                     mSimulationBoundary, mTraciAPI);
 

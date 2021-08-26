@@ -120,8 +120,6 @@ namespace artery {
             }
             it++;
         }
-        std::cout << "mReports: " << mReports.size() << std::endl;
-        std::cout << "mReportedPseudonyms: " << mReportedPseudonyms.size() << std::endl;
     }
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, simsignal_t signal, const SimTime &,

@@ -9,8 +9,6 @@
 
 struct CheckResult {
 
-    vanetza::asn1::Cam cam;
-
     double positionPlausibility = 1;
     double speedPlausibility = 1;
     double proximityPlausibility = 1;

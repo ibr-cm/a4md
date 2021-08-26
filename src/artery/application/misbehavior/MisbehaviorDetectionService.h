@@ -60,7 +60,7 @@ namespace artery {
 
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> getSurroundingCamObjects(StationID_t senderStationId);
 
-        std::vector<std::bitset<16>> checkCam(const vanetza::asn1::Cam &message);
+        std::vector<std::bitset<16>> checkCam(const shared_ptr<vanetza::asn1::Cam> &message);
 
 
         vanetza::asn1::MisbehaviorReport createReport(detectionLevels::DetectionLevels detectionLevel,
@@ -98,7 +98,7 @@ namespace artery {
                                                  const detectionLevels::DetectionLevels &detectionLevel,
                                                  const bitset<16> &errorCode);
 
-        void detectMisbehavior(vanetza::asn1::Cam &message);
+        void detectMisbehavior(const shared_ptr<vanetza::asn1::Cam> &message);
 
         vanetza::asn1::MisbehaviorReport
         createLevel4Report(const string &reportId, const vanetza::asn1::Cam *reportedMessage,

@@ -13,38 +13,37 @@ namespace artery {
                                    GlobalEnvironmentModel *globalEnvironmentModel,
                                    DetectionParameters *detectionParameters,
                                    const Timer *timer,
-                                   const vanetza::asn1::Cam &message) {
-        mStationId = message->header.stationID;
+                                   const shared_ptr<vanetza::asn1::Cam> &message) {
+        mStationId = (*message)->header.stationID;
         mHasBeenReported = false;
         mOmittedReportsPerErrorCode = std::vector<int>(16);
         mOmittedReportsCumulated = 0;
-        mCheckResultsSize = detectionParameters->resultArrayMaxSize;
+        mCamsArraySize = detectionParameters->detectedSenderCamArrayMaxSize;
         switch (detectionParameters->checkType) {
             case checkTypes::LegacyChecks:
-                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, message);
+                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, *message);
                 break;
             case checkTypes::CatchChecks:
-                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters,timer, message);
+                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters,timer, *message);
         }
     }
 
 
     std::shared_ptr<CheckResult>
-    DetectedSender::addAndCheckCam(const vanetza::asn1::Cam &message, const VehicleDataProvider *receiverVDP,
+    DetectedSender::addAndCheckCam(const shared_ptr<vanetza::asn1::Cam> &message, const VehicleDataProvider *receiverVDP,
                                    const std::vector<Position> &receiverVehicleOutline,
                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams) {
         std::shared_ptr<CheckResult> result;
-        if (!mCheckResults.empty()) {
-            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message,
-                                          &mCheckResults.back()->cam, relevantCams);
+        if (!mCams.empty()) {
+            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, *message,
+                                          mCams.back(), relevantCams);
         } else {
-            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message, nullptr,
+            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, *message, nullptr,
                                           relevantCams);
         }
-        result->cam = message;
-        mCheckResults.emplace_back(result);
-        if(mCheckResults.size() > mCheckResultsSize){
-            mCheckResults.pop_front();
+        mCams.emplace_back(message);
+        if(mCams.size() > mCamsArraySize){
+            mCams.pop_front();
         }
         return result;
     }
@@ -52,24 +51,19 @@ namespace artery {
 
     bool DetectedSender::checkOmittedReportsLimit(const bitset<16> &reportedErrorCodes) {
         if (!mHasBeenReported) {
-//            std::cout << "  hasn't been reported yet" << std::endl;
             return true;
         }
         if (F2MDParameters::reportParameters.omittedReportsCountPerErrorCode) {
             bool omittedLimitReached = false;
-            std::cout << "     omittedReportsCount: ";
             for (int i = 0; i < mOmittedReportsPerErrorCode.size(); i++) {
                 std::cout << mOmittedReportsPerErrorCode[15-i];
                 if (mOmittedReportsPerErrorCode[i] >= F2MDParameters::reportParameters.omittedReportsCount && reportedErrorCodes[i]) {
                     omittedLimitReached = true;
-//                    mOmittedReportsPerErrorCode[i] = 0;
                 }
             }
-            std::cout << std::endl;
             return omittedLimitReached;
         } else {
             if (mOmittedReportsCumulated >= F2MDParameters::reportParameters.omittedReportsCount) {
-//                mOmittedReportsCumulated = 0;
                 return true;
             }
         }
@@ -78,7 +72,6 @@ namespace artery {
 
     void DetectedSender::resetOmittedReports(const bitset<16> &reportedErrorCodes) {
         if (F2MDParameters::reportParameters.omittedReportsCountPerErrorCode) {
-            std::cout << " resetting errorCodesCount: ";
             for (int i = 0; i < mOmittedReportsPerErrorCode.size(); i++) {
                 if (mOmittedReportsPerErrorCode[i] >= F2MDParameters::reportParameters.omittedReportsCount &&
                     reportedErrorCodes[i]) {
@@ -101,11 +94,7 @@ namespace artery {
             errorCodesCumulated |= errorCode;
         }
         if (F2MDParameters::reportParameters.omittedReportsCountPerErrorCode) {
-            std::cout << " incremented errorCodesCount: ";
             for (int i = 0; i < mOmittedReportsPerErrorCode.size(); i++) {
-//                if (i >= F2MDParameters::reportParameters.omittedReportsCount) {
-//                    mOmittedReportsPerErrorCode[i] = 0;
-//                }
                 if(errorCodesCumulated[i] && !reportedErrorCodes[i]){
                     mOmittedReportsPerErrorCode[i]++;
                 }
@@ -113,9 +102,6 @@ namespace artery {
             }
             std::cout << std::endl;
         } else {
-//            if (mOmittedReportsCumulated >= F2MDParameters::reportParameters.omittedReportsCount) {
-//                mOmittedReportsCumulated = 0;
-//            }
             if(errorCodesCumulated.any() && reportedErrorCodes.none()){
                 mOmittedReportsCumulated++;
             }

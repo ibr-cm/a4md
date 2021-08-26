@@ -9,7 +9,7 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         // ### detection parameters
         int checkType = default(0);
         double misbehaviorThreshold = default(0.5);
-        int resultArrayMaxSize = default(15);
+        int detectedSenderCamArrayMaxSize = default(10);
 
         // in meters per second
         double maxPlausibleSpeed = default(60);
