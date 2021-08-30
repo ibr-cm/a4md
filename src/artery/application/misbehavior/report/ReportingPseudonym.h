@@ -10,15 +10,13 @@
 
 namespace artery {
 
-    namespace ma{
-        struct Report;
-    }
+    class Report;
 
     class ReportingPseudonym {
     public:
         explicit ReportingPseudonym(StationID_t stationId);
 
-        void addReport(const ma::Report &report);
+        void addReport(const Report &report);
 
         double getAverageReportScore() const;
 

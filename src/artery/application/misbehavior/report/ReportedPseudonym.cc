@@ -8,7 +8,7 @@
 
 namespace artery {
 
-    ReportedPseudonym::ReportedPseudonym(const std::shared_ptr<ma::Report> &report) :
+    ReportedPseudonym::ReportedPseudonym(const std::shared_ptr<Report> &report) :
             mStationId((*report->reportedMessage)->header.stationID),
             mReactionType(reactionTypes::Nothing),
             mActualAttackType(attackTypes::Benign) {

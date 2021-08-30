@@ -16,12 +16,11 @@
 
 namespace artery {
 
-    namespace ma{
-        struct Report;
-    }
+    class Report;
+
     class ReportedPseudonym {
     public:
-        explicit ReportedPseudonym(const std::shared_ptr<ma::Report> &report);
+        explicit ReportedPseudonym(const std::shared_ptr<Report> &report);
 
         StationID_t getStationId() const { return mStationId; };
 
@@ -31,7 +30,7 @@ namespace artery {
 
         int getTotalScore() { return mTotalScore; };
 
-        int getValidReportCount() {return mValidReportCount;};
+        int getValidReportCount() { return mValidReportCount; };
 
         uint64_t getPreviousReportGenerationTime() { return mLastReportGenerationTime; };
 

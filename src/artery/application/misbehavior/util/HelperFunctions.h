@@ -17,6 +17,7 @@
 
 namespace artery {
 
+
     double calculateHeadingAngle(const Position &position);
 
     double calculateHeadingDifference(double heading1, double heading2);
@@ -98,6 +99,13 @@ namespace artery {
     bool camCompPtr(const std::shared_ptr<vanetza::asn1::Cam> &ptr1, const std::shared_ptr<vanetza::asn1::Cam> &ptr2);
 
     bool camEquiv(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2);
+
+    struct CamCompare {
+        bool operator()(const std::shared_ptr<vanetza::asn1::Cam> &ptr1,
+                        const std::shared_ptr<vanetza::asn1::Cam> &ptr2) {
+            return camCompPtr(ptr1, ptr2);
+        }
+    };
 
     double normalizeValue(double value, double min, double max);
 

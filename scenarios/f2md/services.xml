@@ -12,7 +12,7 @@
             <type pattern="artery.application.misbehavior.MisbehaviorCar"/>
         </filters>
     </service>
-    <service type="artery.application.misbehavior.MisbehaviorDetectionService">
+    <service type="artery.application.misbehavior.detection.MisbehaviorDetectionService">
         <listener port="4712"/>
         <filters operator="or">
             <type pattern="artery.envmod.Car"/>

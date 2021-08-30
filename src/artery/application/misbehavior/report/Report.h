@@ -11,66 +11,80 @@
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include "artery/application/misbehavior/report/ReportedPseudonym.h"
 #include "artery/application/misbehavior/report/ReportingPseudonym.h"
+#include "artery/application/misbehavior/report/ReportSummary.h"
+#include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
 
     class ReportedPseudonym;
 
     class ReportingPseudonym;
-    namespace ma {
 
-        class Report;
+    class Report;
 
-        struct SemanticDetection {
-            detectionLevels::DetectionLevels detectionLevel;
-            std::bitset<16> errorCode;
-        };
+    struct SemanticDetection {
+        detectionLevels::DetectionLevels detectionLevel;
+        std::bitset<16> errorCode;
+    };
 
-        struct SecurityDetection {
-            std::bitset<32> errorCode;
-        };
+    struct SecurityDetection {
+        std::bitset<32> errorCode;
+    };
 
-        namespace detectionTypes {
-            enum DetectionTypes {
-                none,
-                SemanticType,
-                SecurityType
-            };
-        }
-
-        struct DetectionType {
-            detectionTypes::DetectionTypes present = detectionTypes::none;
-            SemanticDetection *semantic;
-            SecurityDetection *security;
-        };
-
-        struct RelatedReport {
-            std::string referencedReportId;
-            long omittedReportsNumber;
-        };
-
-        struct Evidence {
-            std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages;
-            std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages;
-            std::shared_ptr<SenderInfoContainer_t> senderInfo;
-            std::shared_ptr<SenderSensorContainer_t> senderSensors;
-        };
-
-
-        class Report {
-        public:
-            std::string reportId;
-            uint64_t generationTime;
-            std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
-            std::shared_ptr<ReportedPseudonym> reportedPseudonym;
-            std::shared_ptr<ReportingPseudonym> reportingPseudonym;
-            DetectionType detectionType;
-            RelatedReport *relatedReport;
-            Evidence evidence;
-            bool isValid;
-            double score;
+    namespace detectionTypes {
+        enum DetectionTypes {
+            none,
+            SemanticType,
+            SecurityType
         };
     }
+
+    struct DetectionType {
+        detectionTypes::DetectionTypes present = detectionTypes::none;
+        SemanticDetection *semantic;
+        SecurityDetection *security;
+    };
+
+    struct RelatedReport {
+        std::string referencedReportId;
+        long omittedReportsNumber;
+    };
+
+    struct Evidence {
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages;
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages;
+        std::shared_ptr<SenderInfoContainer_t> senderInfo;
+        std::shared_ptr<SenderSensorContainer_t> senderSensors;
+    };
+
+
+    class Report {
+    public:
+        Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
+               std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList,
+               std::map<std::string, std::shared_ptr<Report>> &currentReportList,
+               std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
+
+        std::string reportId;
+        uint64_t generationTime;
+        std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
+        std::shared_ptr<ReportedPseudonym> reportedPseudonym;
+        std::shared_ptr<ReportingPseudonym> reportingPseudonym;
+        DetectionType detectionType;
+        RelatedReport *relatedReport;
+        Evidence evidence;
+        bool isValid;
+        bool successfullyParsed;
+        double score;
+
+
+        static void parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
+                                                  std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages,
+                                                  std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
+
+        static std::shared_ptr<vanetza::asn1::Cam> getCamFromOpaque(const Opaque_t &data,
+                                                                    std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
+    };
 
 } // namespace artery
 

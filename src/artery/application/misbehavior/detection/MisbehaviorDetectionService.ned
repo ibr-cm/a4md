@@ -1,4 +1,4 @@
-package artery.application.misbehavior;
+package artery.application.misbehavior.detection;
 
 simple MisbehaviorDetectionService like artery.application.ItsG5Service
 {

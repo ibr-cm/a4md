@@ -26,12 +26,6 @@
 namespace artery {
 
     namespace {
-        struct CamCompare {
-            bool operator()(const std::shared_ptr<vanetza::asn1::Cam> &ptr1,
-                            const std::shared_ptr<vanetza::asn1::Cam> &ptr2) {
-                return camCompPtr(ptr1, ptr2);
-            }
-        };
 
         struct RecentReported {
             StationID_t stationId;
@@ -87,7 +81,7 @@ namespace artery {
         std::map<StationID_t, std::shared_ptr<MisbehavingPseudonym>> mMisbehavingPseudonyms;
         std::map<StationID_t, std::shared_ptr<ReportingPseudonym>> mReportingPseudonyms;
 
-        std::map<std::string, std::shared_ptr<ma::Report>> mCurrentReports;
+        std::map<std::string, std::shared_ptr<Report>> mCurrentReports;
         std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
         std::map<std::string, std::shared_ptr<ma::ReportSummary>> mReports;
 
@@ -110,33 +104,24 @@ namespace artery {
         int mFalseDetectionCountInst = 0;
         int mDetectionRateCur = 0;
 
-
-        std::shared_ptr<ma::Report> parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
-
-        void parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
-                                           std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages);
-
-        void updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report);
+        void updateDetectionRates(ReportedPseudonym &reportedPseudonym, const Report &report);
 
         misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
 
 
         void updateReactionType(ReportedPseudonym &reportedPseudonym);
 
-        bool validateSemanticLevel1Report(const ma::Report &report);
+        bool validateSemanticLevel1Report(const Report &report);
 
-        bool validateSemanticLevel2Report(const ma::Report &report);
+        bool validateSemanticLevel2Report(const Report &report);
 
-        bool validateSemanticLevel3Report(const ma::Report &report);
+        bool validateSemanticLevel3Report(const Report &report);
 
-        bool validateSemanticLevel4Report(const ma::Report &report);
+        bool validateSemanticLevel4Report(const Report &report);
 
-        bool validateReportReason(const ma::Report &report);
+        bool validateReportReason(const Report &report);
 
         void removeOldReports();
-
-        shared_ptr<vanetza::asn1::Cam> getCamFromOpaque(const Opaque_t &data);
-
 
         std::vector<RecentReported> getRecentReported();
 
@@ -150,9 +135,9 @@ namespace artery {
 
         void printReportsPerPseudonym();
 
-        void processReport(const shared_ptr<ma::Report>& report);
+        void processReport(const shared_ptr<Report>& report);
 
-        double scoreReport(const shared_ptr<ma::Report> &report);
+        double scoreReport(const shared_ptr<Report> &report);
     };
 } // namespace artery
 

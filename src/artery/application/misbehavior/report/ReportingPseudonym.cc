@@ -10,7 +10,7 @@ namespace artery {
 
     }
 
-    void ReportingPseudonym::addReport(const ma::Report &report) {
+    void ReportingPseudonym::addReport(const Report &report) {
         mTotalReportCount++;
         mTotalReportScore += report.score;
     }

@@ -172,8 +172,8 @@ namespace artery {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
-            std::shared_ptr<ma::Report> report(parseReport(misbehaviorReport));
-            if (report != nullptr) {
+            std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport,mReports,mCurrentReports,mCams);
+            if (report->successfullyParsed) {
                 processReport(report);
 
             }
@@ -188,7 +188,7 @@ namespace artery {
         }
     }
 
-    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<ma::Report> &report) {
+    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report) {
 
 
         uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
@@ -210,7 +210,7 @@ namespace artery {
         }
 
         if (mParameters->considerEvidenceScore) {
-            if (report->detectionType.present == ma::detectionTypes::SemanticType &&
+            if (report->detectionType.present == detectionTypes::SemanticType &&
                 report->detectionType.semantic->detectionLevel == detectionLevels::Level2) {
                 int evidenceCamCount = (int) report->evidence.reportedMessages.size();
                 if (evidenceCamCount < mParameters->evidenceScoreMaxCamCount) {
@@ -223,7 +223,7 @@ namespace artery {
         return reportScore;
     }
 
-    void MisbehaviorAuthority::processReport(const std::shared_ptr<ma::Report> &report) {
+    void MisbehaviorAuthority::processReport(const std::shared_ptr<Report> &report) {
         mTotalReportCount++;
         mNewReport = true;
         report->isValid = validateReportReason(*report);
@@ -277,13 +277,13 @@ namespace artery {
         return true;
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel1Report(const ma::Report &report) {
+    bool MisbehaviorAuthority::validateSemanticLevel1Report(const Report &report) {
         std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel1Report(*report.reportedMessage);
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel2Report(const ma::Report &report) {
+    bool MisbehaviorAuthority::validateSemanticLevel2Report(const Report &report) {
         std::bitset<16> actualErrorCodes;
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages = report.evidence.reportedMessages;
@@ -297,7 +297,7 @@ namespace artery {
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel3Report(const ma::Report &report) {
+    bool MisbehaviorAuthority::validateSemanticLevel3Report(const Report &report) {
         std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel3Report(*report.reportedMessage,
                                                                                   report.evidence.neighbourMessages);
         std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
@@ -305,7 +305,7 @@ namespace artery {
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel4Report(const ma::Report &report) {
+    bool MisbehaviorAuthority::validateSemanticLevel4Report(const Report &report) {
         Position senderPosition = convertReferencePosition(report.evidence.senderInfo->referencePosition,
                                                            mSimulationBoundary, mTraciAPI);
         std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel4Report(*report.reportedMessage,
@@ -315,7 +315,7 @@ namespace artery {
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateReportReason(const ma::Report &report) {
+    bool MisbehaviorAuthority::validateReportReason(const Report &report) {
         if (report.detectionType.semantic != nullptr) {
             switch (report.detectionType.semantic->detectionLevel) {
                 case detectionLevels::Level1:
@@ -342,7 +342,7 @@ namespace artery {
         }
     }
 
-    void MisbehaviorAuthority::updateDetectionRates(ReportedPseudonym &reportedPseudonym, const ma::Report &report) {
+    void MisbehaviorAuthority::updateDetectionRates(ReportedPseudonym &reportedPseudonym, const Report &report) {
 
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType =
                 reportedPseudonym.predictMisbehaviorType();
@@ -387,179 +387,6 @@ namespace artery {
             }
 
         }
-    }
-
-    std::shared_ptr<ma::Report>
-    MisbehaviorAuthority::parseReport(const vanetza::asn1::MisbehaviorReport &misbehaviorReport) {
-        std::shared_ptr<ma::Report> report(new ma::Report());
-        ReportMetadataContainer reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
-        long generationTime;
-        asn_INTEGER2long(&reportMetadataContainer.generationTime, &generationTime);
-        std::string reportId = ia5stringToString(reportMetadataContainer.reportID);
-        report->reportId = reportId;
-        report->generationTime = generationTime;
-
-        if (reportMetadataContainer.relatedReportContainer != nullptr) {
-            RelatedReportContainer_t relatedReportContainer = *reportMetadataContainer.relatedReportContainer;
-            std::string relatedReportId = ia5stringToString(relatedReportContainer.relatedReportID);
-            auto it = mReports.find(relatedReportId);
-            if (it != mReports.end()) {
-                report->relatedReport = new ma::RelatedReport;
-                report->relatedReport->referencedReportId = relatedReportId;
-                report->relatedReport->omittedReportsNumber = relatedReportContainer.omittedReportsNumber;
-            } else {
-                return nullptr;
-            }
-        }
-
-        ReportContainer reportContainer = misbehaviorReport->reportContainer;
-        if (reportContainer.reportedMessageContainer.present ==
-            ReportedMessageContainer_PR_certificateIncludedContainer) {
-            EtsiTs103097Data_t reportedMessage = reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
-            if (reportedMessage.content != nullptr) {
-                Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessage.content;
-                if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
-                    report->reportedMessage = getCamFromOpaque(ieee1609Dot2Content.choice.unsecuredData);
-                }
-            } else if (report->relatedReport == nullptr ||
-                       mReports[report->relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() !=
-                       report->generationTime) {
-                return nullptr;
-            } else {
-                auto it = mCurrentReports.find(report->relatedReport->referencedReportId);
-                if (it != mCurrentReports.end()) {
-                    report->reportedMessage = it->second->reportedMessage;
-                } else {
-                    return nullptr;
-                }
-            }
-        } else {
-            std::cout << "ignoring report, only CertificateIncludedContainer is implemented" <<
-                      std::endl;
-            return nullptr;
-        }
-
-        if (reportContainer.misbehaviorTypeContainer.present == MisbehaviorTypeContainer_PR_semanticDetection) {
-            SemanticDetection_t semanticDetection = reportContainer.misbehaviorTypeContainer.choice.semanticDetection;
-            if (semanticDetection.present == SemanticDetection_PR_semanticDetectionReferenceCAM) {
-                report->detectionType.
-                        present = ma::detectionTypes::SemanticType;
-                auto semantic = new ma::SemanticDetection;
-                report->detectionType.semantic = semantic;
-                semantic->detectionLevel = static_cast<detectionLevels::DetectionLevels>(
-                        semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM);
-                semantic->errorCode = (std::bitset<16>)
-                        semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM.buf;
-
-                switch (semantic->detectionLevel) {
-                    case detectionLevels::Level1: {
-                        break;
-                    }
-                    case detectionLevels::Level2: {
-                        if (reportContainer.evidenceContainer == nullptr) {
-                            std::cout << "invalid report, evidenceContainer missing!" <<
-                                      std::endl;
-                            return nullptr;
-                        }
-                        if (reportContainer.evidenceContainer->reportedMessageContainer == nullptr) {
-                            std::cout
-                                    << "invalid report, reportedMessageContainer (messageEvidenceContainer) missing!"
-                                    <<
-                                    std::endl;
-                            return nullptr;
-                        }
-                        auto *reportedMessageContainer = reportContainer.evidenceContainer->reportedMessageContainer;
-                        if (reportedMessageContainer->list.count == 0) {
-                            std::cout << "invalid report, reportedMessageContainer is empty" <<
-                                      std::endl;
-                            return nullptr;
-                        }
-                        parseMessageEvidenceContainer(*reportedMessageContainer, report
-                                ->evidence.reportedMessages);
-                        break;
-                    }
-                    case detectionLevels::Level3: {
-                        if (reportContainer.evidenceContainer == nullptr) {
-                            std::cout << "invalid report, evidenceContainer missing!" <<
-                                      std::endl;
-                            return nullptr;
-                        }
-                        if (reportContainer.evidenceContainer->neighbourMessageContainer != nullptr) {
-                            auto *neighbourMessageContainer = reportContainer.evidenceContainer->neighbourMessageContainer;
-                            if (neighbourMessageContainer->list.count == 0) {
-                                std::cout << "neighbourMessageContainer is empty" <<
-                                          std::endl;
-                            } else {
-                                parseMessageEvidenceContainer(*neighbourMessageContainer,
-                                                              report
-                                                                      ->evidence.neighbourMessages);
-                            }
-                        }
-                        break;
-                    }
-                    case detectionLevels::Level4: {
-                        if (reportContainer.evidenceContainer == nullptr) {
-                            std::cout << "invalid report, evidenceContainer missing!" <<
-                                      std::endl;
-                            return nullptr;
-                        } else if (reportContainer.evidenceContainer->senderInfoContainer == nullptr &&
-                                   reportContainer.evidenceContainer->senderSensorContainer == nullptr) {
-                            std::cout << "invalid report, senderInfo and senderSensor missing!" <<
-                                      std::endl;
-                            return nullptr;
-                        } else {
-                            if (reportContainer.evidenceContainer->senderInfoContainer != nullptr) {
-                                report->evidence.
-                                        senderInfo = std::make_shared<SenderInfoContainer_t>
-                                        (*reportContainer.evidenceContainer->senderInfoContainer);
-                            }
-                            if (reportContainer.evidenceContainer->senderSensorContainer != nullptr) {
-                                report->evidence.
-                                        senderSensors = std::make_shared<SenderSensorContainer_t>
-                                        (*reportContainer.evidenceContainer->senderSensorContainer);
-                            }
-                        }
-                        break;
-                    }
-                    default:
-                        std::cout << "invalid report, invalid detectionLevel" <<
-                                  std::endl;
-                        break;
-                }
-            }
-        } else {
-            std::cout << "Nothing to do, only SemanticDetection is implemented" <<
-                      std::endl;
-            return nullptr;
-
-        }
-        return
-                report;
-    }
-
-    void MisbehaviorAuthority::parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
-                                                             std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages) {
-        for (int i = 0; i < messageEvidenceContainer.list.count; i++) {
-            auto *ieee1609Dot2Content = ((EtsiTs103097Data_t *) messageEvidenceContainer.list.array[i])->content;
-            if (ieee1609Dot2Content->present == Ieee1609Dot2Content_PR_unsecuredData) {
-                messages.emplace_back(getCamFromOpaque(ieee1609Dot2Content->choice.unsecuredData));
-            } else {
-                std::cout << "ignoring CAM, only unsigned CAMs can be processed" << std::endl;
-            }
-        }
-    }
-
-    std::shared_ptr<vanetza::asn1::Cam> MisbehaviorAuthority::getCamFromOpaque(const Opaque_t &data) {
-        std::shared_ptr<vanetza::asn1::Cam> cam(new vanetza::asn1::Cam());
-        cam->decode(vanetza::ByteBuffer(data.buf, data.buf + data.size));
-
-        auto it = mCams.find(cam);
-        if (it == mCams.end()) {
-            mCams.insert(cam);
-        } else {
-            cam = (*it);
-        }
-        return cam;
     }
 
     rapidjson::Value MisbehaviorAuthority::getRadarData(rapidjson::Document::AllocatorType &allocator) {

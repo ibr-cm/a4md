@@ -1,4 +1,4 @@
-package artery.application.misbehavior.ma;
+package artery.application.misbehavior.authority;
 
 simple MisbehaviorAuthority
 {
