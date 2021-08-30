@@ -47,7 +47,7 @@ namespace artery {
 
         std::shared_ptr<vanetza::asn1::Cam> mLastSentCam;
         BaseFusion *mFusionApplication;
-        std::map<uint32_t, DetectedSender *> detectedSenders;
+        std::map<uint32_t, std::shared_ptr<DetectedSender>> detectedSenders;
         std::string lastPolyId;
         std::list<std::string> activePoIs;
         const traci::VehicleController *mVehicleController = nullptr;

@@ -10,8 +10,8 @@
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/util/ReactionTypes.h"
-#include "artery/application/misbehavior/ma/Report.h"
-#include "artery/application/misbehavior/ma/ReportSummary.h"
+#include "artery/application/misbehavior/report/Report.h"
+#include "artery/application/misbehavior/report/ReportSummary.h"
 #include <map>
 
 namespace artery {

@@ -6,7 +6,7 @@
 #define ARTERY_REPORTINGPSEUDONYM_H
 
 #include "vanetza/asn1/md/StationID.h"
-#include "artery/application/misbehavior/ma/Report.h"
+#include "artery/application/misbehavior/report/Report.h"
 
 namespace artery {
 

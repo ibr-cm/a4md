@@ -5,7 +5,7 @@
 #include "MisbehaviorAuthority.h"
 #include "traci/Core.h"
 #include "artery/traci/Cast.h"
-#include "artery/application/misbehavior/MisbehaviorReportObject.h"
+#include "artery/application/misbehavior/report/MisbehaviorReportObject.h"
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include "artery/application/misbehavior/util/CheckTypes.h"

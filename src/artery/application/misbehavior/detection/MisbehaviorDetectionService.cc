@@ -1,5 +1,5 @@
 
-#include "artery/application/misbehavior/MisbehaviorDetectionService.h"
+#include "artery/application/misbehavior/detection/MisbehaviorDetectionService.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include "artery/application/misbehavior/fusion/ThresholdFusion.h"
 #include "artery/envmod/LocalEnvironmentModel.h"
@@ -13,7 +13,7 @@
 #include <inet/common/ModuleAccess.h>
 #include "artery/traci/Cast.h"
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
-#include "MisbehaviorReportObject.h"
+#include "artery/application/misbehavior/report/MisbehaviorReportObject.h"
 #include <bitset>
 #include <boost/units/systems/cgs.hpp>
 #include <boost/units/make_scaled_unit.hpp>
@@ -52,6 +52,7 @@ namespace artery {
             mTraciAPI->poi.remove(activePoIs.front());
             activePoIs.pop_front();
         }
+        detectedSenders.clear();
     }
 
     void MisbehaviorDetectionService::initialize() {
@@ -150,7 +151,7 @@ namespace artery {
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> surroundingCamObjects = getSurroundingCamObjects(
                 senderStationId);
         if (detectedSenders.find(senderStationId) == detectedSenders.end()) {
-            detectedSenders[senderStationId] = new DetectedSender(mTraciAPI, mGlobalEnvironmentModel,
+            detectedSenders[senderStationId] = std::make_shared<DetectedSender>(mTraciAPI, mGlobalEnvironmentModel,
                                                                   &F2MDParameters::detectionParameters,
                                                                   mTimer, message);
         }

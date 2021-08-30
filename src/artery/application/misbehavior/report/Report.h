@@ -9,16 +9,18 @@
 #include "vanetza/asn1/cam.hpp"
 #include <bitset>
 #include "artery/application/misbehavior/util/DetectionLevels.h"
-#include "artery/application/misbehavior/ma/ReportedPseudonym.h"
-#include "artery/application/misbehavior/ma/ReportingPseudonym.h"
+#include "artery/application/misbehavior/report/ReportedPseudonym.h"
+#include "artery/application/misbehavior/report/ReportingPseudonym.h"
 
 namespace artery {
 
     class ReportedPseudonym;
+
     class ReportingPseudonym;
     namespace ma {
 
-        struct Report;
+        class Report;
+
         struct SemanticDetection {
             detectionLevels::DetectionLevels detectionLevel;
             std::bitset<16> errorCode;
@@ -55,7 +57,8 @@ namespace artery {
         };
 
 
-        struct Report {
+        class Report {
+        public:
             std::string reportId;
             uint64_t generationTime;
             std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
@@ -66,7 +69,6 @@ namespace artery {
             Evidence evidence;
             bool isValid;
             double score;
-//            std::vector<std::shared_ptr<Report>> referencedBy;
         };
     }
 

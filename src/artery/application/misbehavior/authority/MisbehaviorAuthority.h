@@ -7,20 +7,19 @@
 
 #include <curl/curl.h>
 #include <omnetpp.h>
+#include <rapidjson/document.h>
 #include <vanetza/asn1/misbehavior_report.hpp>
 #include <vanetza/asn1/cam.hpp>
-#include <rapidjson/document.h>
 #include "artery/envmod/GlobalEnvironmentModel.h"
 #include "artery/application/Timer.h"
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
-#include "artery/application/misbehavior/ma/ReportedPseudonym.h"
-#include <artery/application/misbehavior/ma/ReportingPseudonym.h>
-#include "artery/application/misbehavior/ma/MisbehavingPseudonym.h"
-#include "artery/application/misbehavior/ma/Report.h"
-#include "artery/application/misbehavior/ma/ReportSummary.h"
+#include "artery/application/misbehavior/authority/MisbehavingPseudonym.h"
+#include "artery/application/misbehavior/report/ReportedPseudonym.h"
+#include "artery/application/misbehavior/report/ReportingPseudonym.h"
+#include "artery/application/misbehavior/report/Report.h"
+#include "artery/application/misbehavior/report/ReportSummary.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
-#include <rapidjson/document.h>
 #include "artery/application/misbehavior/fusion/BaseFusion.h"
 #include <artery/application/misbehavior/checks/BaseChecks.h>
 

@@ -28,6 +28,10 @@ namespace artery {
                        const Timer *timer,
                        const shared_ptr<vanetza::asn1::Cam> &message);
 
+
+        ~DetectedSender();
+
+
         std::shared_ptr<CheckResult> addAndCheckCam(const shared_ptr<vanetza::asn1::Cam> &message,
                                                     const VehicleDataProvider *receiverVDP,
                                                     const std::vector<Position> &receiverVehicleOutline,
@@ -64,6 +68,7 @@ namespace artery {
         std::string mPreviousReportId;
         std::vector<int> mOmittedReportsPerErrorCode;
         int mOmittedReportsCumulated;
+
 
     };
 

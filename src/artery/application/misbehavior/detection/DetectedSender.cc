@@ -29,6 +29,11 @@ namespace artery {
     }
 
 
+    DetectedSender::~DetectedSender() {
+        mCams.clear();
+    }
+
+
     std::shared_ptr<CheckResult>
     DetectedSender::addAndCheckCam(const shared_ptr<vanetza::asn1::Cam> &message, const VehicleDataProvider *receiverVDP,
                                    const std::vector<Position> &receiverVehicleOutline,
