@@ -65,25 +65,42 @@ namespace artery {
                std::map<std::string, std::shared_ptr<Report>> &currentReportList,
                std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
 
+        Report(std::string reportId, const std::shared_ptr<vanetza::asn1::Cam> &cam, const uint64_t &generationTime);
+
         std::string reportId;
         uint64_t generationTime;
         std::shared_ptr<vanetza::asn1::Cam> reportedMessage;
         std::shared_ptr<ReportedPseudonym> reportedPseudonym;
         std::shared_ptr<ReportingPseudonym> reportingPseudonym;
         DetectionType detectionType;
-        RelatedReport *relatedReport;
+        std::shared_ptr<RelatedReport> relatedReport;
         Evidence evidence;
         bool isValid;
         bool successfullyParsed;
         double score;
 
 
-        static void parseMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
-                                                  std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages,
-                                                  std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
+        static void decodeMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
+                                                   std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages,
+                                                   std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
 
         static std::shared_ptr<vanetza::asn1::Cam> getCamFromOpaque(const Opaque_t &data,
                                                                     std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
+
+        void setSemanticDetection(const detectionLevels::DetectionLevels &detectionLevel,
+                                  const std::bitset<16> &errorCode);
+
+        void setEvidence(const Evidence &evidence);
+
+        void setReportedMessages(const std::vector<std::shared_ptr<vanetza::asn1::Cam>>& cams, const int &maxCamCount);
+
+        void setRelatedReport(const std::string &relatedReportId, const long &omittedReportsNumber);
+
+
+        void fillSenderInfoContainer(const VehicleDataProvider *vehicleDataProvider,
+                                     const traci::VehicleController *vehicleController);
+
+        MisbehaviorReport encode();
     };
 
 } // namespace artery

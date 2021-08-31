@@ -108,7 +108,6 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
 
-
         void updateReactionType(ReportedPseudonym &reportedPseudonym);
 
         bool validateSemanticLevel1Report(const Report &report);

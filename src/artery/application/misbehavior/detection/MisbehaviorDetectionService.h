@@ -4,6 +4,7 @@
 
 #include "artery/application/ItsG5Service.h"
 #include "artery/application/misbehavior/util/DetectionLevels.h"
+#include "artery/application/misbehavior/report/Report.h"
 #include <vanetza/asn1/asn1c_wrapper.hpp>
 #include "artery/envmod/LocalEnvironmentModel.h"
 #include "artery/application/VehicleDataProvider.h"
@@ -60,8 +61,7 @@ namespace artery {
 
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> getSurroundingCamObjects(StationID_t senderStationId);
 
-        std::vector<std::bitset<16>> checkCam(const shared_ptr<vanetza::asn1::Cam> &message);
-
+        std::shared_ptr<CheckResult> checkCam(const shared_ptr<vanetza::asn1::Cam> &message);
 
         vanetza::asn1::MisbehaviorReport createReport(detectionLevels::DetectionLevels detectionLevel,
                                                       const std::string &reportId, std::string &relatedReportId,
@@ -82,11 +82,16 @@ namespace artery {
                            const bitset<16> &semanticDetectionErrorCodeCAM,
                            DetectedSender &detectedSender);
 
-
         vanetza::asn1::MisbehaviorReport
+        createLevel4Report(const string &reportId, const vanetza::asn1::Cam *reportedMessage,
+                           const bitset<16> &semanticDetectionErrorCodeCAM,
+                           DetectedSender &detectedSender);
+
+        static vanetza::asn1::MisbehaviorReport
         createBasicMisbehaviorReport(const string &reportId, const vanetza::asn1::Cam *cam);
 
-        void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
+//        void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);
+//        void fillSenderInfoContainer(const shared_ptr<SenderInfoContainer_t> &senderInfoContainer);
 
         static void fillRelatedReportContainer(RelatedReportContainer_t *&relatedReportContainer,
                                                const std::string &relatedReportId, const int &omittedReportsNumber);
@@ -100,10 +105,9 @@ namespace artery {
 
         void detectMisbehavior(const shared_ptr<vanetza::asn1::Cam> &message);
 
-        vanetza::asn1::MisbehaviorReport
-        createLevel4Report(const string &reportId, const vanetza::asn1::Cam *reportedMessage,
-                           const bitset<16> &semanticDetectionErrorCodeCAM,
-                           DetectedSender &detectedSender);
+
+        vector<shared_ptr<vanetza::asn1::Cam>> getOverlappingCams(const DetectedSender &detectedSender);
+
     };
 
 } // namespace artery

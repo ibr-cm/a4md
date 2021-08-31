@@ -39,7 +39,12 @@ namespace artery {
 
         StationID_t getStationId() const { return mStationId; };
 
-        std::list<std::shared_ptr<vanetza::asn1::Cam>> getCams() { return mCams; };
+        std::list<std::shared_ptr<vanetza::asn1::Cam>> getCams() const { return mCams; };
+
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> getCamVector() const {
+            std::vector<std::shared_ptr<vanetza::asn1::Cam>> cams{mCams.begin(), mCams.end()};
+            return cams;
+        };
 
         bool hasBeenReported() const { return mHasBeenReported; };
 
