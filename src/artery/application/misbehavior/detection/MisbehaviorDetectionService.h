@@ -87,7 +87,7 @@ namespace artery {
                            const bitset<16> &semanticDetectionErrorCodeCAM,
                            DetectedSender &detectedSender);
 
-        static vanetza::asn1::MisbehaviorReport
+        vanetza::asn1::MisbehaviorReport
         createBasicMisbehaviorReport(const string &reportId, const vanetza::asn1::Cam *cam);
 
 //        void fillSenderInfoContainer(SenderInfoContainer_t &senderInfoContainer);

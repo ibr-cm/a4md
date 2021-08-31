@@ -100,7 +100,7 @@ namespace artery {
         void fillSenderInfoContainer(const VehicleDataProvider *vehicleDataProvider,
                                      const traci::VehicleController *vehicleController);
 
-        MisbehaviorReport encode();
+        vanetza::asn1::MisbehaviorReport encode();
     };
 
 } // namespace artery

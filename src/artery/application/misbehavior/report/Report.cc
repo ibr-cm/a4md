@@ -7,8 +7,10 @@
 #include <utility>
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include <vanetza/units/time.hpp>
+#include <omnetpp.h>
 
 namespace artery {
+    using namespace omnetpp;
 
     namespace {
         auto degree_per_second = vanetza::units::degree / vanetza::units::si::second;
@@ -42,6 +44,7 @@ namespace artery {
                 relatedReport->omittedReportsNumber = relatedReportContainer.omittedReportsNumber;
             } else {
                 successfullyParsed = false;
+                return;
             }
         }
 
@@ -58,18 +61,21 @@ namespace artery {
                        reportSummaryList[relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() !=
                        generationTime) {
                 successfullyParsed = false;
+                return;
             } else {
                 auto it = currentReportList.find(relatedReport->referencedReportId);
                 if (it != currentReportList.end()) {
                     this->reportedMessage = it->second->reportedMessage;
                 } else {
                     successfullyParsed = false;
+                    return;
                 }
             }
         } else {
             std::cout << "ignoring report, only CertificateIncludedContainer is implemented" <<
                       std::endl;
             successfullyParsed = false;
+            return;
         }
 
         if (reportContainer.misbehaviorTypeContainer.present == MisbehaviorTypeContainer_PR_semanticDetection) {
@@ -93,6 +99,7 @@ namespace artery {
                             std::cout << "invalid report, evidenceContainer missing!" <<
                                       std::endl;
                             successfullyParsed = false;
+                            return;
                         }
                         if (reportContainer.evidenceContainer->reportedMessageContainer == nullptr) {
                             std::cout
@@ -100,23 +107,20 @@ namespace artery {
                                     <<
                                     std::endl;
                             successfullyParsed = false;
+                            return;
                         }
                         auto *reportedMessageContainer = reportContainer.evidenceContainer->reportedMessageContainer;
                         if (reportedMessageContainer->list.count == 0) {
                             std::cout << "invalid report, reportedMessageContainer is empty" <<
                                       std::endl;
                             successfullyParsed = false;
+                            return;
                         }
                         decodeMessageEvidenceContainer(*reportedMessageContainer, evidence.reportedMessages, camList);
                         break;
                     }
                     case detectionLevels::Level3: {
-                        if (reportContainer.evidenceContainer == nullptr) {
-                            std::cout << "invalid report, evidenceContainer missing!" <<
-                                      std::endl;
-                            successfullyParsed = false;
-                        }
-                        if (reportContainer.evidenceContainer->neighbourMessageContainer != nullptr) {
+                        if (reportContainer.evidenceContainer != nullptr && reportContainer.evidenceContainer->neighbourMessageContainer != nullptr) {
                             auto *neighbourMessageContainer = reportContainer.evidenceContainer->neighbourMessageContainer;
                             if (neighbourMessageContainer->list.count == 0) {
                                 std::cout << "neighbourMessageContainer is empty" <<
@@ -132,10 +136,12 @@ namespace artery {
                         if (reportContainer.evidenceContainer == nullptr) {
                             std::cout << "invalid report, evidenceContainer missing!" << std::endl;
                             successfullyParsed = false;
+                            return;
                         } else if (reportContainer.evidenceContainer->senderInfoContainer == nullptr &&
                                    reportContainer.evidenceContainer->senderSensorContainer == nullptr) {
                             std::cout << "invalid report, senderInfo and senderSensor missing!" << std::endl;
                             successfullyParsed = false;
+                            return;
                         } else {
                             if (reportContainer.evidenceContainer->senderInfoContainer != nullptr) {
                                 evidence.
@@ -158,6 +164,7 @@ namespace artery {
         } else {
             std::cout << "Nothing to do, only SemanticDetection is implemented" << std::endl;
             successfullyParsed = false;
+            return;
 
         }
     }
@@ -176,9 +183,11 @@ namespace artery {
     }
 
     Report::Report(std::string reportId, const std::shared_ptr<vanetza::asn1::Cam> &cam,
-                   const uint64_t &generationTime) : reportId(std::move(reportId)), generationTime(generationTime) {
+                   const uint64_t &generationTime) : reportId(std::move(reportId)), generationTime(generationTime),
+                                                     reportedMessage(cam) {
         isValid = false;
         successfullyParsed = false;
+        return;
         score = 0;
     }
 
@@ -226,8 +235,8 @@ namespace artery {
 
     void Report::fillSenderInfoContainer(const VehicleDataProvider *vehicleDataProvider,
                                          const traci::VehicleController *vehicleController) {
+        evidence.senderInfo = std::shared_ptr<SenderInfoContainer_t>(vanetza::asn1::allocate<SenderInfoContainer_t>());
         std::shared_ptr<SenderInfoContainer_t> senderInfoContainer = evidence.senderInfo;
-        senderInfoContainer= std::shared_ptr<SenderInfoContainer_t>(vanetza::asn1::allocate<SenderInfoContainer_t>());
         senderInfoContainer->stationType = static_cast<StationType_t>(vehicleDataProvider->getStationType());
         senderInfoContainer->referencePosition = vehicleDataProvider->approximateReferencePosition();
         senderInfoContainer->heading = vehicleDataProvider->approximateHeading();
@@ -259,8 +268,92 @@ namespace artery {
         senderInfoContainer->yawRate.yawRateConfidence = YawRateConfidence_unavailable;
     }
 
-    MisbehaviorReport Report::encode(){
+    vanetza::asn1::MisbehaviorReport Report::encode() {
 
         vanetza::asn1::MisbehaviorReport misbehaviorReport;
+        misbehaviorReport->version = 1;
+        ReportMetadataContainer_t &reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
+        assert(asn_long2INTEGER(&reportMetadataContainer.generationTime, generationTime) == 0);
+        OCTET_STRING_fromBuf(&reportMetadataContainer.reportID, reportId.c_str(), (int) strlen(reportId.c_str()));
+
+        ReportContainer &reportContainer = misbehaviorReport->reportContainer;
+        reportContainer.reportedMessageContainer.present = ReportedMessageContainer_PR_certificateIncludedContainer;
+        EtsiTs103097Data_t &reportedMessageEncoded =
+                reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
+        reportedMessageEncoded.protocolVersion = 3;
+        if (reportedMessage != nullptr) {
+            reportedMessageEncoded.content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
+            reportedMessageEncoded.content->present = Ieee1609Dot2Content_PR_unsecuredData;
+            auto *encodedMessage = new vanetza::ByteBuffer(reportedMessage->encode());
+            OCTET_STRING_fromBuf(&reportedMessageEncoded.content->choice.unsecuredData,
+                                 reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
+        }
+
+        MisbehaviorTypeContainer_t &misbehaviorTypeContainer = misbehaviorReport->reportContainer.misbehaviorTypeContainer;
+        switch (detectionType.present) {
+            case detectionTypes::none:
+                break;
+            case detectionTypes::SemanticType: {
+                misbehaviorTypeContainer.present = MisbehaviorTypeContainer_PR_semanticDetection;
+                SemanticDetection_t &semanticDetection = misbehaviorTypeContainer.choice.semanticDetection;
+                semanticDetection.present = SemanticDetection_PR_semanticDetectionReferenceCAM;
+
+                DetectionReferenceCAM_t &semanticDetectionReferenceCam = semanticDetection.choice.semanticDetectionReferenceCAM;
+                semanticDetectionReferenceCam.detectionLevelCAM = detectionType.semantic->detectionLevel;
+                std::string encoded = detectionType.semantic->errorCode.to_string();
+                OCTET_STRING_fromBuf(&semanticDetectionReferenceCam.semanticDetectionErrorCodeCAM, encoded.c_str(),
+                                     (int) strlen(encoded.c_str()));
+                break;
+            }
+            case detectionTypes::SecurityType:
+                break;
+        }
+
+        if (!evidence.reportedMessages.empty() || !evidence.reportedMessages.empty() ||
+            evidence.senderInfo != nullptr || evidence.senderSensors != nullptr) {
+            EvidenceContainer_t *&evidenceContainer = misbehaviorReport->reportContainer.evidenceContainer;
+            evidenceContainer = vanetza::asn1::allocate<EvidenceContainer_t>();
+
+            if (!evidence.reportedMessages.empty()) {
+                MessageEvidenceContainer_t *&neighbourMessageContainer = evidenceContainer->neighbourMessageContainer;
+                neighbourMessageContainer = vanetza::asn1::allocate<MessageEvidenceContainer_t>();
+                for (const auto &cam: evidence.reportedMessages) {
+                    auto *singleMessageContainer = vanetza::asn1::allocate<EtsiTs103097Data_t>();
+                    singleMessageContainer->content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
+                    singleMessageContainer->content->present = Ieee1609Dot2Content_PR_unsecuredData;
+                    auto *encodedMessage = new vanetza::ByteBuffer(cam->encode());
+                    OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
+                                         (const char *) encodedMessage->data(),
+                                         (int) encodedMessage->size());
+                    ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
+                }
+            }
+
+            if (!evidence.neighbourMessages.empty()) {
+                MessageEvidenceContainer_t *&neighbourMessageContainer = evidenceContainer->neighbourMessageContainer;
+                neighbourMessageContainer = vanetza::asn1::allocate<MessageEvidenceContainer_t>();
+                for (const auto &cam: evidence.neighbourMessages) {
+                    auto *singleMessageContainer = vanetza::asn1::allocate<EtsiTs103097Data_t>();
+                    singleMessageContainer->content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
+                    singleMessageContainer->content->present = Ieee1609Dot2Content_PR_unsecuredData;
+                    auto *encodedMessage = new vanetza::ByteBuffer(cam->encode());
+                    OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
+                                         (const char *) encodedMessage->data(),
+                                         (int) encodedMessage->size());
+                    ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
+                }
+            }
+
+            if (evidence.senderInfo != nullptr) {
+                evidenceContainer->senderInfoContainer = evidence.senderInfo.get();
+            }
+        }
+
+
+        std::string error;
+        if (!misbehaviorReport.validate(error)) {
+            throw cRuntimeError("Invalid Misbehavior Report: %s", error.c_str());
+        }
+        return misbehaviorReport;
     }
 }

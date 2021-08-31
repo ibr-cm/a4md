@@ -172,55 +172,20 @@ namespace artery {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
-            std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport,mReports,mCurrentReports,mCams);
+            std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport, mReports, mCurrentReports,
+                                                                      mCams);
             if (report->successfullyParsed) {
                 processReport(report);
-
             }
         } else if (signal == maMisbehaviorAnnouncement) {
             std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t> *>(obj);
             auto misbehaviorCaService = check_and_cast<MisbehaviorCaService *>(source);
-            for (const auto &stationId : stationIds) {
+            for (const auto &stationId: stationIds) {
                 mMisbehavingPseudonyms[stationId] = std::make_shared<MisbehavingPseudonym>(stationId,
                                                                                            misbehaviorCaService->getMisbehaviorType(),
                                                                                            misbehaviorCaService->getAttackType());
             }
         }
-    }
-
-    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report) {
-
-
-        uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
-        double ageScore = 1;
-        double evidenceScore = 1;
-        double validityScore = 1;
-        double reporterScore = 1;
-
-        if (mParameters->considerReportAge) {
-            double reportAge = min((double) (currentTime - report->generationTime) / 1000.0,
-                                   mParameters->maxReportAge);
-            ageScore = 1 - normalizeValue(reportAge, 0, mParameters->maxReportAge);
-        }
-        if (mParameters->considerReportValidity) {
-            validityScore = report->isValid;
-        }
-        if (mParameters->considerReporterScore) {
-            reporterScore = report->reportingPseudonym->getAverageReportScore();
-        }
-
-        if (mParameters->considerEvidenceScore) {
-            if (report->detectionType.present == detectionTypes::SemanticType &&
-                report->detectionType.semantic->detectionLevel == detectionLevels::Level2) {
-                int evidenceCamCount = (int) report->evidence.reportedMessages.size();
-                if (evidenceCamCount < mParameters->evidenceScoreMaxCamCount) {
-                    evidenceScore = normalizeValue(evidenceCamCount, 1, mParameters->evidenceScoreMaxCamCount);
-                }
-            }
-        }
-
-        double reportScore = ageScore * validityScore * reporterScore * evidenceScore;
-        return reportScore;
     }
 
     void MisbehaviorAuthority::processReport(const std::shared_ptr<Report> &report) {
@@ -267,6 +232,38 @@ namespace artery {
         updateDetectionRates(*reportedPseudonym, *report);
     }
 
+    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report) {
+        uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
+        double ageScore = 1;
+        double evidenceScore = 1;
+        double validityScore = 1;
+        double reporterScore = 1;
+
+        if (mParameters->considerReportAge) {
+            double reportAge = min((double) (currentTime - report->generationTime) / 1000.0,
+                                   mParameters->maxReportAge);
+            ageScore = 1 - normalizeValue(reportAge, 0, mParameters->maxReportAge);
+        }
+        if (mParameters->considerReportValidity) {
+            validityScore = report->isValid;
+        }
+        if (mParameters->considerReporterScore) {
+            reporterScore = report->reportingPseudonym->getAverageReportScore();
+        }
+
+        if (mParameters->considerEvidenceScore) {
+            if (report->detectionType.present == detectionTypes::SemanticType &&
+                report->detectionType.semantic->detectionLevel == detectionLevels::Level2) {
+                int evidenceCamCount = (int) report->evidence.reportedMessages.size();
+                if (evidenceCamCount < mParameters->evidenceScoreMaxCamCount) {
+                    evidenceScore = normalizeValue(evidenceCamCount, 1, mParameters->evidenceScoreMaxCamCount);
+                }
+            }
+        }
+
+        double reportScore = ageScore * validityScore * reporterScore * evidenceScore;
+        return reportScore;
+    }
 
     bool compareErrorCodes(std::bitset<16> reportedErrorCodes, std::bitset<16> actualErrorCodes) {
         for (int i = 0; i < actualErrorCodes.size(); i++) {
@@ -394,7 +391,7 @@ namespace artery {
         std::vector<int> reactionsBenign(5, 0);
         std::vector<int> reactionsMalicious(5, 0);
 
-        for (const auto &reportedPseudonym : mReportedPseudonyms) {
+        for (const auto &reportedPseudonym: mReportedPseudonyms) {
             misbehaviorTypes::MisbehaviorTypes misbehaviorType = getActualMisbehaviorType(
                     reportedPseudonym.second->getStationId());
             if (misbehaviorType == misbehaviorTypes::Benign) {
@@ -412,20 +409,20 @@ namespace artery {
         int sumReactionsBenign = std::accumulate(reactionsBenign.begin(), reactionsBenign.end(), 0);
         int sumReactionsMalicious = std::accumulate(reactionsMalicious.begin(), reactionsMalicious.end(), 0);
         if (sumReactionsBenign > 0) {
-            for (auto &reaction : reactionsBenign) {
+            for (auto &reaction: reactionsBenign) {
                 reactionsBenignJson.PushBack(100.0 * reaction / sumReactionsBenign, allocator);
             }
         } else {
-            for (auto &reaction : reactionsBenign) {
+            for (auto &reaction: reactionsBenign) {
                 reactionsBenignJson.PushBack(0, allocator);
             }
         }
         if (sumReactionsMalicious > 0) {
-            for (auto &reaction : reactionsMalicious) {
+            for (auto &reaction: reactionsMalicious) {
                 reactionsMaliciousJson.PushBack(100 * reaction / sumReactionsMalicious, allocator);
             }
         } else {
-            for (auto &reaction : reactionsMalicious) {
+            for (auto &reaction: reactionsMalicious) {
                 reactionsMaliciousJson.PushBack(0, allocator);
             }
         }
@@ -440,7 +437,7 @@ namespace artery {
         rapidjson::Value data;
         labels.SetArray();
         data.SetArray();
-        for (auto r : getRecentReported()) {
+        for (auto r: getRecentReported()) {
             labels.PushBack(r.stationId, allocator);
             data.PushBack(r.reportCount, allocator);
         }
@@ -459,12 +456,12 @@ namespace artery {
         accurate.SetArray();
         notAccurate.SetArray();
         rate.SetArray();
-        for (const auto &label : mDetectionAccuracyLabels) {
+        for (const auto &label: mDetectionAccuracyLabels) {
             rapidjson::Value v;
             v.SetString(label.c_str(), label.length(), allocator);
             detectionRatesLabels.PushBack(v, allocator);
         }
-        for (const auto &dAData : mDetectionAccuracyData) {
+        for (const auto &dAData: mDetectionAccuracyData) {
             accurate.PushBack(std::get<0>(dAData), allocator);
             notAccurate.PushBack(std::get<1>(dAData) * -1, allocator);
             rate.PushBack(std::get<2>(dAData), allocator);
@@ -512,7 +509,7 @@ namespace artery {
 
     std::vector<RecentReported> MisbehaviorAuthority::getRecentReported() {
         std::vector<RecentReported> recentReported;
-        for (const auto &r : mReportedPseudonyms) {
+        for (const auto &r: mReportedPseudonyms) {
             auto reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 std::sort(recentReported.begin(), recentReported.end(), sortByGenerationTime);
@@ -546,7 +543,7 @@ namespace artery {
         double reportFpSdSum = 0;
         double sdAttacker = 0;
         double sdBenign = 0;
-        for (const auto &r : mReportedPseudonyms) {
+        for (const auto &r: mReportedPseudonyms) {
             ReportedPseudonym reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 attackerCount++;
@@ -563,7 +560,7 @@ namespace artery {
         if (reportFpCount > 0) {
             meanReportsPerBenign = (double) reportFpCount / benignCount;
         }
-        for (const auto &r : mReportedPseudonyms) {
+        for (const auto &r: mReportedPseudonyms) {
             ReportedPseudonym reportedPseudonym = *r.second;
             if (getActualMisbehaviorType(reportedPseudonym.getStationId()) != misbehaviorTypes::Benign) {
                 reportTpSdSum += pow((int) reportedPseudonym.getValidReportCount() - meanReportsPerAttacker, 2);
