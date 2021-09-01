@@ -42,10 +42,10 @@ namespace artery {
                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams) {
         std::shared_ptr<CheckResult> result;
         if (!mCams.empty()) {
-            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, *message,
+            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message,
                                           mCams.back(), relevantCams);
         } else {
-            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, *message, nullptr,
+            result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message, nullptr,
                                           relevantCams);
         }
         mCams.emplace_back(message);

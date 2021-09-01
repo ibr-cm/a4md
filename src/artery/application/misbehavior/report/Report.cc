@@ -344,9 +344,9 @@ namespace artery {
                 }
             }
 
-            if (evidence.senderInfo != nullptr) {
-                evidenceContainer->senderInfoContainer = evidence.senderInfo.get();
-            }
+//            if (evidence.senderInfo != nullptr) {
+//                evidenceContainer->senderInfoContainer = evidence.senderInfo.get();
+//            }
         }
 
 

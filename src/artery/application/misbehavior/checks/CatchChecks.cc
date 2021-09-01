@@ -337,8 +337,8 @@ namespace artery {
 
     std::shared_ptr<CheckResult> CatchChecks::checkCAM(const VehicleDataProvider *receiverVDP,
                                                        const std::vector<Position> &receiverVehicleOutline,
-                                                       const vanetza::asn1::Cam &currentCam,
-                                                       const std::shared_ptr<vanetza::asn1::Cam> lastCamPtr,
+                                                       const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                                       const std::shared_ptr<vanetza::asn1::Cam> &lastCam,
                                                        const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) {
         const Position &receiverPosition = convertReferencePosition(receiverVDP->approximateReferencePosition(),
                                                                     mSimulationBoundary, mTraciAPI);
@@ -349,15 +349,15 @@ namespace artery {
         double receiverEllipseRadius = (double) receiverPositionConfidence.semiMajorConfidence / 100;
 
         Position currentCamPosition = convertReferencePosition(
-                currentCam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+                (*currentCam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         PosConfidenceEllipse_t currentCamPositionConfidence =
-                currentCam->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
+                (*currentCam)->cam.camParameters.basicContainer.referencePosition.positionConfidenceEllipse;
         std::vector<Position> currentCamPositionEllipse = createEllipse(currentCamPosition,
                                                                         currentCamPositionConfidence);
         double currentCamEllipseRadius = (double) currentCamPositionConfidence.semiMajorConfidence / 100;
 
         BasicVehicleContainerHighFrequency_t currentHfc =
-                currentCam->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
+                (*currentCam)->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
         double currentCamSpeed = (double) currentHfc.speed.speedValue / 100.0;
         double currentCamSpeedConfidence = (double) currentHfc.speed.speedConfidence / 100.0;
         double currentCamAcceleration =
@@ -379,10 +379,9 @@ namespace artery {
                 RangePlausibilityCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
                                        receiverPosition, receiverPositionEllipse, receiverEllipseRadius);
 
-        if (lastCamPtr != nullptr) {
-            vanetza::asn1::Cam lastCam = *lastCamPtr;
-            auto camDeltaTime = (double) (uint16_t) (currentCam->cam.generationDeltaTime -
-                                                     lastCam->cam.generationDeltaTime);
+        if (lastCam != nullptr) {
+            auto camDeltaTime = (double) (uint16_t) ((*currentCam)->cam.generationDeltaTime -
+                                                     (*lastCam)->cam.generationDeltaTime);
             result->consistencyIsChecked = true;
             result->positionConsistency =
                     PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,

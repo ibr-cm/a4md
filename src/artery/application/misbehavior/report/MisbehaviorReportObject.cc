@@ -64,36 +64,4 @@ namespace artery
         return new MisbehaviorReportObject { *this };
     }
 
-    using namespace omnetpp;
-
-//    class MisbehaviorReportStationIdResultFilter : public cObjectResultFilter
-//    {
-//    protected:
-//        void receiveSignal(cResultFilter* prev, simtime_t_cref t, cObject* object, cObject* details) override
-//        {
-//            if (auto misbehavior_report = dynamic_cast<MisbehaviorReportObject*>(object)) {
-//                const auto id = misbehavior_report->asn1()->reportMetadataContainer.reportID;
-//                fire(this, t, id, details);
-//            }
-//        }
-//    };
-
-//    Register_ResultFilter("misbehavior_reportStationId", MisbehaviorReportStationIdResultFilter)
-
-
-//    class MisbehaviorReportGenerationDeltaTimeResultFilter : public cObjectResultFilter
-//    {
-//    protected:
-//        void receiveSignal(cResultFilter* prev, simtime_t_cref t, cObject* object, cObject* details) override
-//        {
-//            if (auto misbehavior_report = dynamic_cast<MisbehaviorReportObject*>(object)) {
-//                const auto genDeltaTime = misbehavior_report->asn1()->misbehavior_report.generationDeltaTime;
-//                fire(this, t, genDeltaTime, details);
-//            }
-//        }
-//    };
-
-//    Register_ResultFilter("misbehavior_reportGenerationDeltaTime", MisbehaviorReportGenerationDeltaTimeResultFilter)
-
 } // namespace artery
-

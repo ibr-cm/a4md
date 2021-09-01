@@ -18,8 +18,8 @@ namespace artery {
 
         std::shared_ptr<CheckResult> checkCAM(const VehicleDataProvider *receiverVDP,
                                               const std::vector<Position> &receiverVehicleOutline,
-                                              const vanetza::asn1::Cam &currentCam,
-                                              const std::shared_ptr<vanetza::asn1::Cam> lastCamPtr,
+                                              const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                              const std::shared_ptr<vanetza::asn1::Cam> &lastCam,
                                               const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) override;
 
         std::bitset<16> checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam) override;
