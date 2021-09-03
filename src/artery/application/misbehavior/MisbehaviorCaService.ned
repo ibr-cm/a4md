@@ -7,6 +7,7 @@ simple MisbehaviorCaService like artery.application.BaseCaService
         @signal[CamReceived](type=CaObject);
         @signal[CamSent](type=CaObject);
         @signal[misbehaviorAuthority.MisbehaviorAnnouncement](simtime_t);
+        @signal[misbehaviorAuthority.newReport](type=MisbehaviorReportObject);
 
         @statistic[reception](source=CamReceived;record=vector(camStationId)?,vector(camGenerationDeltaTime)?);
         @statistic[transmission](source=CamSent;record=vector(camStationId)?,vector(camGenerationDeltaTime)?);
