@@ -39,6 +39,9 @@ namespace artery {
     MisbehaviorAuthority::~MisbehaviorAuthority() {
         curl_easy_cleanup(curl);
         this->clear();
+        delete mMsgGuiUpdate;
+        delete mMsgReportCleanup;
+        delete mBaseChecks;
     }
 
     void MisbehaviorAuthority::clear() {

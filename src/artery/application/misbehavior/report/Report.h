@@ -41,8 +41,8 @@ namespace artery {
 
     struct DetectionType {
         detectionTypes::DetectionTypes present = detectionTypes::none;
-        SemanticDetection *semantic;
-        SecurityDetection *security;
+        SemanticDetection *semantic = nullptr;
+        SecurityDetection *security = nullptr;
     };
 
     struct RelatedReport {
@@ -53,8 +53,8 @@ namespace artery {
     struct Evidence {
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages;
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages;
-        std::shared_ptr<SenderInfoContainer_t> senderInfo;
-        std::shared_ptr<SenderSensorContainer_t> senderSensors;
+        SenderInfoContainer_t* senderInfo = nullptr;
+        SenderSensorContainer_t* senderSensors = nullptr;
     };
 
 
@@ -66,6 +66,8 @@ namespace artery {
                std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
 
         Report(std::string reportId, const std::shared_ptr<vanetza::asn1::Cam> &cam, const uint64_t &generationTime);
+
+        ~Report();
 
         std::string reportId;
         uint64_t generationTime;
@@ -101,6 +103,8 @@ namespace artery {
                                      const traci::VehicleController *vehicleController);
 
         vanetza::asn1::MisbehaviorReport encode();
+
+        void setSenderInfoContainer(SenderInfoContainer_t* senderInfoContainer);
     };
 
 } // namespace artery

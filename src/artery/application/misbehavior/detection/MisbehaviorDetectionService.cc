@@ -144,24 +144,57 @@ namespace artery {
         for (detectionLevels::DetectionLevels detectionLevel: detectionLevels::DetectionLevelVector) {
             std::bitset<16> errorCode = detectionLevelErrorCodes[(int) detectionLevel];
             if (errorCode.any() && detectedSender.checkOmittedReportsLimit(errorCode)) {
-                std::string reportId(generateReportId(senderStationId));
+                std::string reportId(
+                        generateReportId(senderStationId, mVehicleDataProvider->getStationId(), getRNG(0)));
                 Report report(reportId, camPtr, countTaiMilliseconds(mTimer->getTimeFor(simTime())));
                 report.setSemanticDetection(detectionLevel, errorCode);
+                SenderInfoContainer_t *senderInfoContainer = (vanetza::asn1::allocate<SenderInfoContainer_t>());
                 switch (detectionLevel) {
                     case detectionLevels::Level1:
                         break;
                     case detectionLevels::Level2:
                         report.setReportedMessages(detectedSender.getCamVector(),
-                                                    F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
+                                                   F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
                         break;
                     case detectionLevels::Level3:
                         if (checkResult->intersection < F2MDParameters::detectionParameters.misbehaviorThreshold) {
                             report.evidence.neighbourMessages = getOverlappingCams(detectedSender);
                         }
                         break;
-                    case detectionLevels::Level4:
-                        report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
+                    case detectionLevels::Level4: {
+//                        senderInfoContainer->stationType = static_cast<StationType_t>(mVehicleDataProvider->getStationType());
+//                        senderInfoContainer->referencePosition = mVehicleDataProvider->approximateReferencePosition();
+//                        senderInfoContainer->heading = mVehicleDataProvider->approximateHeading();
+//                        senderInfoContainer->speed = mVehicleDataProvider->approximateSpeed();
+//                        senderInfoContainer->driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
+//                                                              DriveDirection_forward : DriveDirection_backward;
+//                        senderInfoContainer->vehicleLength.vehicleLengthValue = (long) (
+//                                mVehicleController->getLength().value() * 10);
+//                        senderInfoContainer->vehicleLength.vehicleLengthConfidenceIndication = VehicleLengthConfidenceIndication_noTrailerPresent;
+//                        senderInfoContainer->vehicleWidth = (long) (mVehicleController->getWidth().value() *
+//                                                                    10);
+//                        senderInfoContainer->longitudinalAcceleration = mVehicleDataProvider->approximateAcceleration();
+//
+//                        senderInfoContainer->curvature.curvatureConfidence = CurvatureConfidence_unavailable;
+//                        senderInfoContainer->curvature.curvatureValue = (long) (
+//                                abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) *
+//                                10000.0);
+//                        if (senderInfoContainer->curvature.curvatureValue >= 1023) {
+//                            senderInfoContainer->curvature.curvatureValue = 1023;
+//                        }
+//
+//                        senderInfoContainer->yawRate.yawRateValue = (long)
+//                                ((double) round(mVehicleDataProvider->yaw_rate(), degree_per_second) *
+//                                 YawRateValue_degSec_000_01ToLeft * 100.0);
+//                        if (senderInfoContainer->yawRate.yawRateValue < -32766 ||
+//                            senderInfoContainer->yawRate.yawRateValue > 32766) {
+//                            senderInfoContainer->yawRate.yawRateValue = YawRateValue_unavailable;
+//                        }
+//                        senderInfoContainer->yawRate.yawRateConfidence = YawRateConfidence_unavailable;
+//                        report.setSenderInfoContainer(senderInfoContainer);
+//                        report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
                         break;
+                    }
                     default:
                         break;
                 }
@@ -173,6 +206,7 @@ namespace artery {
                 vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
                 MisbehaviorReportObject obj(std::move(misbehaviorReport));
                 emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                vanetza::asn1::free(asn_DEF_SenderInfoContainer, senderInfoContainer);
                 relatedReportId = reportId;
                 if (detectedSender.getPreviousReportId().empty()) {
                     detectedSender.setReportId(relatedReportId);
@@ -196,7 +230,7 @@ namespace artery {
         uint32_t senderStationId = (*message)->header.stationID;
         std::vector<Position> mVehicleOutline = getVehicleOutline(mVehicleDataProvider, mVehicleController);
 
-        std::vector<std::shared_ptr<vanetza::asn1::Cam>> surroundingCamObjects = getSurroundingCamObjects(
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> surroundingCamObjects = getSurroundingCams(
                 senderStationId);
         if (detectedSenders.find(senderStationId) == detectedSenders.end()) {
             detectedSenders[senderStationId] = std::make_shared<DetectedSender>(mTraciAPI, mGlobalEnvironmentModel,
@@ -212,7 +246,7 @@ namespace artery {
     }
 
     std::vector<std::shared_ptr<vanetza::asn1::Cam>>
-    MisbehaviorDetectionService::getSurroundingCamObjects(StationID_t senderStationId) {
+    MisbehaviorDetectionService::getSurroundingCams(StationID_t senderStationId) {
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> surroundingCamObjects;
         for (const auto &it: detectedSenders) {
             auto detectedSender = it.second;
@@ -239,7 +273,7 @@ namespace artery {
                                                                          mVehicleController))) {
             overlappingCams.emplace_back(mLastSentCam);
         }
-        for (const auto &cam: getSurroundingCamObjects(detectedSender.getStationId())) {
+        for (const auto &cam: getSurroundingCams(detectedSender.getStationId())) {
             std::vector<Position> outline = getVehicleOutline((*cam), mSimulationBoundary,
                                                               mTraciAPI);
             if (boost::geometry::intersects(senderOutline, outline)) {
@@ -247,13 +281,6 @@ namespace artery {
             }
         }
         return overlappingCams;
-    }
-
-
-    std::string MisbehaviorDetectionService::generateReportId(const StationID_t &senderStationId) {
-        return {std::to_string(senderStationId) + "_" +
-                std::to_string(mVehicleDataProvider->getStationId()) + "_" +
-                std::to_string(intrand(UINT32_MAX))};
     }
 
     void MisbehaviorDetectionService::visualizeCamPosition(vanetza::asn1::Cam cam, const libsumo::TraCIColor &color,

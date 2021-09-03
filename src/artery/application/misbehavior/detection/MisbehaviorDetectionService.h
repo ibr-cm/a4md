@@ -52,12 +52,9 @@ namespace artery {
 
         void initializeParameters();
 
-
-        std::vector<std::shared_ptr<vanetza::asn1::Cam>> getSurroundingCamObjects(StationID_t senderStationId);
+        std::vector<std::shared_ptr<vanetza::asn1::Cam>> getSurroundingCams(StationID_t senderStationId);
 
         std::shared_ptr<CheckResult> checkCam(const shared_ptr<vanetza::asn1::Cam> &message);
-
-        string generateReportId(const StationID_t &senderStationId);
 
         void detectMisbehavior(const shared_ptr<vanetza::asn1::Cam> &message);
 

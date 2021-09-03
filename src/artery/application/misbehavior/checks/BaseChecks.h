@@ -26,11 +26,13 @@ namespace artery {
 
     class BaseChecks {
     public:
-        BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                   DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message);
+        BaseChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                   DetectionParameters *detectionParameters, const Timer *timer, const std::shared_ptr<vanetza::asn1::Cam> &message);
 
-        BaseChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+        BaseChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                    DetectionParameters *detectionParameters, const Timer *timer);
+
+        virtual ~BaseChecks(){};
 
         void initializeKalmanFilters(const vanetza::asn1::Cam &message);
 
@@ -62,6 +64,11 @@ namespace artery {
         DetectionParameters *detectionParameters;
         ThresholdFusion *mThresholdFusion;
 
+        Kalman_SVI *kalmanSVI;
+        Kalman_SC *kalmanSVSI;
+        Kalman_SI *kalmanSI;
+        Kalman_SI *kalmanVI;
+
         Position mLastCamPosition;
         PosConfidenceEllipse_t mLastCamPositionConfidence;
         std::vector<Position> mLastCamPositionEllipse;
@@ -84,10 +91,6 @@ namespace artery {
 
 
     private:
-        Kalman_SVI *kalmanSVI;
-        Kalman_SC *kalmanSVSI;
-        Kalman_SI *kalmanSI;
-        Kalman_SI *kalmanVI;
 
         void KalmanPositionSpeedConsistencyCheck(const Position &currentPosition,
                                                  const PosConfidenceEllipse_t &currentPositionConfidence,

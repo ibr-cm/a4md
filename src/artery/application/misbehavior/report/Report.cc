@@ -22,6 +22,12 @@ namespace artery {
         }
     }
 
+    Report::~Report(){
+            delete detectionType.semantic;
+            delete detectionType.security;
+
+    }
+
     Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
                    std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList,
                    std::map<std::string, std::shared_ptr<Report>> &currentReportList,
@@ -120,7 +126,8 @@ namespace artery {
                         break;
                     }
                     case detectionLevels::Level3: {
-                        if (reportContainer.evidenceContainer != nullptr && reportContainer.evidenceContainer->neighbourMessageContainer != nullptr) {
+                        if (reportContainer.evidenceContainer != nullptr &&
+                            reportContainer.evidenceContainer->neighbourMessageContainer != nullptr) {
                             auto *neighbourMessageContainer = reportContainer.evidenceContainer->neighbourMessageContainer;
                             if (neighbourMessageContainer->list.count == 0) {
                                 std::cout << "neighbourMessageContainer is empty" <<
@@ -144,14 +151,10 @@ namespace artery {
                             return;
                         } else {
                             if (reportContainer.evidenceContainer->senderInfoContainer != nullptr) {
-                                evidence.
-                                        senderInfo = std::make_shared<SenderInfoContainer_t>
-                                        (*reportContainer.evidenceContainer->senderInfoContainer);
+                                evidence.senderInfo = reportContainer.evidenceContainer->senderInfoContainer;
                             }
                             if (reportContainer.evidenceContainer->senderSensorContainer != nullptr) {
-                                evidence.
-                                        senderSensors = std::make_shared<SenderSensorContainer_t>
-                                        (*reportContainer.evidenceContainer->senderSensorContainer);
+                                evidence.senderSensors = reportContainer.evidenceContainer->senderSensorContainer;
                             }
                         }
                         break;
@@ -232,11 +235,14 @@ namespace artery {
         relatedReport->omittedReportsNumber = omittedReportsNumber;
     }
 
+    void Report::setSenderInfoContainer(SenderInfoContainer_t *senderInfoContainer) {
+        evidence.senderInfo = senderInfoContainer;
+    }
 
     void Report::fillSenderInfoContainer(const VehicleDataProvider *vehicleDataProvider,
                                          const traci::VehicleController *vehicleController) {
-        evidence.senderInfo = std::shared_ptr<SenderInfoContainer_t>(vanetza::asn1::allocate<SenderInfoContainer_t>());
-        std::shared_ptr<SenderInfoContainer_t> senderInfoContainer = evidence.senderInfo;
+        evidence.senderInfo = vanetza::asn1::allocate<SenderInfoContainer_t>();
+        SenderInfoContainer_t *&senderInfoContainer = evidence.senderInfo;
         senderInfoContainer->stationType = static_cast<StationType_t>(vehicleDataProvider->getStationType());
         senderInfoContainer->referencePosition = vehicleDataProvider->approximateReferencePosition();
         senderInfoContainer->heading = vehicleDataProvider->approximateHeading();
@@ -287,6 +293,7 @@ namespace artery {
             auto *encodedMessage = new vanetza::ByteBuffer(reportedMessage->encode());
             OCTET_STRING_fromBuf(&reportedMessageEncoded.content->choice.unsecuredData,
                                  reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
+            delete encodedMessage;
         }
 
         MisbehaviorTypeContainer_t &misbehaviorTypeContainer = misbehaviorReport->reportContainer.misbehaviorTypeContainer;
@@ -308,6 +315,9 @@ namespace artery {
             case detectionTypes::SecurityType:
                 break;
         }
+        if(detectionType.semantic->detectionLevel == detectionLevels::Level4){
+            std::cout << "";
+        }
 
         if (!evidence.reportedMessages.empty() || !evidence.reportedMessages.empty() ||
             evidence.senderInfo != nullptr || evidence.senderSensors != nullptr) {
@@ -326,6 +336,7 @@ namespace artery {
                                          (const char *) encodedMessage->data(),
                                          (int) encodedMessage->size());
                     ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
+                    delete encodedMessage;
                 }
             }
 
@@ -341,12 +352,23 @@ namespace artery {
                                          (const char *) encodedMessage->data(),
                                          (int) encodedMessage->size());
                     ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
+                    delete encodedMessage;
                 }
             }
 
-//            if (evidence.senderInfo != nullptr) {
-//                evidenceContainer->senderInfoContainer = evidence.senderInfo.get();
-//            }
+            if (evidence.senderInfo != nullptr) {
+                evidenceContainer->senderInfoContainer = vanetza::asn1::allocate<SenderInfoContainer_t>();
+                evidenceContainer->senderInfoContainer->stationType = evidence.senderInfo->stationType;
+                evidenceContainer->senderInfoContainer->referencePosition = evidence.senderInfo->referencePosition;
+                evidenceContainer->senderInfoContainer->heading = evidence.senderInfo->heading;
+                evidenceContainer->senderInfoContainer->speed = evidence.senderInfo->speed;
+                evidenceContainer->senderInfoContainer->driveDirection = evidence.senderInfo->driveDirection;
+                evidenceContainer->senderInfoContainer->vehicleLength = evidence.senderInfo->vehicleLength;
+                evidenceContainer->senderInfoContainer->vehicleWidth = evidence.senderInfo->vehicleWidth;
+                evidenceContainer->senderInfoContainer->longitudinalAcceleration = evidence.senderInfo->longitudinalAcceleration;
+                evidenceContainer->senderInfoContainer->curvature = evidence.senderInfo->curvature;
+                evidenceContainer->senderInfoContainer->yawRate = evidence.senderInfo->yawRate;
+            }
         }
 
 

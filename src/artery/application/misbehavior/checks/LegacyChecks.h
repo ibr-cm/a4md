@@ -10,10 +10,20 @@ namespace artery {
     public:
         LegacyChecks() = delete;
 
-        LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                     DetectionParameters *detectionParameters, const Timer *timer, const vanetza::asn1::Cam &message);
+        ~LegacyChecks() override {
+            delete kalmanSVI;
+            delete kalmanSVSI;
+            delete kalmanSI;
+            delete kalmanVI;
+            delete mThresholdFusion;
+        }
 
-        LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+
+        LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                     DetectionParameters *detectionParameters, const Timer *timer,
+                     const std::shared_ptr<vanetza::asn1::Cam> &message);
+
+        LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                      DetectionParameters *detectionParameters, double misbehaviorThreshold, const Timer *timer);
 
         std::shared_ptr<CheckResult> checkCAM(const VehicleDataProvider *receiverVDP,

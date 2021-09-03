@@ -27,7 +27,9 @@ namespace artery {
     std::string ia5stringToString(IA5String_t ia5String) {
         char *tmp = new char[ia5String.size + 1]();
         snprintf(tmp, ia5String.size + 1, "%s", (char *) ia5String.buf);
-        return std::string(tmp);
+        std::string out{tmp};
+        delete[] tmp;
+        return out;
     }
 
     boost::geometry::strategy::transform::matrix_transformer<double, 2, 2>
@@ -108,7 +110,7 @@ namespace artery {
         globalEnvMod->getLaneRTree()->query(
                 boost::geometry::index::nearest(position, 10),
                 std::back_inserter(laneResults));
-        for (const auto &lResult : laneResults) {
+        for (const auto &lResult: laneResults) {
             const auto &lane = globalEnvMod->getLane(lResult.second);
             minRoadDistance = std::min(minRoadDistance,
                                        boost::geometry::distance(position, lane->getShape()) - lane->getWidth() / 2);
@@ -117,7 +119,7 @@ namespace artery {
         globalEnvMod->getJunctionRTree()->query(
                 boost::geometry::index::nearest(position, 3),
                 std::back_inserter(junctionResults));
-        for (const auto &jResult : junctionResults) {
+        for (const auto &jResult: junctionResults) {
             minRoadDistance = std::min(minRoadDistance, boost::geometry::distance(position,
                                                                                   globalEnvMod->getJunction(
                                                                                           jResult.second)->getOutline()));
@@ -153,7 +155,7 @@ namespace artery {
 
         }
         libsumo::TraCIPositionVector traciOutline;
-        for (const Position &p : outline) {
+        for (const Position &p: outline) {
             traciOutline.value.emplace_back(position_cast(simulationBoundary, p));
         }
         traciOutline.value.emplace_back(position_cast(simulationBoundary, outline.front()));
@@ -205,7 +207,7 @@ namespace artery {
                                 join_strategy, end_strategy, circle_strategy);
         std::vector<Position> circleOutline;
         polygon circle = circleBuffer.front();
-        for (auto p : circle.outer()) {
+        for (auto p: circle.outer()) {
             circleOutline.emplace_back(Position(p.x(), p.y()));
         }
         return circleOutline;
@@ -827,12 +829,12 @@ namespace artery {
         return false;
     }
 
-    bool camCompPtr(const std::shared_ptr<vanetza::asn1::Cam> &ptr1, const std::shared_ptr<vanetza::asn1::Cam> &ptr2){
-        return camComp((*ptr1),(*ptr2));
+    bool camCompPtr(const std::shared_ptr<vanetza::asn1::Cam> &ptr1, const std::shared_ptr<vanetza::asn1::Cam> &ptr2) {
+        return camComp((*ptr1), (*ptr2));
     }
 
-    bool camEquiv(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2){
-        return !camComp(message1,message2) && !camComp(message1,message2);
+    bool camEquiv(const vanetza::asn1::Cam &message1, const vanetza::asn1::Cam &message2) {
+        return !camComp(message1, message2) && !camComp(message1, message2);
     }
 
 
@@ -852,5 +854,13 @@ namespace artery {
         return result;
     }
 
+
+    std::string generateReportId(const StationID_t &senderStationId,
+                                 const StationID_t &receiverStationId,
+                                 omnetpp::cRNG *rng) {
+        return {std::to_string(senderStationId) + "_" +
+                std::to_string(receiverStationId) + "_" +
+                std::to_string(intrand(rng, UINT32_MAX))};
+    }
 
 }

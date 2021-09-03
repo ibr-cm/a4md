@@ -371,16 +371,18 @@ namespace artery {
         return mThresholdFusion->checkForReport(*result)[detectionLevels::Level4];
     }
 
-    LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+    LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                                DetectionParameters *detectionParameters, const Timer *timer,
-                               const vanetza::asn1::Cam &message)
+                               const std::shared_ptr<vanetza::asn1::Cam> &message)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer, message) {
+        mThresholdFusion = nullptr;
     }
 
-    LegacyChecks::LegacyChecks(shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+    LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                                DetectionParameters *detectionParameters, double misbehaviorThreshold,
                                const Timer *timer)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer) {
         mThresholdFusion = new ThresholdFusion(misbehaviorThreshold);
     }
+
 } // namespace artery

@@ -21,17 +21,17 @@ namespace artery {
         mCamsArraySize = detectionParameters->detectedSenderCamArrayMaxSize;
         switch (detectionParameters->checkType) {
             case checkTypes::LegacyChecks:
-                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, *message);
+                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, message);
                 break;
             case checkTypes::CatchChecks:
-                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, *message);
+                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, message);
         }
     }
 
 
     DetectedSender::~DetectedSender() {
         mCams.clear();
-
+        delete baseChecks;
     }
 
 

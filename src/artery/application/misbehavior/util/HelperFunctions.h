@@ -110,6 +110,10 @@ namespace artery {
     double normalizeValue(double value, double min, double max);
 
     std::vector<std::string> split(const std::string &s, char delimiter);
+
+    std::string generateReportId(const StationID_t &senderStationId,
+                                 const StationID_t &receiverStationId,
+                                 omnetpp::cRNG *rng);
 }
 
 #endif //ARTERY_HELPERFUNCTIONS_H

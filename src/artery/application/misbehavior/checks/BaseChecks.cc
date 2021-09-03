@@ -18,7 +18,7 @@ namespace artery {
                            GlobalEnvironmentModel *globalEnvironmentModel,
                            DetectionParameters *detectionParameters,
                            const Timer *timer,
-                           const vanetza::asn1::Cam &message) :
+                           const std::shared_ptr<vanetza::asn1::Cam> &message) :
             detectionParameters(detectionParameters) {
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
@@ -28,12 +28,12 @@ namespace artery {
             mTimer = timer;
         }
         Position position = convertReferencePosition(
-                message->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
+                (*message)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         double speed =
-                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
+                (double) (*message)->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue /
                 100.0;
         double heading =
-                (double) message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
+                (double) (*message)->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.heading.headingValue /
                 10.0;
         Position speedVector = getVector(speed, heading);
         kalmanSVI = new Kalman_SVI();
