@@ -325,8 +325,8 @@ namespace artery {
             evidenceContainer = vanetza::asn1::allocate<EvidenceContainer_t>();
 
             if (!evidence.reportedMessages.empty()) {
-                MessageEvidenceContainer_t *&neighbourMessageContainer = evidenceContainer->neighbourMessageContainer;
-                neighbourMessageContainer = vanetza::asn1::allocate<MessageEvidenceContainer_t>();
+                MessageEvidenceContainer_t *&reportedMessageContainer = evidenceContainer->reportedMessageContainer;
+                reportedMessageContainer = vanetza::asn1::allocate<MessageEvidenceContainer_t>();
                 for (const auto &cam: evidence.reportedMessages) {
                     auto *singleMessageContainer = vanetza::asn1::allocate<EtsiTs103097Data_t>();
                     singleMessageContainer->content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
@@ -335,7 +335,7 @@ namespace artery {
                     OCTET_STRING_fromBuf(&singleMessageContainer->content->choice.unsecuredData,
                                          (const char *) encodedMessage->data(),
                                          (int) encodedMessage->size());
-                    ASN_SEQUENCE_ADD(neighbourMessageContainer, singleMessageContainer);
+                    ASN_SEQUENCE_ADD(reportedMessageContainer, singleMessageContainer);
                     delete encodedMessage;
                 }
             }
