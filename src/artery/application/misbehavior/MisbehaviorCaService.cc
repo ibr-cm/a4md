@@ -6,6 +6,8 @@
 
 #include "artery/application/misbehavior/MisbehaviorCaService.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
+#include "artery/application/misbehavior/report/Report.h"
+#include "artery/application/misbehavior/report/MisbehaviorReportObject.h"
 #include "artery/application/CaObject.h"
 #include "artery/application/Asn1PacketVisitor.h"
 #include "artery/application/MultiChannelPolicy.h"
@@ -24,6 +26,8 @@ namespace artery {
         static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
         static const simsignal_t scSignalMaMisbehaviorAnnouncement = cComponent::registerSignal(
                 "misbehaviorAuthority.MisbehaviorAnnouncement");
+        static const simsignal_t scSignalMisbehaviorAuthorityNewReport = cComponent::registerSignal(
+                "misbehaviorAuthority.newReport");
     }
 
     GlobalEnvironmentModel *MisbehaviorCaService::mGlobalEnvironmentModel;
@@ -243,7 +247,7 @@ namespace artery {
                 case attackTypes::DoSDisruptive:
                 case attackTypes::GridSybil: {
                     std::shared_ptr<vanetza::asn1::Cam> camPtr(new vanetza::asn1::Cam(message));
-                    receivedMessages[message->header.stationID].push(camPtr);
+                    receivedMessages[message->header.stationID].push_back(camPtr);
                     break;
                 }
                 default:
@@ -438,7 +442,7 @@ namespace artery {
                 std::advance(it, index);
                 if (!it->second.empty()) {
                     message = *it->second.front();
-                    it->second.pop();
+                    it->second.pop_front();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
                     message->header.stationID = mVehicleDataProvider->getStationId();
@@ -550,7 +554,7 @@ namespace artery {
                         }
                         attackDataReplayCurrentStationId = mostReceivedStationId;
                         message = *receivedMessages[attackDataReplayCurrentStationId].front();
-                        receivedMessages[attackDataReplayCurrentStationId].pop();
+                        receivedMessages[attackDataReplayCurrentStationId].pop_front();
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
                         message->header.stationID = mPseudonyms.front();
@@ -560,7 +564,7 @@ namespace artery {
                 } else {
                     if (!receivedMessages[attackDataReplayCurrentStationId].empty()) {
                         message = *receivedMessages[attackDataReplayCurrentStationId].front();
-                        receivedMessages[attackDataReplayCurrentStationId].pop();
+                        receivedMessages[attackDataReplayCurrentStationId].pop_front();
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
                         message->header.stationID = mPseudonyms.front();
@@ -601,7 +605,7 @@ namespace artery {
                 std::advance(it, index);
                 if (!it->second.empty()) {
                     message = *it->second.front();
-                    it->second.pop();
+                    it->second.pop_front();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
                     message->header.stationID = mPseudonyms.front();
@@ -614,6 +618,53 @@ namespace artery {
                 break;
             }
             case attackTypes::FakeReport: {
+                auto it = receivedMessages.begin();
+                int index = (int) uniform(0, (double) receivedMessages.size());
+                std::advance(it, index);
+                std::shared_ptr<vanetza::asn1::Cam> cam;
+                if (!it->second.empty()) {
+                    cam = it->second.front();
+                    it->second.pop_front();
+                    std::string reportId(
+                            generateReportId(message->header.stationID, mVehicleDataProvider->getStationId(),
+                                             getRNG(0)));
+                    Report report(reportId, cam, countTaiMilliseconds(mTimer->getTimeFor(simTime())));
+                    auto detectionLevel = static_cast<detectionLevels::DetectionLevels>(intuniform(
+                            detectionLevels::Level1, detectionLevels::Level4));
+                    std::bitset<16> errorCode;
+                    errorCode[intuniform(0, 7)] = true;
+                    report.setSemanticDetection(detectionLevel, errorCode);
+                    switch (detectionLevel) {
+                        case detectionLevels::Level1:
+                            break;
+                        case detectionLevels::Level2:{
+                            std::vector<std::shared_ptr<vanetza::asn1::Cam>> evidenceCams;
+                            for (int i = 0; i < std::min((int) it->second.size(),
+                                                         F2MDParameters::reportParameters.evidenceContainerMaxCamCount); i++) {
+                                evidenceCams.emplace_back(it->second.back());
+                                it->second.pop_back();
+                            }
+                            report.setReportedMessages(evidenceCams,
+                                                       F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
+                            break;
+                        }
+                        case detectionLevels::Level3:
+                            break;
+                        case detectionLevels::Level4:
+                            report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
+                            break;
+                        default:
+                            break;
+                    }
+                    vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
+                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                    if(it->second.empty()){
+                        receivedMessages.erase(it->first);
+                    }
+                } else {
+                    receivedMessages.erase(it->first);
+                }
                 break;
             }
             default:
@@ -638,7 +689,7 @@ namespace artery {
                 }
                 attackDataReplayCurrentStationId = mostReceivedStationId;
                 message = *(receivedMessages[attackDataReplayCurrentStationId].front());
-                receivedMessages[attackDataReplayCurrentStationId].pop();
+                receivedMessages[attackDataReplayCurrentStationId].pop_front();
                 if (maxSize == 1) {
                     receivedMessages.erase(attackDataReplayCurrentStationId);
                 }
@@ -650,7 +701,7 @@ namespace artery {
                 (*receivedMessages[attackDataReplayCurrentStationId].front())->cam.generationDeltaTime <
                 (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
                 message = *receivedMessages[attackDataReplayCurrentStationId].front();
-                receivedMessages[attackDataReplayCurrentStationId].pop();
+                receivedMessages[attackDataReplayCurrentStationId].pop_front();
             } else {
                 receivedMessages.erase(attackDataReplayCurrentStationId);
                 attackDataReplayCurrentStationId = -1;
@@ -695,7 +746,7 @@ namespace artery {
         if (mAttackType != attackTypes::GridSybil) {
             int alphaStep = 185 / maxActivePoIs;
             int currentAlpha = 80;
-            for (const auto &poi : activePoIs) {
+            for (const auto &poi: activePoIs) {
                 mTraciAPI->poi.setColor(poi, libsumo::TraCIColor(255, 0, 255, currentAlpha));
                 currentAlpha += alphaStep;
             }
