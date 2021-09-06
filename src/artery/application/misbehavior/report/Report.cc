@@ -22,10 +22,11 @@ namespace artery {
         }
     }
 
-    Report::~Report(){
-            delete detectionType.semantic;
-            delete detectionType.security;
-
+    Report::~Report() {
+        delete detectionType.semantic;
+        delete detectionType.security;
+        delete evidence.senderInfo;
+        delete evidence.senderSensors;
     }
 
     Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
@@ -151,10 +152,12 @@ namespace artery {
                             return;
                         } else {
                             if (reportContainer.evidenceContainer->senderInfoContainer != nullptr) {
-                                evidence.senderInfo = reportContainer.evidenceContainer->senderInfoContainer;
+                                evidence.senderInfo = vanetza::asn1::allocate<SenderInfoContainer_t>();
+                                *evidence.senderInfo = *reportContainer.evidenceContainer->senderInfoContainer;
                             }
                             if (reportContainer.evidenceContainer->senderSensorContainer != nullptr) {
-                                evidence.senderSensors = reportContainer.evidenceContainer->senderSensorContainer;
+                                evidence.senderSensors = vanetza::asn1::allocate<SenderSensorContainer_t>();
+                                *evidence.senderSensors = *reportContainer.evidenceContainer->senderSensorContainer;
                             }
                         }
                         break;
@@ -185,13 +188,13 @@ namespace artery {
         }
     }
 
-    Report::Report(std::string reportId, const std::shared_ptr<vanetza::asn1::Cam> &cam,
+    Report::Report(std::string reportId, std::shared_ptr<vanetza::asn1::Cam> cam,
                    const uint64_t &generationTime) : reportId(std::move(reportId)), generationTime(generationTime),
-                                                     reportedMessage(cam) {
+                                                     reportedMessage(std::move(cam)) {
         isValid = false;
         successfullyParsed = false;
-        return;
         score = 0;
+        return;
     }
 
     void Report::setSemanticDetection(const detectionLevels::DetectionLevels &detectionLevel,
@@ -235,9 +238,6 @@ namespace artery {
         relatedReport->omittedReportsNumber = omittedReportsNumber;
     }
 
-    void Report::setSenderInfoContainer(SenderInfoContainer_t *senderInfoContainer) {
-        evidence.senderInfo = senderInfoContainer;
-    }
 
     void Report::fillSenderInfoContainer(const VehicleDataProvider *vehicleDataProvider,
                                          const traci::VehicleController *vehicleController) {
@@ -315,7 +315,7 @@ namespace artery {
             case detectionTypes::SecurityType:
                 break;
         }
-        if(detectionType.semantic->detectionLevel == detectionLevels::Level4){
+        if (detectionType.semantic->detectionLevel == detectionLevels::Level4) {
             std::cout << "";
         }
 
@@ -358,16 +358,17 @@ namespace artery {
 
             if (evidence.senderInfo != nullptr) {
                 evidenceContainer->senderInfoContainer = vanetza::asn1::allocate<SenderInfoContainer_t>();
-                evidenceContainer->senderInfoContainer->stationType = evidence.senderInfo->stationType;
-                evidenceContainer->senderInfoContainer->referencePosition = evidence.senderInfo->referencePosition;
-                evidenceContainer->senderInfoContainer->heading = evidence.senderInfo->heading;
-                evidenceContainer->senderInfoContainer->speed = evidence.senderInfo->speed;
-                evidenceContainer->senderInfoContainer->driveDirection = evidence.senderInfo->driveDirection;
-                evidenceContainer->senderInfoContainer->vehicleLength = evidence.senderInfo->vehicleLength;
-                evidenceContainer->senderInfoContainer->vehicleWidth = evidence.senderInfo->vehicleWidth;
-                evidenceContainer->senderInfoContainer->longitudinalAcceleration = evidence.senderInfo->longitudinalAcceleration;
-                evidenceContainer->senderInfoContainer->curvature = evidence.senderInfo->curvature;
-                evidenceContainer->senderInfoContainer->yawRate = evidence.senderInfo->yawRate;
+                *evidenceContainer->senderInfoContainer = *evidence.senderInfo;
+//                evidenceContainer->senderInfoContainer->stationType = evidence.senderInfo->stationType;
+//                evidenceContainer->senderInfoContainer->referencePosition = evidence.senderInfo->referencePosition;
+//                evidenceContainer->senderInfoContainer->heading = evidence.senderInfo->heading;
+//                evidenceContainer->senderInfoContainer->speed = evidence.senderInfo->speed;
+//                evidenceContainer->senderInfoContainer->driveDirection = evidence.senderInfo->driveDirection;
+//                evidenceContainer->senderInfoContainer->vehicleLength = evidence.senderInfo->vehicleLength;
+//                evidenceContainer->senderInfoContainer->vehicleWidth = evidence.senderInfo->vehicleWidth;
+//                evidenceContainer->senderInfoContainer->longitudinalAcceleration = evidence.senderInfo->longitudinalAcceleration;
+//                evidenceContainer->senderInfoContainer->curvature = evidence.senderInfo->curvature;
+//                evidenceContainer->senderInfoContainer->yawRate = evidence.senderInfo->yawRate;
             }
         }
 

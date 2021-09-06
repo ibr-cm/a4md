@@ -162,37 +162,7 @@ namespace artery {
                         }
                         break;
                     case detectionLevels::Level4: {
-//                        senderInfoContainer->stationType = static_cast<StationType_t>(mVehicleDataProvider->getStationType());
-//                        senderInfoContainer->referencePosition = mVehicleDataProvider->approximateReferencePosition();
-//                        senderInfoContainer->heading = mVehicleDataProvider->approximateHeading();
-//                        senderInfoContainer->speed = mVehicleDataProvider->approximateSpeed();
-//                        senderInfoContainer->driveDirection = mVehicleDataProvider->speed().value() >= 0.0 ?
-//                                                              DriveDirection_forward : DriveDirection_backward;
-//                        senderInfoContainer->vehicleLength.vehicleLengthValue = (long) (
-//                                mVehicleController->getLength().value() * 10);
-//                        senderInfoContainer->vehicleLength.vehicleLengthConfidenceIndication = VehicleLengthConfidenceIndication_noTrailerPresent;
-//                        senderInfoContainer->vehicleWidth = (long) (mVehicleController->getWidth().value() *
-//                                                                    10);
-//                        senderInfoContainer->longitudinalAcceleration = mVehicleDataProvider->approximateAcceleration();
-//
-//                        senderInfoContainer->curvature.curvatureConfidence = CurvatureConfidence_unavailable;
-//                        senderInfoContainer->curvature.curvatureValue = (long) (
-//                                abs(mVehicleDataProvider->curvature() / vanetza::units::reciprocal_metre) *
-//                                10000.0);
-//                        if (senderInfoContainer->curvature.curvatureValue >= 1023) {
-//                            senderInfoContainer->curvature.curvatureValue = 1023;
-//                        }
-//
-//                        senderInfoContainer->yawRate.yawRateValue = (long)
-//                                ((double) round(mVehicleDataProvider->yaw_rate(), degree_per_second) *
-//                                 YawRateValue_degSec_000_01ToLeft * 100.0);
-//                        if (senderInfoContainer->yawRate.yawRateValue < -32766 ||
-//                            senderInfoContainer->yawRate.yawRateValue > 32766) {
-//                            senderInfoContainer->yawRate.yawRateValue = YawRateValue_unavailable;
-//                        }
-//                        senderInfoContainer->yawRate.yawRateConfidence = YawRateConfidence_unavailable;
-//                        report.setSenderInfoContainer(senderInfoContainer);
-//                        report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
+                        report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
                         break;
                     }
                     default:

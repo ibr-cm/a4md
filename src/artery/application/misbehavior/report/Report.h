@@ -53,8 +53,8 @@ namespace artery {
     struct Evidence {
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages;
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourMessages;
-        SenderInfoContainer_t* senderInfo = nullptr;
-        SenderSensorContainer_t* senderSensors = nullptr;
+        SenderInfoContainer_t *senderInfo = nullptr;
+        SenderSensorContainer_t *senderSensors = nullptr;
     };
 
 
@@ -65,7 +65,7 @@ namespace artery {
                std::map<std::string, std::shared_ptr<Report>> &currentReportList,
                std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
 
-        Report(std::string reportId, const std::shared_ptr<vanetza::asn1::Cam> &cam, const uint64_t &generationTime);
+        Report(std::string reportId, std::shared_ptr<vanetza::asn1::Cam> cam, const uint64_t &generationTime);
 
         ~Report();
 
@@ -81,7 +81,6 @@ namespace artery {
         bool successfullyParsed;
         double score;
 
-
         static void decodeMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
                                                    std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages,
                                                    std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
@@ -92,9 +91,7 @@ namespace artery {
         void setSemanticDetection(const detectionLevels::DetectionLevels &detectionLevel,
                                   const std::bitset<16> &errorCode);
 
-        void setEvidence(const Evidence &evidence);
-
-        void setReportedMessages(const std::vector<std::shared_ptr<vanetza::asn1::Cam>>& cams, const int &maxCamCount);
+        void setReportedMessages(const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &cams, const int &maxCamCount);
 
         void setRelatedReport(const std::string &relatedReportId, const long &omittedReportsNumber);
 
@@ -103,8 +100,6 @@ namespace artery {
                                      const traci::VehicleController *vehicleController);
 
         vanetza::asn1::MisbehaviorReport encode();
-
-        void setSenderInfoContainer(SenderInfoContainer_t* senderInfoContainer);
     };
 
 } // namespace artery
