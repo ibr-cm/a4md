@@ -32,8 +32,11 @@ namespace artery {
         curl = curl_easy_init();
         traciInitSignal = cComponent::registerSignal("traci.init");
         traciCloseSignal = cComponent::registerSignal("traci.close");
-        maNewReport = cComponent::registerSignal("misbehaviorAuthority.newReport");
+        maNewReport = cComponent::registerSignal("newMisbehaviorReport");
         maMisbehaviorAnnouncement = cComponent::registerSignal("misbehaviorAuthority.MisbehaviorAnnouncement");
+        signal_totalReportCount = cComponent::registerSignal("totalReportCount");
+        signal_truePositiveCount = cComponent::registerSignal("truePositiveCount");
+        signal_falsePositiveCount = cComponent::registerSignal("falsePositiveCount");
     }
 
     MisbehaviorAuthority::~MisbehaviorAuthority() {
@@ -385,8 +388,10 @@ namespace artery {
                 mDetectionAccuracyData.pop_front();
                 mDetectionAccuracyLabels.pop_front();
             }
-
         }
+        emit(signal_totalReportCount,mTotalReportCount);
+        emit(signal_truePositiveCount,mTrueDetectionCount);
+        emit(signal_falsePositiveCount,mFalseDetectionCount);
     }
 
     rapidjson::Value MisbehaviorAuthority::getRadarData(rapidjson::Document::AllocatorType &allocator) {

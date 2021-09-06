@@ -27,7 +27,7 @@ namespace artery {
         static const simsignal_t scSignalMaMisbehaviorAnnouncement = cComponent::registerSignal(
                 "misbehaviorAuthority.MisbehaviorAnnouncement");
         static const simsignal_t scSignalMisbehaviorAuthorityNewReport = cComponent::registerSignal(
-                "misbehaviorAuthority.newReport");
+                "newMisbehaviorReport");
     }
 
     GlobalEnvironmentModel *MisbehaviorCaService::mGlobalEnvironmentModel;
@@ -602,19 +602,26 @@ namespace artery {
                 break;
             }
             case attackTypes::DoSDisruptiveSybil: {
-                auto it = receivedMessages.begin();
-                int index = (int) uniform(0, (double) receivedMessages.size());
-                std::advance(it, index);
-                if (!it->second.empty()) {
-                    message = *it->second.front();
-                    it->second.pop_front();
-                    message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-                            mTimer->getTimeFor(mVehicleDataProvider->updated()));
-                    message->header.stationID = mPseudonyms.front();
-                    mPseudonyms.push(mPseudonyms.front());
-                    mPseudonyms.pop();
+                if(!receivedMessages.empty()){
+                    auto it = receivedMessages.begin();
+                    int index = (int) uniform(0, (double) receivedMessages.size());
+                    std::advance(it, index);
+                    if (!it->second.empty()) {
+                        message = *it->second.front();
+                        it->second.pop_front();
+                        if(it->second.empty()){
+                            receivedMessages.erase(it->first);
+                        }
+                        message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+                                mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                        message->header.stationID = mPseudonyms.front();
+                        mPseudonyms.push(mPseudonyms.front());
+                        mPseudonyms.pop();
+                    } else {
+                        receivedMessages.erase(it->first);
+                        message = vanetza::asn1::Cam();
+                    }
                 } else {
-                    receivedMessages.erase(it->first);
                     message = vanetza::asn1::Cam();
                 }
                 break;

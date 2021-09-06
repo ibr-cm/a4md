@@ -36,7 +36,7 @@ namespace artery {
     static const simsignal_t scSignalCamReceived = cComponent::registerSignal("CamReceived");
     static const simsignal_t scSignalCamSent = cComponent::registerSignal("CamSent");
     static const simsignal_t scSignalMisbehaviorAuthorityNewReport = cComponent::registerSignal(
-            "misbehaviorAuthority.newReport");
+            "newMisbehaviorReport");
 
     bool MisbehaviorDetectionService::staticInitializationComplete = false;
     std::shared_ptr<const traci::API> MisbehaviorDetectionService::mTraciAPI;

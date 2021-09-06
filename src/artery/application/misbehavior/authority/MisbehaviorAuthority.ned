@@ -3,6 +3,14 @@ package artery.application.misbehavior.authority;
 simple MisbehaviorAuthority
 {
     parameters:
+
+        @signal[totalReportCount](type=int);
+        @signal[truePositiveCount](type=int);
+        @signal[falsePositiveCount](type=int);
+        @statistic[totalReportCount](record=last,vector?);
+        @statistic[truePositiveCount](record=last,vector?);
+        @statistic[falsePositiveCount](record=last,vector?);
+
         bool test = default(true);
 		string datetime;
         double maxReportAge @unit(s) = default(5.0s);

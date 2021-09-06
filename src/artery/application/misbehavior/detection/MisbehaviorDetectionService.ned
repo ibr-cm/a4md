@@ -3,7 +3,8 @@ package artery.application.misbehavior.detection;
 simple MisbehaviorDetectionService like artery.application.ItsG5Service
 {
     parameters:
-        @signal[misbehaviorAuthority.newReport](type=MisbehaviorReportObject);
+        @signal[newMisbehaviorReport](type=MisbehaviorReportObject);
+        @statistic[reportCount](source=newMisbehaviorReport; record=count, vector?);
         string appName = default("MisbehaviorDetectionService");
 
         // ### detection parameters

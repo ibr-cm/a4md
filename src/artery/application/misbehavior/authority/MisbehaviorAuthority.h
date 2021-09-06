@@ -65,6 +65,9 @@ namespace artery {
         omnetpp::simsignal_t traciCloseSignal;
         omnetpp::simsignal_t maNewReport;
         omnetpp::simsignal_t maMisbehaviorAnnouncement;
+        omnetpp::simsignal_t signal_totalReportCount;
+        omnetpp::simsignal_t signal_truePositiveCount;
+        omnetpp::simsignal_t signal_falsePositiveCount;
 
         omnetpp::cMessage *mMsgGuiUpdate;
         omnetpp::cMessage *mMsgReportCleanup;
