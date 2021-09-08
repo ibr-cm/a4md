@@ -13,6 +13,7 @@
 #include "artery/application/misbehavior/report/Report.h"
 #include "artery/application/misbehavior/report/ReportSummary.h"
 #include <map>
+#include <omnetpp.h>
 
 namespace artery {
 
@@ -42,6 +43,12 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorTypeAggregate();
 
+        omnetpp::simsignal_t signalReportReportingStationId;
+        omnetpp::simsignal_t signalReportValidity;
+        omnetpp::simsignal_t signalReportScore;
+        omnetpp::simsignal_t signalReportDetectionType;
+        omnetpp::simsignal_t signalReportDetectionLevel;
+        omnetpp::simsignal_t signalReportErrorCode;
 
     private:
         StationID_t mStationId;

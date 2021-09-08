@@ -20,6 +20,8 @@ namespace artery {
 
         double getAverageReportScore() const;
 
+        StationID_t getStationId() const;
+
     private:
         StationID_t mStationId;
         int mTotalReportCount = 0;

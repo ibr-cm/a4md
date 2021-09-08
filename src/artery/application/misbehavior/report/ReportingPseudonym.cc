@@ -22,4 +22,8 @@ namespace artery {
             return 1;
         }
     }
+
+    StationID_t ReportingPseudonym::getStationId() const {
+        return mStationId;
+    }
 } // namespace artery
