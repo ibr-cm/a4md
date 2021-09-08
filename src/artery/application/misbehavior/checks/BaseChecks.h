@@ -64,10 +64,10 @@ namespace artery {
         DetectionParameters *detectionParameters;
         ThresholdFusion *mThresholdFusion;
 
-        Kalman_SVI *kalmanSVI;
-        Kalman_SC *kalmanSVSI;
-        Kalman_SI *kalmanSI;
-        Kalman_SI *kalmanVI;
+        Kalman_SVI *kalmanSVI = nullptr;
+        Kalman_SC *kalmanSVSI = nullptr;
+        Kalman_SI *kalmanSI = nullptr;
+        Kalman_SI *kalmanVI = nullptr;
 
         Position mLastCamPosition;
         PosConfidenceEllipse_t mLastCamPositionConfidence;
