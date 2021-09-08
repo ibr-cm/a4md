@@ -25,8 +25,8 @@ namespace artery {
     Report::~Report() {
         delete detectionType.semantic;
         delete detectionType.security;
-        delete evidence.senderInfo;
-        delete evidence.senderSensors;
+        vanetza::asn1::free(asn_DEF_SenderInfoContainer,evidence.senderInfo);
+        vanetza::asn1::free(asn_DEF_SenderSensorContainer,evidence.senderSensors);
     }
 
     Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
@@ -38,7 +38,7 @@ namespace artery {
         score = 1;
         successfullyParsed = true;
         ReportMetadataContainer reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
-        asn_INTEGER2long(&reportMetadataContainer.generationTime, (long *) &generationTime);
+        asn_INTEGER2umax(&reportMetadataContainer.generationTime, &generationTime);
         reportId = ia5stringToString(reportMetadataContainer.reportID);
 
         if (reportMetadataContainer.relatedReportContainer != nullptr) {
@@ -94,8 +94,7 @@ namespace artery {
                 detectionType.semantic = semantic;
                 semantic->detectionLevel = static_cast<detectionLevels::DetectionLevels>(
                         semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM);
-                semantic->errorCode = (std::bitset<16>)
-                        semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM.buf;
+                semantic->errorCode = std::bitset<16>(ia5stringToString(semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM));
 
                 switch (semantic->detectionLevel) {
                     case detectionLevels::Level1: {
@@ -279,7 +278,7 @@ namespace artery {
         vanetza::asn1::MisbehaviorReport misbehaviorReport;
         misbehaviorReport->version = 1;
         ReportMetadataContainer_t &reportMetadataContainer = misbehaviorReport->reportMetadataContainer;
-        assert(asn_long2INTEGER(&reportMetadataContainer.generationTime, generationTime) == 0);
+        asn_uint642INTEGER(&reportMetadataContainer.generationTime, generationTime);
         OCTET_STRING_fromBuf(&reportMetadataContainer.reportID, reportId.c_str(), (int) strlen(reportId.c_str()));
 
         ReportContainer &reportContainer = misbehaviorReport->reportContainer;
@@ -359,16 +358,6 @@ namespace artery {
             if (evidence.senderInfo != nullptr) {
                 evidenceContainer->senderInfoContainer = vanetza::asn1::allocate<SenderInfoContainer_t>();
                 *evidenceContainer->senderInfoContainer = *evidence.senderInfo;
-//                evidenceContainer->senderInfoContainer->stationType = evidence.senderInfo->stationType;
-//                evidenceContainer->senderInfoContainer->referencePosition = evidence.senderInfo->referencePosition;
-//                evidenceContainer->senderInfoContainer->heading = evidence.senderInfo->heading;
-//                evidenceContainer->senderInfoContainer->speed = evidence.senderInfo->speed;
-//                evidenceContainer->senderInfoContainer->driveDirection = evidence.senderInfo->driveDirection;
-//                evidenceContainer->senderInfoContainer->vehicleLength = evidence.senderInfo->vehicleLength;
-//                evidenceContainer->senderInfoContainer->vehicleWidth = evidence.senderInfo->vehicleWidth;
-//                evidenceContainer->senderInfoContainer->longitudinalAcceleration = evidence.senderInfo->longitudinalAcceleration;
-//                evidenceContainer->senderInfoContainer->curvature = evidence.senderInfo->curvature;
-//                evidenceContainer->senderInfoContainer->yawRate = evidence.senderInfo->yawRate;
             }
         }
 
