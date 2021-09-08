@@ -208,69 +208,100 @@ namespace artery {
     void MisbehaviorAuthority::processReport(const std::shared_ptr<Report> &report) {
         mTotalReportCount++;
         mNewReport = true;
-        report->isValid = validateReportReason(*report);
-        std::shared_ptr<ReportingPseudonym> reporter;
+
+
+        std::shared_ptr<ReportingPseudonym> reportingPseudonym;
         {
             StationID_t reporterStationId = std::stoull(split(report->reportId, '_')[1]);
             auto it = mReportingPseudonyms.find(reporterStationId);
-            if (it == mReportingPseudonyms.end()) {
-                reporter = std::make_shared<ReportingPseudonym>(reporterStationId);
-                mReportingPseudonyms[reporterStationId] = reporter;
+            if (it != mReportingPseudonyms.end()) {
+                reportingPseudonym = it->second;
             } else {
-                reporter = it->second;
+                reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId);
+                mReportingPseudonyms[reporterStationId] = reportingPseudonym;
+                reportingPseudonym->signalReportReportedPseudonym = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportingStationId"},
+                        "reportingPseudonym_reportedPseudonym");
+                reportingPseudonym->signalReportValidity = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportValidity"},
+                        "reportingPseudonym_reportValidity");
+                reportingPseudonym->signalReportScore = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportScore"},
+                        "reportingPseudonym_reportScore");
+                reportingPseudonym->signalReportDetectionType = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionType"},
+                        "reportingPseudonym_reportDetectionType");
+                reportingPseudonym->signalReportDetectionLevel = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionLevel"},
+                        "reportingPseudonym_reportDetectionLevel");
+                reportingPseudonym->signalReportErrorCode = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportErrorCode"},
+                        "reportingPseudonym_reportErrorCode");
+                reportingPseudonym->signalAverageReportScore = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_averageReportScore"},
+                        "reportingPseudonym_averageReportScore");
             }
+            report->reportingPseudonym = reportingPseudonym;
         }
-        report->reportingPseudonym = reporter;
-        report->score = scoreReport(report);
-        reporter->addReport(*report);
 
-        StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
+
         std::shared_ptr<ReportedPseudonym> reportedPseudonym;
         {
+            StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
             auto it = mReportedPseudonyms.find(reportedStationId);
             if (it != mReportedPseudonyms.end()) {
                 reportedPseudonym = it->second;
             } else {
                 reportedPseudonym = std::make_shared<ReportedPseudonym>(*new ReportedPseudonym(report));
                 mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
-
-                reportedPseudonym->signalReportReportingStationId = createSignal(
-                        {"stationId_" + std::to_string(reportedStationId) + "_reportingStationId"},
-                        "reportReportingStationIdByStationId");
+                reportedPseudonym->signalReportReportingPseudonym = createSignal(
+                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportingStationId"},
+                        "reportedPseudonym_reportingPseudonym");
                 reportedPseudonym->signalReportValidity = createSignal(
-                        {"stationId_" + std::to_string(reportedStationId) + "_reportValidity"},
-                        "reportValidityByStationId");
+                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportValidity"},
+                        "reportedPseudonym_reportValidity");
                 reportedPseudonym->signalReportScore = createSignal(
-                        {"stationId_" + std::to_string(reportedStationId) + "_reportScore"},
-                        "reportScoreByStationId");
+                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportScore"},
+                        "reportedPseudonym_reportScore");
                 reportedPseudonym->signalReportDetectionType = createSignal(
-                        {"stationId_" + std::to_string(reportedStationId) + "_reportDetectionType"},
-                        "reportDetectionTypeByStationId");
+                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportDetectionType"},
+                        "reportedPseudonym_reportDetectionType");
                 reportedPseudonym->signalReportDetectionLevel = createSignal(
-                        {"stationId_" + std::to_string(reportedStationId) + "_reportDetectionLevel"},
-                        "reportDetectionLevelByStationId");
+                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportDetectionLevel"},
+                        "reportedPseudonym_reportDetectionLevel");
                 reportedPseudonym->signalReportErrorCode = createSignal(
-                        {"stationId_" + std::to_string(reportedStationId) + "_reportErrorCode"},
-                        "reportErrorCodeByStationId");
+                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportErrorCode"},
+                        "reportedPseudonym_reportErrorCode");
             }
         }
+
         report->reportedPseudonym = reportedPseudonym;
+        report->isValid = validateReportReason(*report);
+        report->score = scoreReport(report);
+        reportingPseudonym->addReport(*report);
 
         auto reportSummary = std::make_shared<ma::ReportSummary>(
-                *new ma::ReportSummary(report->reportId,
-                                       report->score,
-                                       report->reportedPseudonym));
+                *new ma::ReportSummary(report->reportId, report->score, report->reportedPseudonym));
         reportedPseudonym->addReport(reportSummary, report->generationTime);
         mReports.emplace(reportSummary->id, reportSummary);
         mCurrentReports.emplace(report->reportId, report);
 
-        emit(reportedPseudonym->signalReportReportingStationId,report->reportingPseudonym->getStationId());
-        emit(reportedPseudonym->signalReportValidity, report->isValid);
-        emit(reportedPseudonym->signalReportScore, report->score);
-        emit(reportedPseudonym->signalReportDetectionType, report->detectionType.present);
-        emit(reportedPseudonym->signalReportDetectionLevel, report->detectionType.semantic->detectionLevel);
-        emit(reportedPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
+        {
+            emit(reportedPseudonym->signalReportReportingPseudonym, reportingPseudonym->getStationId());
+            emit(reportedPseudonym->signalReportValidity, report->isValid);
+            emit(reportedPseudonym->signalReportScore, report->score);
+            emit(reportedPseudonym->signalReportDetectionType, report->detectionType.present);
+            emit(reportedPseudonym->signalReportDetectionLevel, report->detectionType.semantic->detectionLevel);
+            emit(reportedPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
 
+            emit(reportingPseudonym->signalReportReportedPseudonym, reportedPseudonym->getStationId());
+            emit(reportingPseudonym->signalReportValidity, report->isValid);
+            emit(reportingPseudonym->signalReportScore, report->score);
+            emit(reportingPseudonym->signalReportDetectionType, report->detectionType.present);
+            emit(reportingPseudonym->signalReportDetectionLevel, report->detectionType.semantic->detectionLevel);
+            emit(reportingPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
+            emit(reportingPseudonym->signalAverageReportScore, reportingPseudonym->getAverageReportScore());
+        }
         updateReactionType(*reportedPseudonym);
         updateDetectionRates(*reportedPseudonym, *report);
     }
@@ -290,8 +321,9 @@ namespace artery {
         if (mParameters->considerReportValidity) {
             validityScore = report->isValid;
         }
+
         if (mParameters->considerReporterScore) {
-            reporterScore = report->reportingPseudonym->getAverageReportScore();
+            reporterScore = std::max(0.1, report->reportingPseudonym->getAverageReportScore());
         }
 
         if (mParameters->considerEvidenceScore) {

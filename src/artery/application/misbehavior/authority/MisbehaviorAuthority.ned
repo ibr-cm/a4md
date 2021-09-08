@@ -23,23 +23,48 @@ simple MisbehaviorAuthority
         @signal[reportSize](type=int);
         @statistic[reportSize](record=min,max,mean,sum,vector?);
 
-        @signal[stationId_*_reportingStationId](type=int);
-        @statisticTemplate[reportReportingStationIdByStationId](record=count,sum,mean,vector;checkSignals=false);
+        // ### Stats per ReportedPseudonym per Report
 
-        @signal[stationId_*_reportValidity](type=int);
-        @statisticTemplate[reportValidityByStationId](record=count,sum,mean,vector;checkSignals=false);
+        @signal[reportedPseudonym_*_reportingStationId](type=int);
+        @statisticTemplate[reportedPseudonym_reportingPseudonym](record=count,vector;checkSignals=false);
 
-        @signal[stationId_*_reportScore](type=int);
-        @statisticTemplate[reportScoreByStationId](record=count,sum,mean,vector;checkSignals=false);
+        @signal[reportedPseudonym_*_reportValidity](type=int);
+        @statisticTemplate[reportedPseudonym_reportValidity](record=count,sum,mean,vector;checkSignals=false);
 
-        @signal[stationId_*_reportDetectionType](type=int);
-        @statisticTemplate[reportDetectionTypeByStationId](record=count,vector,histogram;checkSignals=false);
+        @signal[reportedPseudonym_*_reportScore](type=double);
+        @statisticTemplate[reportedPseudonym_reportScore](record=count,sum,mean,vector;checkSignals=false);
 
-        @signal[stationId_*_reportDetectionLevel](type=int);
-        @statisticTemplate[reportDetectionLevelByStationId](record=count,vector,histogram;checkSignals=false);
+        @signal[reportedPseudonym_*_reportDetectionType](type=int);
+        @statisticTemplate[reportedPseudonym_reportDetectionType](record=count,vector,histogram;checkSignals=false);
 
-        @signal[stationId_*_reportErrorCode](type=int);
-        @statisticTemplate[reportErrorCodeByStationId](record=count,vector,histogram;checkSignals=false);
+        @signal[reportedPseudonym_*_reportDetectionLevel](type=int);
+        @statisticTemplate[reportedPseudonym_reportDetectionLevel](record=count,vector,histogram;checkSignals=false);
+
+        @signal[reportedPseudonym_*_reportErrorCode](type=int);
+        @statisticTemplate[reportedPseudonym_reportErrorCode](record=count,vector,histogram;checkSignals=false);
+
+        // ### Stats per ReportingPseudonym per Report
+
+        @signal[reportingPseudonym_*_reportedPseudonym](type=int);
+        @statisticTemplate[reportingPseudonym_reportedPseudonym](record=count,vector;checkSignals=false);
+
+        @signal[reportingPseudonym_*_reportValidity](type=int);
+        @statisticTemplate[reportingPseudonym_reportValidity](record=count,sum,mean,vector;checkSignals=false);
+
+        @signal[reportingPseudonym_*_reportScore](type=double);
+        @statisticTemplate[reportingPseudonym_reportScore](record=count,sum,mean,vector;checkSignals=false);
+
+        @signal[reportingPseudonym_*_reportDetectionType](type=int);
+        @statisticTemplate[reportingPseudonym_reportDetectionType](record=count,vector,histogram;checkSignals=false);
+
+        @signal[reportingPseudonym_*_reportDetectionLevel](type=int);
+        @statisticTemplate[reportingPseudonym_reportDetectionLevel](record=count,vector,histogram;checkSignals=false);
+
+        @signal[reportingPseudonym_*_reportErrorCode](type=int);
+        @statisticTemplate[reportingPseudonym_reportErrorCode](record=count,vector,histogram;checkSignals=false);
+
+        @signal[reportingPseudonym_*_averageReportScore](type=double);
+        @statisticTemplate[reportingPseudonym_averageReportScore](record=count,vector;checkSignals=false);
 
         // ###### Parameters
         bool test = default(true);

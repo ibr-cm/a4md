@@ -43,7 +43,7 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorTypeAggregate();
 
-        omnetpp::simsignal_t signalReportReportingStationId;
+        omnetpp::simsignal_t signalReportReportingPseudonym;
         omnetpp::simsignal_t signalReportValidity;
         omnetpp::simsignal_t signalReportScore;
         omnetpp::simsignal_t signalReportDetectionType;

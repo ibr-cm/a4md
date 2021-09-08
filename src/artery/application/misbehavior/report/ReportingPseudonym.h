@@ -7,6 +7,7 @@
 
 #include "vanetza/asn1/md/StationID.h"
 #include "artery/application/misbehavior/report/Report.h"
+#include <omnetpp.h>
 
 namespace artery {
 
@@ -21,6 +22,14 @@ namespace artery {
         double getAverageReportScore() const;
 
         StationID_t getStationId() const;
+
+        omnetpp::simsignal_t signalReportReportedPseudonym;
+        omnetpp::simsignal_t signalReportValidity;
+        omnetpp::simsignal_t signalReportScore;
+        omnetpp::simsignal_t signalReportDetectionType;
+        omnetpp::simsignal_t signalReportDetectionLevel;
+        omnetpp::simsignal_t signalReportErrorCode;
+        omnetpp::simsignal_t signalAverageReportScore;
 
     private:
         StationID_t mStationId;
