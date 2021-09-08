@@ -208,9 +208,9 @@ namespace artery {
     void Report::setReportedMessages(const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &cams,
                                      const int &maxCamCount) {
         int camCount = (int) cams.size();
-        if (camCount > 1) {
+        if (camCount >= 1) {
             int limit = std::min((int) camCount - 1, maxCamCount);
-            for (int i = (int) camCount - limit - 1; i < camCount - 1; i++) {
+            for (int i = (int) camCount - limit - 1; i < camCount; i++) {
                 evidence.reportedMessages.emplace_back(cams[i]);
             }
         }
