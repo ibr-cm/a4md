@@ -42,8 +42,8 @@ namespace artery {
     MisbehaviorAuthority::~MisbehaviorAuthority() {
         curl_easy_cleanup(curl);
         this->clear();
-        delete mMsgGuiUpdate;
-        delete mMsgReportCleanup;
+//        dropAndDelete(mMsgGuiUpdate);
+//        dropAndDelete(mMsgReportCleanup);
         delete mBaseChecks;
     }
 
@@ -194,6 +194,17 @@ namespace artery {
         }
     }
 
+
+    simsignal_t
+    MisbehaviorAuthority::createSignal(const std::string &signalName, const std::string &statisticTemplateName) {
+
+        simsignal_t signal = registerSignal(signalName.c_str());
+        cProperty *statisticTemplate = this->getProperties()->get("statisticTemplate", statisticTemplateName.c_str());
+        getEnvir()->addResultRecorders(this, signal, signalName.c_str(), statisticTemplate);
+        return signal;
+    }
+
+
     void MisbehaviorAuthority::processReport(const std::shared_ptr<Report> &report) {
         mTotalReportCount++;
         mNewReport = true;
@@ -213,15 +224,34 @@ namespace artery {
         report->score = scoreReport(report);
         reporter->addReport(*report);
 
+        StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
         std::shared_ptr<ReportedPseudonym> reportedPseudonym;
         {
-            StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
             auto it = mReportedPseudonyms.find(reportedStationId);
             if (it != mReportedPseudonyms.end()) {
                 reportedPseudonym = it->second;
             } else {
                 reportedPseudonym = std::make_shared<ReportedPseudonym>(*new ReportedPseudonym(report));
                 mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
+
+                reportedPseudonym->signalReportReportingStationId = createSignal(
+                        {"stationId_" + std::to_string(reportedStationId) + "_reportingStationId"},
+                        "reportReportingStationIdByStationId");
+                reportedPseudonym->signalReportValidity = createSignal(
+                        {"stationId_" + std::to_string(reportedStationId) + "_reportValidity"},
+                        "reportValidityByStationId");
+                reportedPseudonym->signalReportScore = createSignal(
+                        {"stationId_" + std::to_string(reportedStationId) + "_reportScore"},
+                        "reportScoreByStationId");
+                reportedPseudonym->signalReportDetectionType = createSignal(
+                        {"stationId_" + std::to_string(reportedStationId) + "_reportDetectionType"},
+                        "reportDetectionTypeByStationId");
+                reportedPseudonym->signalReportDetectionLevel = createSignal(
+                        {"stationId_" + std::to_string(reportedStationId) + "_reportDetectionLevel"},
+                        "reportDetectionLevelByStationId");
+                reportedPseudonym->signalReportErrorCode = createSignal(
+                        {"stationId_" + std::to_string(reportedStationId) + "_reportErrorCode"},
+                        "reportErrorCodeByStationId");
             }
         }
         report->reportedPseudonym = reportedPseudonym;
@@ -233,6 +263,13 @@ namespace artery {
         reportedPseudonym->addReport(reportSummary, report->generationTime);
         mReports.emplace(reportSummary->id, reportSummary);
         mCurrentReports.emplace(report->reportId, report);
+
+        emit(reportedPseudonym->signalReportReportingStationId,report->reportingPseudonym->getStationId());
+        emit(reportedPseudonym->signalReportValidity, report->isValid);
+        emit(reportedPseudonym->signalReportScore, report->score);
+        emit(reportedPseudonym->signalReportDetectionType, report->detectionType.present);
+        emit(reportedPseudonym->signalReportDetectionLevel, report->detectionType.semantic->detectionLevel);
+        emit(reportedPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
 
         updateReactionType(*reportedPseudonym);
         updateDetectionRates(*reportedPseudonym, *report);
@@ -389,9 +426,9 @@ namespace artery {
                 mDetectionAccuracyLabels.pop_front();
             }
         }
-        emit(signal_totalReportCount,mTotalReportCount);
-        emit(signal_truePositiveCount,mTrueDetectionCount);
-        emit(signal_falsePositiveCount,mFalseDetectionCount);
+        emit(signal_totalReportCount, mTotalReportCount);
+        emit(signal_truePositiveCount, mTrueDetectionCount);
+        emit(signal_falsePositiveCount, mFalseDetectionCount);
     }
 
     rapidjson::Value MisbehaviorAuthority::getRadarData(rapidjson::Document::AllocatorType &allocator) {

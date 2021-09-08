@@ -3,14 +3,45 @@ package artery.application.misbehavior.authority;
 simple MisbehaviorAuthority
 {
     parameters:
-
+        // ##### Statistics
+        // ### Static MA stats
         @signal[totalReportCount](type=int);
-        @signal[truePositiveCount](type=int);
-        @signal[falsePositiveCount](type=int);
         @statistic[totalReportCount](record=last,vector?);
+
+        @signal[parsedReportCount](type=int);
+        @statistic[parsedReportCount](record=last,vector?);
+
+        @signal[validReportCount](type=int);
+        @statistic[validReportCount](record=last,vector?);
+
+        @signal[truePositiveCount](type=int);
         @statistic[truePositiveCount](record=last,vector?);
+
+        @signal[falsePositiveCount](type=int);
         @statistic[falsePositiveCount](record=last,vector?);
 
+        @signal[reportSize](type=int);
+        @statistic[reportSize](record=min,max,mean,sum,vector?);
+
+        @signal[stationId_*_reportingStationId](type=int);
+        @statisticTemplate[reportReportingStationIdByStationId](record=count,sum,mean,vector;checkSignals=false);
+
+        @signal[stationId_*_reportValidity](type=int);
+        @statisticTemplate[reportValidityByStationId](record=count,sum,mean,vector;checkSignals=false);
+
+        @signal[stationId_*_reportScore](type=int);
+        @statisticTemplate[reportScoreByStationId](record=count,sum,mean,vector;checkSignals=false);
+
+        @signal[stationId_*_reportDetectionType](type=int);
+        @statisticTemplate[reportDetectionTypeByStationId](record=count,vector,histogram;checkSignals=false);
+
+        @signal[stationId_*_reportDetectionLevel](type=int);
+        @statisticTemplate[reportDetectionLevelByStationId](record=count,vector,histogram;checkSignals=false);
+
+        @signal[stationId_*_reportErrorCode](type=int);
+        @statisticTemplate[reportErrorCodeByStationId](record=count,vector,histogram;checkSignals=false);
+
+        // ###### Parameters
         bool test = default(true);
 		string datetime;
         double maxReportAge @unit(s) = default(5.0s);

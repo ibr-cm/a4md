@@ -140,6 +140,8 @@ namespace artery {
         void processReport(const shared_ptr<Report>& report);
 
         double scoreReport(const shared_ptr<Report> &report);
+
+        simsignal_t createSignal(const string &signalName, const string &statisticTemplateName);
     };
 } // namespace artery
 
