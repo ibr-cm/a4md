@@ -220,7 +220,7 @@ namespace artery {
                 reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId);
                 mReportingPseudonyms[reporterStationId] = reportingPseudonym;
                 reportingPseudonym->signalReportReportedPseudonym = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportingStationId"},
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportedPseudonym"},
                         "reportingPseudonym_reportedPseudonym");
                 reportingPseudonym->signalReportValidity = createSignal(
                         {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportValidity"},

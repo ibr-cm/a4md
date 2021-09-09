@@ -26,7 +26,7 @@ simple MisbehaviorAuthority
         // ### Stats per ReportedPseudonym per Report
 
         @signal[reportedPseudonym_*_reportingStationId](type=int);
-        @statisticTemplate[reportedPseudonym_reportingPseudonym](record=count,vector;checkSignals=false);
+        @statisticTemplate[reportedPseudonym_reportingPseudonym](record=count,vector,histogram;checkSignals=false);
 
         @signal[reportedPseudonym_*_reportValidity](type=int);
         @statisticTemplate[reportedPseudonym_reportValidity](record=count,sum,mean,vector;checkSignals=false);
@@ -46,7 +46,7 @@ simple MisbehaviorAuthority
         // ### Stats per ReportingPseudonym per Report
 
         @signal[reportingPseudonym_*_reportedPseudonym](type=int);
-        @statisticTemplate[reportingPseudonym_reportedPseudonym](record=count,vector;checkSignals=false);
+        @statisticTemplate[reportingPseudonym_reportedPseudonym](record=count,vector,histogram;checkSignals=false);
 
         @signal[reportingPseudonym_*_reportValidity](type=int);
         @statisticTemplate[reportingPseudonym_reportValidity](record=count,sum,mean,vector;checkSignals=false);
