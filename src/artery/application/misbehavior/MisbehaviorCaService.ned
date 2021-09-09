@@ -39,19 +39,12 @@ simple MisbehaviorCaService like artery.application.BaseCaService
         bool CamLocationVisualizer = default(false);
         int CamLocationVisualizerMaxLength = default(500);
 
-        double START_ATTACK = default(10);
-
-        double LOCAL_ATTACKER_PROB = default(0.05);
-        int LOCAL_ATTACK_TYPE = default(7);
-
-        double GLOBAL_ATTACKER_PROB = default(0.0);
-        int GLOBAL_ATTACK_TYPE = default(20);
-
-        // Specify static attack type according to attacktypes enum
-        int StaticAttackType = default(-1);
-        string AttackType = default("");
 
         // ------ Attacks Parameters -- Start
+
+        // Specify static attack type according to attackTypes enum
+        volatile int StaticAttackType = default(-1);
+        string AttackType = default("");
 
         // Constant Position Attack
         double AttackConstantPositionMinLatitude = default(49.58);

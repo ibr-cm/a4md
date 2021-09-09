@@ -13,8 +13,6 @@ namespace artery {
 
 
     struct AttackParameters {
-        int StaticAttackType;
-
         //Constant Position Attack
         double AttackConstantPositionMinLatitude;
         double AttackConstantPositionMaxLatitude;

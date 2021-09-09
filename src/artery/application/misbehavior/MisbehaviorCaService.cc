@@ -124,8 +124,7 @@ namespace artery {
                                                  F2MDParameters::attackParameters.AttackGridSybilDistanceVariation);
 
 
-        mAttackType = attackTypes::AttackTypes(F2MDParameters::attackParameters.StaticAttackType);
-
+        mAttackType = attackTypes::AttackTypes((int) par("StaticAttackType"));
         par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
         mTraciAPI->vehicle.setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
@@ -149,7 +148,7 @@ namespace artery {
         F2MDParameters::miscParameters.CamLocationVisualizer = par("CamLocationVisualizer");
         F2MDParameters::miscParameters.CamLocationVisualizerMaxLength = par("CamLocationVisualizerMaxLength");
 
-        F2MDParameters::attackParameters.StaticAttackType = par("StaticAttackType");
+//        F2MDParameters::attackParameters.StaticAttackType = par("StaticAttackType");
 
         // Constant Position Attack
         F2MDParameters::attackParameters.AttackConstantPositionMinLatitude = par("AttackConstantPositionMinLatitude");
@@ -447,17 +446,24 @@ namespace artery {
                 break;
             }
             case attackTypes::DoSDisruptive: {
-                auto it = receivedMessages.begin();
-                int index = (int) uniform(0, (double) receivedMessages.size());
-                std::advance(it, index);
-                if (!it->second.empty()) {
-                    message = *it->second.front();
-                    it->second.pop_front();
-                    message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
-                            mTimer->getTimeFor(mVehicleDataProvider->updated()));
-                    message->header.stationID = mVehicleDataProvider->getStationId();
+                if (!receivedMessages.empty()) {
+                    auto it = receivedMessages.begin();
+                    int index = (int) uniform(0, (double) receivedMessages.size());
+                    std::advance(it, index);
+                    if (!it->second.empty()) {
+                        message = *it->second.front();
+                        it->second.pop_front();
+                        if (it->second.empty()) {
+                            receivedMessages.erase(it->first);
+                        }
+                        message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
+                                mTimer->getTimeFor(mVehicleDataProvider->updated()));
+                        message->header.stationID = mVehicleDataProvider->getStationId();
+                    } else {
+                        receivedMessages.erase(it->first);
+                        message = vanetza::asn1::Cam();
+                    }
                 } else {
-                    receivedMessages.erase(it->first);
                     message = vanetza::asn1::Cam();
                 }
                 break;
