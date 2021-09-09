@@ -187,9 +187,23 @@ namespace artery {
             std::vector<StationID_t> stationIds = *reinterpret_cast<std::vector<StationID_t> *>(obj);
             auto misbehaviorCaService = check_and_cast<MisbehaviorCaService *>(source);
             for (const auto &stationId: stationIds) {
-                mMisbehavingPseudonyms[stationId] = std::make_shared<MisbehavingPseudonym>(stationId,
-                                                                                           misbehaviorCaService->getMisbehaviorType(),
-                                                                                           misbehaviorCaService->getAttackType());
+                std::shared_ptr<MisbehavingPseudonym> misbehavingPseudonym =
+                        std::make_shared<MisbehavingPseudonym>(stationId, misbehaviorCaService->getMisbehaviorType(),
+                                                               misbehaviorCaService->getAttackType());
+                mMisbehavingPseudonyms[stationId] = misbehavingPseudonym;
+
+                misbehavingPseudonym->signalPseudonym = createSignal(
+                        {"misbehavingPseudonym_" + std::to_string(stationId) + "_pseudonym"},
+                        "misbehavingPseudonym_pseudonym");
+                misbehavingPseudonym->signalMisbehaviorType = createSignal(
+                        {"misbehavingPseudonym_" + std::to_string(stationId) + "_misbehaviorType"},
+                        "misbehavingPseudonym_misbehaviorType");
+                misbehavingPseudonym->signalAttackType = createSignal(
+                        {"misbehavingPseudonym_" + std::to_string(stationId) + "_attackType"},
+                        "misbehavingPseudonym_misbehaviorType");
+                emit(misbehavingPseudonym->signalPseudonym, misbehavingPseudonym->getStationId());
+                emit(misbehavingPseudonym->signalMisbehaviorType, misbehavingPseudonym->getMisbehaviorType());
+                emit(misbehavingPseudonym->signalAttackType, misbehavingPseudonym->getAttackType());
             }
         }
     }
