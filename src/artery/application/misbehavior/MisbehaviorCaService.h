@@ -85,6 +85,8 @@ namespace artery {
         double attackGridSybilActualDistanceY;
         int attackGridSybilCurrentVehicleIndex;
         double attackGridSybilLastHeadingAngle;
+        uint64_t attackFakeReportLastReportTime;
+
         std::string lastPoiId;
 
 

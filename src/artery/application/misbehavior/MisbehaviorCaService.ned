@@ -117,4 +117,7 @@ simple MisbehaviorCaService like artery.application.BaseCaService
         double AttackGridSybilDistanceVariation = default(2);
         double AttackGridSybilMaxDistanceFromRoad = default(5);
 
+        // Fake Report Attack
+        double AttackFakeReportInterval @unit(s) = default(2.0s);
+
 }

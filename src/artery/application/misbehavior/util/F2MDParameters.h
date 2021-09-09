@@ -71,6 +71,9 @@ namespace artery {
         double AttackGridSybilDistanceY;
         double AttackGridSybilDistanceVariation;
         double AttackGridSybilMaxDistanceFromRoad;
+
+        // Fake Report Attack
+        double AttackFakeReportInterval;
     };
 
     struct DetectionParameters {
