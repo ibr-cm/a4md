@@ -65,10 +65,11 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
         attackTypes::AttackTypes mAttackType;
-        std::queue<uint32_t> mPseudonyms;
+        std::vector<uint32_t> mPseudonyms;
+        int mPseudonymIndex = 0;
         std::list<vanetza::asn1::Cam> disruptiveMessageQueue;
         std::queue<vanetza::asn1::Cam> staleMessageQueue;
-        std::map<uint32_t, std::deque<std::shared_ptr<vanetza::asn1::Cam>>> receivedMessages;
+        std::map<uint32_t, std::deque<vanetza::asn1::Cam>> receivedMessages;
         std::list<std::string> activePoIs;
 
         long AttackConstantPositionLatitudeMicrodegrees;

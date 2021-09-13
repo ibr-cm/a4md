@@ -47,6 +47,15 @@ namespace artery {
             mTraciAPI->poi.remove(activePoIs.front());
             activePoIs.pop_front();
         }
+        disruptiveMessageQueue.clear();
+        if (receivedMessages.empty()) {
+            for (auto& sender: receivedMessages) {
+                while(!sender.second.empty()){
+                    sender.second.pop_front();
+                }
+                receivedMessages.erase(sender.first);
+            }
+        }
     }
 
     void MisbehaviorCaService::initialize() {
@@ -104,14 +113,6 @@ namespace artery {
         if (attackGridSybilVehicleCount < 1) {
             attackGridSybilVehicleCount = 1;
         }
-        std::vector<StationID_t> stationIds;
-        if (mAttackType == attackTypes::GridSybil) {
-            for (int i = 0; i < attackGridSybilVehicleCount; i++) {
-                StationType_t stationId = Identity::randomStationId(getRNG(0));
-                mPseudonyms.push(stationId);
-                stationIds.emplace_back(stationId);
-            }
-        }
 
         attackGridSybilCurrentVehicleIndex = 0;
         attackGridSybilActualDistanceX = uniform(F2MDParameters::attackParameters.AttackGridSybilDistanceX -
@@ -129,15 +130,26 @@ namespace artery {
 
         mTraciAPI->vehicle.setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
-        if (mAttackType == attackTypes::DoS || mAttackType == attackTypes::GridSybil ||
-            mAttackType == attackTypes::DataReplaySybil || mAttackType == attackTypes::DoSDisruptiveSybil ||
-            mAttackType == attackTypes::DoSRandomSybil) {
+        std::vector<StationID_t> stationIds;
+        if (mAttackType == attackTypes::GridSybil || mAttackType == attackTypes::DoSRandomSybil ||
+            mAttackType == attackTypes::DoSDisruptiveSybil) {
+            for (int i = 0; i < attackGridSybilVehicleCount; i++) {
+                StationType_t stationId = Identity::randomStationId(getRNG(0));
+                mPseudonyms.emplace_back(stationId);
+                stationIds.emplace_back(stationId);
+            }
+        }
+        stationIds.emplace_back(mStationId);
+
+        if (mAttackType == attackTypes::DoS || mAttackType == attackTypes::DoSRandom ||
+            mAttackType == attackTypes::DoSDisruptive || mAttackType == attackTypes::GridSybil ||
+            mAttackType == attackTypes::DataReplaySybil || mAttackType == attackTypes::DoSRandomSybil ||
+            mAttackType == attackTypes::DoSDisruptiveSybil) {
             mGenCamMin = {F2MDParameters::attackParameters.AttackDoSInterval, SIMTIME_MS};
             mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
-        stationIds.emplace_back(mStationId);
-        receivedMessages = std::map<uint32_t, std::deque<std::shared_ptr<vanetza::asn1::Cam>>>();
+        receivedMessages = std::map<uint32_t, std::deque<vanetza::asn1::Cam>>();
         std::vector<StationID_t> *ptr = &stationIds;
         auto *cObj = reinterpret_cast<cObject *>(ptr);
         emit(scSignalMaMisbehaviorAnnouncement, cObj);
@@ -242,10 +254,9 @@ namespace artery {
             CaObject obj = visitor.shared_wrapper;
             emit(scSignalCamReceived, &obj);
             mLocalDynamicMap->updateAwareness(obj);
-            vanetza::asn1::Cam message = *cam;
             switch (mAttackType) {
                 case attackTypes::Disruptive: {
-                    disruptiveMessageQueue.emplace_back(message);
+                    disruptiveMessageQueue.emplace_back(*cam);
                     if (disruptiveMessageQueue.size() > F2MDParameters::attackParameters.AttackDisruptiveBufferSize) {
                         disruptiveMessageQueue.pop_front();
                     }
@@ -255,15 +266,14 @@ namespace artery {
                 case attackTypes::DoSDisruptive:
                 case attackTypes::GridSybil:
                 case attackTypes::FakeReport: {
-                    std::shared_ptr<vanetza::asn1::Cam> camPtr(new vanetza::asn1::Cam(message));
-                    receivedMessages[message->header.stationID].push_back(camPtr);
+                    receivedMessages[(*cam)->header.stationID].push_back(*cam);
+                    if(receivedMessages[(*cam)->header.stationID].size() > 20){
+                        receivedMessages[(*cam)->header.stationID].pop_front();
+                    }
                     break;
                 }
                 default:
                     break;
-            }
-            if (mAttackType == attackTypes::Disruptive) {
-
             }
         }
     }
@@ -391,6 +401,7 @@ namespace artery {
                     auto it = disruptiveMessageQueue.begin();
                     std::advance(it, index);
                     message = *it;
+                    disruptiveMessageQueue.erase(it);
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
                     message->header.stationID = mVehicleDataProvider->getStationId();
@@ -413,11 +424,10 @@ namespace artery {
             case attackTypes::StaleMessages: {
                 staleMessageQueue.push(message);
                 if (staleMessageQueue.size() >= F2MDParameters::attackParameters.AttackStaleDelayCount) {
-
                     message = staleMessageQueue.front();
+                    staleMessageQueue.pop();
                     message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                             mTimer->getTimeFor(mVehicleDataProvider->updated()));
-                    staleMessageQueue.pop();
                 } else {
                     message = vanetza::asn1::Cam();
                 }
@@ -451,7 +461,7 @@ namespace artery {
                     int index = (int) uniform(0, (double) receivedMessages.size());
                     std::advance(it, index);
                     if (!it->second.empty()) {
-                        message = *it->second.front();
+                        message = it->second.front();
                         it->second.pop_front();
                         if (it->second.empty()) {
                             receivedMessages.erase(it->first);
@@ -549,11 +559,10 @@ namespace artery {
                 }
 
                 attackGridSybilCurrentVehicleIndex = ++attackGridSybilCurrentVehicleIndex % attackGridSybilVehicleCount;
-                message->header.stationID = mPseudonyms.front();
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                         mTimer->getCurrentTime());
-                mPseudonyms.push(mPseudonyms.front());
-                mPseudonyms.pop();
+                message->header.stationID = mPseudonyms[mPseudonymIndex++];
+                mPseudonymIndex %= attackGridSybilVehicleCount;
                 break;
             }
             case attackTypes::DataReplaySybil: {
@@ -569,7 +578,7 @@ namespace artery {
                             }
                         }
                         attackDataReplayCurrentStationId = mostReceivedStationId;
-                        message = *receivedMessages[attackDataReplayCurrentStationId].front();
+                        message = receivedMessages[attackDataReplayCurrentStationId].front();
                         receivedMessages[attackDataReplayCurrentStationId].pop_front();
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
@@ -579,7 +588,7 @@ namespace artery {
                     }
                 } else {
                     if (!receivedMessages[attackDataReplayCurrentStationId].empty()) {
-                        message = *receivedMessages[attackDataReplayCurrentStationId].front();
+                        message = receivedMessages[attackDataReplayCurrentStationId].front();
                         receivedMessages[attackDataReplayCurrentStationId].pop_front();
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
@@ -588,16 +597,14 @@ namespace artery {
                         receivedMessages.erase(attackDataReplayCurrentStationId);
                         attackDataReplayCurrentStationId = -1;
                         message = vanetza::asn1::Cam();
-                        mPseudonyms.push(mPseudonyms.front());
-                        mPseudonyms.pop();
+                        mPseudonymIndex = ++mPseudonymIndex % attackGridSybilVehicleCount;
                     }
                 }
                 break;
             }
             case attackTypes::DoSRandomSybil: {
-                message->header.stationID = mPseudonyms.front();
-                mPseudonyms.push(mPseudonyms.front());
-                mPseudonyms.pop();
+                message->header.stationID = mPseudonyms[mPseudonymIndex++];
+                mPseudonymIndex %= attackGridSybilVehicleCount;
                 message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime()));
                 long attackLatitude =
                         (long) (uniform(-F2MDParameters::attackParameters.AttackRandomPositionMinLatitude,
@@ -621,16 +628,15 @@ namespace artery {
                     int index = (int) uniform(0, (double) receivedMessages.size());
                     std::advance(it, index);
                     if (!it->second.empty()) {
-                        message = *it->second.front();
+                        message = it->second.front();
                         it->second.pop_front();
                         if (it->second.empty()) {
                             receivedMessages.erase(it->first);
                         }
                         message->cam.generationDeltaTime = (uint16_t) countTaiMilliseconds(
                                 mTimer->getTimeFor(mVehicleDataProvider->updated()));
-                        message->header.stationID = mPseudonyms.front();
-                        mPseudonyms.push(mPseudonyms.front());
-                        mPseudonyms.pop();
+                        message->header.stationID = mPseudonyms[mPseudonymIndex++];
+                        mPseudonymIndex %= attackGridSybilVehicleCount;
                     } else {
                         receivedMessages.erase(it->first);
                         message = vanetza::asn1::Cam();
@@ -648,9 +654,8 @@ namespace artery {
                         auto it = receivedMessages.begin();
                         int index = (int) uniform(0, (double) receivedMessages.size());
                         std::advance(it, index);
-                        std::shared_ptr<vanetza::asn1::Cam> cam;
                         if (!it->second.empty()) {
-                            cam = it->second.front();
+                            std::shared_ptr<vanetza::asn1::Cam> cam = std::make_shared<vanetza::asn1::Cam>(it->second.front());
                             it->second.pop_front();
                             std::string reportId(
                                     generateReportId(message->header.stationID, mVehicleDataProvider->getStationId(),
@@ -670,7 +675,7 @@ namespace artery {
                                         std::vector<std::shared_ptr<vanetza::asn1::Cam>> evidenceCams;
                                         for (int i = 0; i < std::min((int) it->second.size(),
                                                                      F2MDParameters::reportParameters.evidenceContainerMaxCamCount); i++) {
-                                            evidenceCams.emplace_back(it->second.back());
+                                            evidenceCams.emplace_back(std::make_shared<vanetza::asn1::Cam>(it->second.back()));
                                             it->second.pop_back();
                                         }
                                         report.setReportedMessages(evidenceCams,
@@ -684,7 +689,7 @@ namespace artery {
                                          iterator != receivedMessages.end(); iterator = next_it) {
                                         ++next_it;
                                         if (iterator->first != it->first && !iterator->second.empty()) {
-                                            neighbourCams.emplace_back(iterator->second.back());
+                                            neighbourCams.emplace_back(std::make_shared<vanetza::asn1::Cam>(iterator->second.back()));
                                             iterator->second.pop_back();
                                             if (iterator->second.empty()) {
                                                 receivedMessages.erase(iterator);
@@ -736,7 +741,7 @@ namespace artery {
                     }
                 }
                 attackDataReplayCurrentStationId = mostReceivedStationId;
-                message = *(receivedMessages[attackDataReplayCurrentStationId].front());
+                message = receivedMessages[attackDataReplayCurrentStationId].front();
                 receivedMessages[attackDataReplayCurrentStationId].pop_front();
                 if (maxSize == 1) {
                     receivedMessages.erase(attackDataReplayCurrentStationId);
@@ -746,9 +751,9 @@ namespace artery {
             }
         } else {
             if (!receivedMessages[attackDataReplayCurrentStationId].empty() &&
-                (*receivedMessages[attackDataReplayCurrentStationId].front())->cam.generationDeltaTime <
+                receivedMessages[attackDataReplayCurrentStationId].front()->cam.generationDeltaTime <
                 (uint16_t) (countTaiMilliseconds(mTimer->getCurrentTime()) - 1100)) {
-                message = *receivedMessages[attackDataReplayCurrentStationId].front();
+                message = receivedMessages[attackDataReplayCurrentStationId].front();
                 receivedMessages[attackDataReplayCurrentStationId].pop_front();
             } else {
                 receivedMessages.erase(attackDataReplayCurrentStationId);

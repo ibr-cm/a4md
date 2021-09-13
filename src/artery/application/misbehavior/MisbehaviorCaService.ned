@@ -97,7 +97,6 @@ simple MisbehaviorCaService like artery.application.BaseCaService
 		int AttackDoSInterval = default(10);
 		bool AttackDoSIgnoreDCC = default(true);
 
-
 		// Stale Messages Attack
 		int AttackStaleDelayCount = default(50);
 
