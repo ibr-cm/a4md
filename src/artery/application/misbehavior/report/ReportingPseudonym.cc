@@ -11,8 +11,8 @@ namespace artery {
     }
 
     void ReportingPseudonym::addReport(const Report &report) {
+        mTotalReportScore += report.score / getAverageReportScore();
         mTotalReportCount++;
-        mTotalReportScore += report.score;
     }
 
     double ReportingPseudonym::getAverageReportScore() const {

@@ -17,12 +17,12 @@ namespace artery {
         }
     }
 
-    void ReportedPseudonym::addReport(const std::shared_ptr<ma::ReportSummary> &reportSummary, uint64_t generationTime) {
-        mTotalScore += reportSummary->score;
-        if(reportSummary->score > 0){
+    void ReportedPseudonym::addReport(double reportScore, uint64_t generationTime) {
+        mTotalScore += reportScore;
+        if(reportScore > 0){
             mValidReportCount++;
         }
-        mReports.emplace(reportSummary->id, reportSummary);
+        mTotalReportCount++;
         mLastReportGenerationTime = generationTime;
     }
 

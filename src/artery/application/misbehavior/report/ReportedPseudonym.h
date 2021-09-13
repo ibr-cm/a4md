@@ -25,9 +25,9 @@ namespace artery {
 
         StationID_t getStationId() const { return mStationId; };
 
-        void addReport(const std::shared_ptr<ma::ReportSummary> &reportSummary, uint64_t generationTime);
+        void addReport(double reportScore, uint64_t generationTime);
 
-        int getReportCount() { return (int) mReports.size(); };
+        int getReportCount() { return mTotalReportCount; };
 
         int getTotalScore() { return mTotalScore; };
 
@@ -52,13 +52,13 @@ namespace artery {
 
     private:
         StationID_t mStationId;
+        int mTotalReportCount = 0;
         int mValidReportCount = 0;
         double mTotalScore = 0;
         std::map<misbehaviorTypes::MisbehaviorTypes, int> mPredictedMisbehaviorTypeCount;
         attackTypes::AttackTypes mActualAttackType;
         reactionTypes::ReactionTypes mReactionType;
         uint64_t mLastReportGenerationTime;
-        std::map<std::string, std::shared_ptr<ma::ReportSummary>> mReports;
 
     };
 } //namespace artery

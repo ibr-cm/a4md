@@ -25,8 +25,8 @@ namespace artery {
     Report::~Report() {
         delete detectionType.semantic;
         delete detectionType.security;
-        vanetza::asn1::free(asn_DEF_SenderInfoContainer,evidence.senderInfo);
-        vanetza::asn1::free(asn_DEF_SenderSensorContainer,evidence.senderSensors);
+        vanetza::asn1::free(asn_DEF_SenderInfoContainer, evidence.senderInfo);
+        vanetza::asn1::free(asn_DEF_SenderSensorContainer, evidence.senderSensors);
     }
 
     Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
@@ -43,16 +43,9 @@ namespace artery {
 
         if (reportMetadataContainer.relatedReportContainer != nullptr) {
             RelatedReportContainer_t relatedReportContainer = *reportMetadataContainer.relatedReportContainer;
-            std::string relatedReportId = ia5stringToString(relatedReportContainer.relatedReportID);
-            auto it = reportSummaryList.find(relatedReportId);
-            if (it != reportSummaryList.end()) {
-                relatedReport = std::make_shared<RelatedReport>();
-                relatedReport->referencedReportId = relatedReportId;
-                relatedReport->omittedReportsNumber = relatedReportContainer.omittedReportsNumber;
-            } else {
-                successfullyParsed = false;
-                return;
-            }
+            relatedReport = std::make_shared<RelatedReport>();
+            relatedReport->referencedReportId = ia5stringToString(relatedReportContainer.relatedReportID);
+            relatedReport->omittedReportsNumber = relatedReportContainer.omittedReportsNumber;
         }
 
         ReportContainer reportContainer = misbehaviorReport->reportContainer;
@@ -64,19 +57,9 @@ namespace artery {
                 if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
                     this->reportedMessage = getCamFromOpaque(ieee1609Dot2Content.choice.unsecuredData, camList);
                 }
-            } else if (relatedReport == nullptr ||
-                       reportSummaryList[relatedReport->referencedReportId]->reportedPseudonym->getPreviousReportGenerationTime() !=
-                       generationTime) {
+            } else {
                 successfullyParsed = false;
                 return;
-            } else {
-                auto it = currentReportList.find(relatedReport->referencedReportId);
-                if (it != currentReportList.end()) {
-                    this->reportedMessage = it->second->reportedMessage;
-                } else {
-                    successfullyParsed = false;
-                    return;
-                }
             }
         } else {
             std::cout << "ignoring report, only CertificateIncludedContainer is implemented" <<
@@ -90,11 +73,12 @@ namespace artery {
             if (semanticDetection.present == SemanticDetection_PR_semanticDetectionReferenceCAM) {
                 detectionType.
                         present = detectionTypes::SemanticType;
-                auto semantic = new SemanticDetection;
-                detectionType.semantic = semantic;
+                detectionType.semantic = new SemanticDetection;
+                SemanticDetection *&semantic = detectionType.semantic;
                 semantic->detectionLevel = static_cast<detectionLevels::DetectionLevels>(
                         semanticDetection.choice.semanticDetectionReferenceCAM.detectionLevelCAM);
-                semantic->errorCode = std::bitset<16>(ia5stringToString(semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM));
+                semantic->errorCode = std::bitset<16>(ia5stringToString(
+                        semanticDetection.choice.semanticDetectionReferenceCAM.semanticDetectionErrorCodeCAM));
 
                 switch (semantic->detectionLevel) {
                     case detectionLevels::Level1: {
@@ -115,7 +99,7 @@ namespace artery {
                             successfullyParsed = false;
                             return;
                         }
-                        auto *reportedMessageContainer = reportContainer.evidenceContainer->reportedMessageContainer;
+                        auto *&reportedMessageContainer = reportContainer.evidenceContainer->reportedMessageContainer;
                         if (reportedMessageContainer->list.count == 0) {
                             std::cout << "invalid report, reportedMessageContainer is empty" <<
                                       std::endl;
@@ -128,7 +112,7 @@ namespace artery {
                     case detectionLevels::Level3: {
                         if (reportContainer.evidenceContainer != nullptr &&
                             reportContainer.evidenceContainer->neighbourMessageContainer != nullptr) {
-                            auto *neighbourMessageContainer = reportContainer.evidenceContainer->neighbourMessageContainer;
+                            auto *&neighbourMessageContainer = reportContainer.evidenceContainer->neighbourMessageContainer;
                             if (neighbourMessageContainer->list.count == 0) {
                                 std::cout << "neighbourMessageContainer is empty" <<
                                           std::endl;
@@ -187,6 +171,20 @@ namespace artery {
         }
     }
 
+    std::shared_ptr<vanetza::asn1::Cam> Report::getCamFromOpaque(const Opaque_t &data,
+                                                                 std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList) {
+        std::shared_ptr<vanetza::asn1::Cam> cam(new vanetza::asn1::Cam());
+        cam->decode(vanetza::ByteBuffer(data.buf, data.buf + data.size));
+
+//        auto it = camList.find(cam);
+//        if (it == camList.end()) {
+//            camList.insert(cam);
+//        } else {
+//            cam = (*it);
+//        }
+        return cam;
+    }
+
     Report::Report(std::string reportId, std::shared_ptr<vanetza::asn1::Cam> cam,
                    const uint64_t &generationTime) : reportId(std::move(reportId)), generationTime(generationTime),
                                                      reportedMessage(std::move(cam)) {
@@ -216,20 +214,6 @@ namespace artery {
         }
     }
 
-
-    std::shared_ptr<vanetza::asn1::Cam> Report::getCamFromOpaque(const Opaque_t &data,
-                                                                 std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList) {
-        std::shared_ptr<vanetza::asn1::Cam> cam(new vanetza::asn1::Cam());
-        cam->decode(vanetza::ByteBuffer(data.buf, data.buf + data.size));
-
-        auto it = camList.find(cam);
-        if (it == camList.end()) {
-            camList.insert(cam);
-        } else {
-            cam = (*it);
-        }
-        return cam;
-    }
 
     void Report::setRelatedReport(const std::string &relatedReportId, const long &omittedReportsNumber) {
         relatedReport = std::make_shared<RelatedReport>();
