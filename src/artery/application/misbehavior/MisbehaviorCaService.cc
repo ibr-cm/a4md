@@ -49,8 +49,8 @@ namespace artery {
         }
         disruptiveMessageQueue.clear();
         if (receivedMessages.empty()) {
-            for (auto& sender: receivedMessages) {
-                while(!sender.second.empty()){
+            for (auto &sender: receivedMessages) {
+                while (!sender.second.empty()) {
                     sender.second.pop_front();
                 }
                 receivedMessages.erase(sender.first);
@@ -238,9 +238,14 @@ namespace artery {
             mAttackType == attackTypes::DoS || mAttackType == attackTypes::DoSRandom ||
             mAttackType == attackTypes::DoSDisruptive || mAttackType == attackTypes::GridSybil ||
             mAttackType == attackTypes::DataReplaySybil || mAttackType == attackTypes::DoSRandomSybil ||
-            mAttackType == attackTypes::DoSDisruptiveSybil || mAttackType == attackTypes::FakeReport ||
-            checkTriggeringConditions(T_now)) {
+            mAttackType == attackTypes::DoSDisruptiveSybil || checkTriggeringConditions(T_now)) {
             sendCam(T_now);
+        }
+        if (mAttackType == attackTypes::FakeReport &&
+            simTime().inUnit(SimTimeUnit::SIMTIME_MS) - attackFakeReportLastReportTime >
+            uint64_t(F2MDParameters::attackParameters.AttackFakeReportInterval * 1000)) {
+            attackFakeReportLastReportTime = simTime().inUnit(SimTimeUnit::SIMTIME_MS);
+            createFakeReport();
         }
     }
 
@@ -267,7 +272,7 @@ namespace artery {
                 case attackTypes::GridSybil:
                 case attackTypes::FakeReport: {
                     receivedMessages[(*cam)->header.stationID].push_back(*cam);
-                    if(receivedMessages[(*cam)->header.stationID].size() > 20){
+                    if (receivedMessages[(*cam)->header.stationID].size() > 20) {
                         receivedMessages[(*cam)->header.stationID].pop_front();
                     }
                     break;
@@ -308,6 +313,8 @@ namespace artery {
         vanetza::asn1::Cam message = createCooperativeAwarenessMessage(genDeltaTime);
 
         switch (mAttackType) {
+            case attackTypes::Benign:
+                break;
             case attackTypes::ConstPos: {
                 message->cam.camParameters.basicContainer.referencePosition.latitude =
                         AttackConstantPositionLatitudeMicrodegrees * Latitude_oneMicrodegreeNorth;
@@ -647,81 +654,9 @@ namespace artery {
                 break;
             }
             case attackTypes::FakeReport: {
-                if (simTime().inUnit(SimTimeUnit::SIMTIME_MS) - attackFakeReportLastReportTime >
-                    uint64_t(F2MDParameters::attackParameters.AttackFakeReportInterval * 1000)) {
-                    attackFakeReportLastReportTime = simTime().inUnit(SimTimeUnit::SIMTIME_MS);
-                    if (!receivedMessages.empty()) {
-                        auto it = receivedMessages.begin();
-                        int index = (int) uniform(0, (double) receivedMessages.size());
-                        std::advance(it, index);
-                        if (!it->second.empty()) {
-                            std::shared_ptr<vanetza::asn1::Cam> cam = std::make_shared<vanetza::asn1::Cam>(it->second.front());
-                            it->second.pop_front();
-                            std::string reportId(
-                                    generateReportId(message->header.stationID, mVehicleDataProvider->getStationId(),
-                                                     getRNG(0)));
-                            Report report(reportId, cam, countTaiMilliseconds(mTimer->getTimeFor(simTime())));
-                            auto detectionLevel = static_cast<detectionLevels::DetectionLevels>(intuniform(
-                                    detectionLevels::Level1, detectionLevels::Level4));
-                            std::bitset<16> errorCode;
-                            errorCode[intuniform(0, 7)] = true;
-                            switch (detectionLevel) {
-                                case detectionLevels::Level1:
-                                    break;
-                                case detectionLevels::Level2: {
-                                    if (it->second.empty()) {
-                                        detectionLevel = detectionLevels::Level1;
-                                    } else {
-                                        std::vector<std::shared_ptr<vanetza::asn1::Cam>> evidenceCams;
-                                        for (int i = 0; i < std::min((int) it->second.size(),
-                                                                     F2MDParameters::reportParameters.evidenceContainerMaxCamCount); i++) {
-                                            evidenceCams.emplace_back(std::make_shared<vanetza::asn1::Cam>(it->second.back()));
-                                            it->second.pop_back();
-                                        }
-                                        report.setReportedMessages(evidenceCams,
-                                                                   F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
-                                    }
-                                    break;
-                                }
-                                case detectionLevels::Level3: {
-                                    std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourCams;
-                                    for (auto iterator = receivedMessages.begin(), next_it = iterator;
-                                         iterator != receivedMessages.end(); iterator = next_it) {
-                                        ++next_it;
-                                        if (iterator->first != it->first && !iterator->second.empty()) {
-                                            neighbourCams.emplace_back(std::make_shared<vanetza::asn1::Cam>(iterator->second.back()));
-                                            iterator->second.pop_back();
-                                            if (iterator->second.empty()) {
-                                                receivedMessages.erase(iterator);
-                                                continue;
-                                            }
-                                        }
-                                    }
-                                    break;
-                                }
-                                case detectionLevels::Level4:
-                                    report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
-                                    break;
-                                default:
-                                    break;
-                            }
-                            report.setSemanticDetection(detectionLevel, errorCode);
-                            vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
-                            MisbehaviorReportObject obj(std::move(misbehaviorReport));
-                            emit(scSignalMisbehaviorAuthorityNewReport, &obj);
-                            if (it->second.empty()) {
-                                receivedMessages.erase(it->first);
-                            }
-                        } else {
-                            receivedMessages.erase(it->first);
-                        }
-                    }
-
-                }
                 break;
             }
             default:
-//                EV_ERROR << "invalid attack type \n";
                 break;
         }
         return message;
@@ -762,6 +697,82 @@ namespace artery {
             }
         }
         return message;
+    }
+
+
+    void MisbehaviorCaService::createFakeReport() {
+        if (!receivedMessages.empty()) {
+            auto it = receivedMessages.begin();
+            int index = (int) uniform(0, (double) receivedMessages.size());
+            std::advance(it, index);
+            if (!it->second.empty()) {
+                std::shared_ptr<vanetza::asn1::Cam> cam = std::make_shared<vanetza::asn1::Cam>(it->second.front());
+                it->second.pop_front();
+                std::string reportId(generateReportId((*cam)->header.stationID,
+                                                      mVehicleDataProvider->getStationId(),
+                                                      getRNG(0)));
+                Report report(reportId, cam, countTaiMilliseconds(mTimer->getTimeFor(simTime())));
+                auto detectionLevel = static_cast<detectionLevels::DetectionLevels>(intuniform(
+                        detectionLevels::Level1, detectionLevels::Level4));
+                std::bitset<16> errorCode;
+                errorCode[intuniform(0, 7)] = true;
+                switch (detectionLevel) {
+                    case detectionLevels::Level1:
+                        break;
+                    case detectionLevels::Level2: {
+                        if (it->second.empty()) {
+                            detectionLevel = detectionLevels::Level1;
+                        } else {
+                            std::vector<std::shared_ptr<vanetza::asn1::Cam>> evidenceCams;
+                            for (int i = 0; i < std::min((int) it->second.size(),
+                                                         F2MDParameters::reportParameters.evidenceContainerMaxCamCount); i++) {
+                                evidenceCams.emplace_back(std::make_shared<vanetza::asn1::Cam>(it->second.back()));
+                                it->second.pop_back();
+                            }
+                            report.setReportedMessages(evidenceCams,
+                                                       F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
+                        }
+                        break;
+                    }
+                    case detectionLevels::Level3: {
+                        std::vector<std::shared_ptr<vanetza::asn1::Cam>> neighbourCams;
+                        for (auto iterator = receivedMessages.begin(), next_it = iterator;
+                             iterator != receivedMessages.end(); iterator = next_it) {
+                            ++next_it;
+                            if (iterator->first != it->first && !iterator->second.empty()) {
+                                neighbourCams.emplace_back(
+                                        std::make_shared<vanetza::asn1::Cam>(iterator->second.back()));
+                                iterator->second.pop_back();
+                                if (iterator->second.empty()) {
+                                    receivedMessages.erase(iterator);
+                                    continue;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    case detectionLevels::Level4:
+                        report.fillSenderInfoContainer(mVehicleDataProvider, mVehicleController);
+                        break;
+                    default:
+                        break;
+                }
+                report.setSemanticDetection(detectionLevel, errorCode);
+//                if (detectionLevel == attackFakeReportDetectionLevel) {
+//                    vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
+//                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
+//                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+//                }
+                vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
+                MisbehaviorReportObject obj(std::move(misbehaviorReport));
+                emit(scSignalMisbehaviorAuthorityNewReport, &obj);
+                if (it->second.empty()) {
+                    receivedMessages.erase(it->first);
+                }
+            } else {
+                receivedMessages.erase(it->first);
+            }
+        }
     }
 
     void MisbehaviorCaService::visualizeCamPosition(vanetza::asn1::Cam cam) {

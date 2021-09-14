@@ -52,6 +52,8 @@ namespace artery {
 
         vanetza::asn1::Cam createAttackCAM(uint16_t genDeltaTime);
 
+        void createFakeReport();
+
         void initializeStaticParameters();
 
         void visualizeCamPosition(vanetza::asn1::Cam cam);
