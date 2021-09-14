@@ -177,7 +177,7 @@ namespace artery {
                                              cObject *) {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
-            const vanetza::asn1::MisbehaviorReport &misbehaviorReport = reportObject->shared_ptr().operator*();
+            const vanetza::asn1::MisbehaviorReport &misbehaviorReport = *reportObject->shared_ptr();
             std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport, mReports, mCurrentReports,
                                                                       mCams);
             if (report->successfullyParsed) {
@@ -294,9 +294,8 @@ namespace artery {
         report->score = scoreReport(report);
         reportingPseudonym->addReport(*report);
 
-        auto reportSummary = std::make_shared<ma::ReportSummary>(
-                *new ma::ReportSummary(report->reportId, report->score, report->reportedPseudonym));
-        reportedPseudonym->addReport(reportSummary, report->generationTime);
+        auto reportSummary = std::make_shared<ma::ReportSummary>(report->reportId, report->score, report->reportedPseudonym);
+        reportedPseudonym->addReport(report->score, report->generationTime);
         mReports.emplace(reportSummary->id, reportSummary);
         mCurrentReports.emplace(report->reportId, report);
 
