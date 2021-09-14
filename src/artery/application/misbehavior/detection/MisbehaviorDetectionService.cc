@@ -136,7 +136,6 @@ namespace artery {
         uint32_t senderStationId = (*message)->header.stationID;
         std::shared_ptr<CheckResult> checkResult = checkCam(message);
         std::vector<std::bitset<16>> detectionLevelErrorCodes = mFusionApplication->checkForReport(*checkResult);
-        std::shared_ptr<vanetza::asn1::Cam> camPtr(message);
         DetectedSender &detectedSender = *detectedSenders[senderStationId];
         std::string relatedReportId = detectedSender.getPreviousReportId();
         std::bitset<16> reportedErrorCodes = 0;
@@ -146,7 +145,7 @@ namespace artery {
             if (errorCode.any() && detectedSender.checkOmittedReportsLimit(errorCode)) {
                 std::string reportId(
                         generateReportId(senderStationId, mVehicleDataProvider->getStationId(), getRNG(0)));
-                Report report(reportId, camPtr, countTaiMilliseconds(mTimer->getTimeFor(simTime())));
+                Report report(reportId, message, countTaiMilliseconds(mTimer->getTimeFor(simTime())));
                 report.setSemanticDetection(detectionLevel, errorCode);
                 SenderInfoContainer_t *senderInfoContainer = (vanetza::asn1::allocate<SenderInfoContainer_t>());
                 switch (detectionLevel) {
@@ -181,15 +180,10 @@ namespace artery {
                 if (detectedSender.getPreviousReportId().empty()) {
                     detectedSender.setReportId(relatedReportId);
                 }
-                camPtr = nullptr;
             }
         }
         if (reportedErrorCodes.any()) {
             detectedSender.resetOmittedReports(reportedErrorCodes);
-        } else {
-            if (camPtr == nullptr) {
-                std::cout << "omitted report" << std::endl;
-            }
         }
         detectedSender.incrementOmittedReports(detectionLevelErrorCodes, reportedErrorCodes);
     }
