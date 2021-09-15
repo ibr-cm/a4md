@@ -85,7 +85,6 @@ namespace artery {
         std::map<StationID_t, std::shared_ptr<ReportingPseudonym>> mReportingPseudonyms;
 
         std::map<std::string, std::shared_ptr<Report>> mCurrentReports;
-        std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> mCams;
         std::map<std::string, std::shared_ptr<ma::ReportSummary>> mReports;
 
 
@@ -107,23 +106,28 @@ namespace artery {
         int mFalseDetectionCountInst = 0;
         int mDetectionRateCur = 0;
 
-        void updateDetectionRates(ReportedPseudonym &reportedPseudonym, const Report &report);
+        void processReport(const std::shared_ptr<Report> &report);
+
+        double scoreReport(const std::shared_ptr<Report> &report);
 
         misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
 
-        void updateReactionType(ReportedPseudonym &reportedPseudonym);
 
-        bool validateSemanticLevel1Report(const Report &report);
+        bool validateSemanticLevel1Report(const std::shared_ptr<Report> &report);
 
-        bool validateSemanticLevel2Report(const Report &report);
+        bool validateSemanticLevel2Report(const std::shared_ptr<Report>  &report);
 
-        bool validateSemanticLevel3Report(const Report &report);
+        bool validateSemanticLevel3Report(const std::shared_ptr<Report>  &report);
 
-        bool validateSemanticLevel4Report(const Report &report);
+        bool validateSemanticLevel4Report(const std::shared_ptr<Report>  &report);
 
-        bool validateReportReason(const Report &report);
+        bool validateReportReason(const std::shared_ptr<Report> &report);
 
         void removeOldReports();
+
+        void updateReactionType(const shared_ptr<ReportedPseudonym> &reportedPseudonym);
+
+        void updateDetectionRates(const shared_ptr<ReportedPseudonym> &reportedPseudonym, const std::shared_ptr<Report> &report);
 
         std::vector<RecentReported> getRecentReported();
 
@@ -136,10 +140,6 @@ namespace artery {
         void createGuiJsonData();
 
         void printReportsPerPseudonym();
-
-        void processReport(const shared_ptr<Report>& report);
-
-        double scoreReport(const shared_ptr<Report> &report);
 
         simsignal_t createSignal(const string &signalName, const string &statisticTemplateName);
     };

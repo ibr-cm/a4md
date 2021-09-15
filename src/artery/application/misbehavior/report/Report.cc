@@ -27,12 +27,12 @@ namespace artery {
         delete detectionType.security;
         vanetza::asn1::free(asn_DEF_SenderInfoContainer, evidence.senderInfo);
         vanetza::asn1::free(asn_DEF_SenderSensorContainer, evidence.senderSensors);
+        evidence.reportedMessages.clear();
+        evidence.neighbourMessages.clear();
     }
 
     Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
-                   std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList,
-                   std::map<std::string, std::shared_ptr<Report>> &currentReportList,
-                   std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList) {
+                   std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList) {
         generationTime = 0;
         isValid = false;
         score = 1;
@@ -55,7 +55,7 @@ namespace artery {
             if (reportedMessageData.content != nullptr) {
                 Ieee1609Dot2Content ieee1609Dot2Content = *reportedMessageData.content;
                 if (ieee1609Dot2Content.present == Ieee1609Dot2Content_PR_unsecuredData) {
-                    this->reportedMessage = getCamFromOpaque(ieee1609Dot2Content.choice.unsecuredData, camList);
+                    this->reportedMessage = getCamFromOpaque(ieee1609Dot2Content.choice.unsecuredData);
                 }
             } else {
                 successfullyParsed = false;
@@ -106,7 +106,7 @@ namespace artery {
                             successfullyParsed = false;
                             return;
                         }
-                        decodeMessageEvidenceContainer(*reportedMessageContainer, evidence.reportedMessages, camList);
+                        decodeMessageEvidenceContainer(*reportedMessageContainer, evidence.reportedMessages);
                         break;
                     }
                     case detectionLevels::Level3: {
@@ -117,8 +117,7 @@ namespace artery {
                                 std::cout << "neighbourMessageContainer is empty" <<
                                           std::endl;
                             } else {
-                                decodeMessageEvidenceContainer(*neighbourMessageContainer, evidence.neighbourMessages,
-                                                               camList);
+                                decodeMessageEvidenceContainer(*neighbourMessageContainer, evidence.neighbourMessages);
                             }
                         }
                         break;
@@ -159,29 +158,20 @@ namespace artery {
     }
 
     void Report::decodeMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
-                                                std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages,
-                                                std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList) {
+                                                std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages) {
         for (int i = 0; i < messageEvidenceContainer.list.count; i++) {
             auto *ieee1609Dot2Content = ((EtsiTs103097Data_t *) messageEvidenceContainer.list.array[i])->content;
             if (ieee1609Dot2Content->present == Ieee1609Dot2Content_PR_unsecuredData) {
-                messages.emplace_back(getCamFromOpaque(ieee1609Dot2Content->choice.unsecuredData, camList));
+                messages.emplace_back(getCamFromOpaque(ieee1609Dot2Content->choice.unsecuredData));
             } else {
                 std::cout << "ignoring CAM, only unsigned CAMs can be processed" << std::endl;
             }
         }
     }
 
-    std::shared_ptr<vanetza::asn1::Cam> Report::getCamFromOpaque(const Opaque_t &data,
-                                                                 std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList) {
-        std::shared_ptr<vanetza::asn1::Cam> cam(new vanetza::asn1::Cam());
+    std::shared_ptr<vanetza::asn1::Cam> Report::getCamFromOpaque(const Opaque_t &data) {
+        std::shared_ptr<vanetza::asn1::Cam> cam = std::make_shared<vanetza::asn1::Cam>();
         cam->decode(vanetza::ByteBuffer(data.buf, data.buf + data.size));
-
-//        auto it = camList.find(cam);
-//        if (it == camList.end()) {
-//            camList.insert(cam);
-//        } else {
-//            cam = (*it);
-//        }
         return cam;
     }
 
@@ -191,7 +181,6 @@ namespace artery {
         isValid = false;
         successfullyParsed = false;
         score = 0;
-        return;
     }
 
     void Report::setSemanticDetection(const detectionLevels::DetectionLevels &detectionLevel,
@@ -267,17 +256,16 @@ namespace artery {
 
         ReportContainer &reportContainer = misbehaviorReport->reportContainer;
         reportContainer.reportedMessageContainer.present = ReportedMessageContainer_PR_certificateIncludedContainer;
+
         EtsiTs103097Data_t &reportedMessageEncoded =
                 reportContainer.reportedMessageContainer.choice.certificateIncludedContainer.reportedMessage;
         reportedMessageEncoded.protocolVersion = 3;
-        if (reportedMessage != nullptr) {
-            reportedMessageEncoded.content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
-            reportedMessageEncoded.content->present = Ieee1609Dot2Content_PR_unsecuredData;
-            auto *encodedMessage = new vanetza::ByteBuffer(reportedMessage->encode());
-            OCTET_STRING_fromBuf(&reportedMessageEncoded.content->choice.unsecuredData,
-                                 reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
-            delete encodedMessage;
-        }
+        reportedMessageEncoded.content = vanetza::asn1::allocate<Ieee1609Dot2Content_t>();
+        reportedMessageEncoded.content->present = Ieee1609Dot2Content_PR_unsecuredData;
+        auto *encodedMessage = new vanetza::ByteBuffer(reportedMessage->encode());
+        OCTET_STRING_fromBuf(&reportedMessageEncoded.content->choice.unsecuredData,
+                             reinterpret_cast<const char *>(encodedMessage->data()), (int) encodedMessage->size());
+        delete encodedMessage;
 
         MisbehaviorTypeContainer_t &misbehaviorTypeContainer = misbehaviorReport->reportContainer.misbehaviorTypeContainer;
         switch (detectionType.present) {

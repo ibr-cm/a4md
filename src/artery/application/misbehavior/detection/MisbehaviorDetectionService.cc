@@ -151,10 +151,14 @@ namespace artery {
                 switch (detectionLevel) {
                     case detectionLevels::Level1:
                         break;
-                    case detectionLevels::Level2:
-                        report.setReportedMessages(detectedSender.getCamVector(),
-                                                   F2MDParameters::reportParameters.evidenceContainerMaxCamCount);
+                    case detectionLevels::Level2: {
+                        int camCount = F2MDParameters::reportParameters.evidenceContainerMaxCamCount >
+                                       F2MDParameters::reportParameters.omittedReportsCount
+                                       ? F2MDParameters::reportParameters.omittedReportsCount
+                                       : F2MDParameters::reportParameters.evidenceContainerMaxCamCount;
+                        report.setReportedMessages(detectedSender.getCamVector(), camCount);
                         break;
+                    }
                     case detectionLevels::Level3:
                         if (checkResult->intersection < F2MDParameters::detectionParameters.misbehaviorThreshold) {
                             report.evidence.neighbourMessages = getOverlappingCams(detectedSender);
@@ -168,8 +172,7 @@ namespace artery {
                         break;
                 }
                 if (!relatedReportId.empty()) {
-                    //TODO set this to not zero
-                    report.setRelatedReport(relatedReportId, 0);
+                    report.setRelatedReport(relatedReportId, F2MDParameters::reportParameters.omittedReportsCount);
                 }
                 reportedErrorCodes |= errorCode;
                 vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();

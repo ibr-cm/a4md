@@ -85,7 +85,7 @@ simple MisbehaviorAuthority
         double misbehaviorThreshold = default(0.5);
 
         // Report storage parameters
-        double reportCleanupInterval @unit(s) = default(10s);
+        double reportCleanupInterval @unit(s) = default(1s);
         double reportCleanupAge @unit(s) = default(1s);
         double reportCamRetentionTime @unit(s) = default(10s);
         double reportCamRetentionCleanupInterval @unit(s) = default(10s);

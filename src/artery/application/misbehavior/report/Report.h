@@ -61,9 +61,7 @@ namespace artery {
     class Report {
     public:
         Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
-               std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList,
-               std::map<std::string, std::shared_ptr<Report>> &currentReportList,
-               std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
+               std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList);
 
         Report(std::string reportId, std::shared_ptr<vanetza::asn1::Cam> cam, const uint64_t &generationTime);
 
@@ -81,13 +79,6 @@ namespace artery {
         bool successfullyParsed;
         double score;
 
-        static void decodeMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
-                                                   std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages,
-                                                   std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
-
-        static std::shared_ptr<vanetza::asn1::Cam> getCamFromOpaque(const Opaque_t &data,
-                                                                    std::set<std::shared_ptr<vanetza::asn1::Cam>, CamCompare> &camList);
-
         void setSemanticDetection(const detectionLevels::DetectionLevels &detectionLevel,
                                   const std::bitset<16> &errorCode);
 
@@ -100,6 +91,12 @@ namespace artery {
                                      const traci::VehicleController *vehicleController);
 
         vanetza::asn1::MisbehaviorReport encode();
+
+    private:
+        static void decodeMessageEvidenceContainer(const MessageEvidenceContainer &messageEvidenceContainer,
+                                                   std::vector<std::shared_ptr<vanetza::asn1::Cam>> &messages);
+
+        static std::shared_ptr<vanetza::asn1::Cam> getCamFromOpaque(const Opaque_t &data);
     };
 
 } // namespace artery

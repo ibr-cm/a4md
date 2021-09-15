@@ -149,7 +149,6 @@ namespace artery {
             mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
-        receivedMessages = std::map<uint32_t, std::deque<vanetza::asn1::Cam>>();
         std::vector<StationID_t> *ptr = &stationIds;
         auto *cObj = reinterpret_cast<cObject *>(ptr);
         emit(scSignalMaMisbehaviorAnnouncement, cObj);
@@ -749,6 +748,7 @@ namespace artery {
                                 }
                             }
                         }
+                        report.evidence.neighbourMessages = neighbourCams;
                         break;
                     }
                     case detectionLevels::Level4:

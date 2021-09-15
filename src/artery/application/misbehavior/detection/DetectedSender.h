@@ -26,13 +26,13 @@ namespace artery {
                        GlobalEnvironmentModel *globalEnvironmentModel,
                        DetectionParameters *detectionParameters,
                        const Timer *timer,
-                       const shared_ptr<vanetza::asn1::Cam> &message);
+                       const std::shared_ptr<vanetza::asn1::Cam> &message);
 
 
         ~DetectedSender();
 
 
-        std::shared_ptr<CheckResult> addAndCheckCam(const shared_ptr<vanetza::asn1::Cam> &message,
+        std::shared_ptr<CheckResult> addAndCheckCam(const std::shared_ptr<vanetza::asn1::Cam> &message,
                                                     const VehicleDataProvider *receiverVDP,
                                                     const std::vector<Position> &receiverVehicleOutline,
                                                     const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams);

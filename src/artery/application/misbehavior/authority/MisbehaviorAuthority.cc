@@ -119,9 +119,6 @@ namespace artery {
             if (countTaiMilliseconds(mTimer.getTimeFor(simTime())) - report->generationTime >
                 uint64_t(mParameters->reportCleanupAge * 1000)) {
                 mCurrentReports.erase(it++);
-                if (report->reportedMessage != nullptr) {
-                    mCams.erase(report->reportedMessage);
-                }
                 continue;
             }
             it++;
@@ -152,34 +149,12 @@ namespace artery {
         }
     }
 
-    void MisbehaviorAuthority::updateReactionType(ReportedPseudonym &reportedPseudonym) {
-        size_t score = reportedPseudonym.getTotalScore();
-        reactionTypes::ReactionTypes newReactionType = reactionTypes::Nothing;
-        if (score > 20) {
-            newReactionType = reactionTypes::Warning;
-        } else if (score > 50) {
-            newReactionType = reactionTypes::Ticket;
-        } else if (score > 250) {
-            newReactionType = reactionTypes::PassiveRevocation;
-        } else if (score > 1250) {
-            newReactionType = reactionTypes::ActiveRevocation;
-        }
-        reactionTypes::ReactionTypes oldReactionType = reportedPseudonym.getReactionType();
-        if (newReactionType != oldReactionType) {
-            mReactionsList[oldReactionType].erase(reportedPseudonym.getStationId());
-            mReactionsList[newReactionType].insert(reportedPseudonym.getStationId());
-            reportedPseudonym.setReactionType(newReactionType);
-        }
-    }
-
-
     void MisbehaviorAuthority::receiveSignal(cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                                              cObject *) {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             const vanetza::asn1::MisbehaviorReport &misbehaviorReport = *reportObject->shared_ptr();
-            std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport, mReports, mCurrentReports,
-                                                                      mCams);
+            std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport, mReports);
             if (report->successfullyParsed) {
                 processReport(report);
             }
@@ -208,21 +183,9 @@ namespace artery {
         }
     }
 
-
-    simsignal_t
-    MisbehaviorAuthority::createSignal(const std::string &signalName, const std::string &statisticTemplateName) {
-
-        simsignal_t signal = registerSignal(signalName.c_str());
-        cProperty *statisticTemplate = this->getProperties()->get("statisticTemplate", statisticTemplateName.c_str());
-        getEnvir()->addResultRecorders(this, signal, signalName.c_str(), statisticTemplate);
-        return signal;
-    }
-
-
     void MisbehaviorAuthority::processReport(const std::shared_ptr<Report> &report) {
         mTotalReportCount++;
         mNewReport = true;
-
 
         std::shared_ptr<ReportingPseudonym> reportingPseudonym;
         {
@@ -266,7 +229,7 @@ namespace artery {
             if (it != mReportedPseudonyms.end()) {
                 reportedPseudonym = it->second;
             } else {
-                reportedPseudonym = std::make_shared<ReportedPseudonym>(*new ReportedPseudonym(report));
+                reportedPseudonym = std::make_shared<ReportedPseudonym>(report);
                 mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
                 reportedPseudonym->signalReportReportingPseudonym = createSignal(
                         {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportingStationId"},
@@ -287,14 +250,13 @@ namespace artery {
                         {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportErrorCode"},
                         "reportedPseudonym_reportErrorCode");
             }
+            report->reportedPseudonym = reportedPseudonym;
         }
-
-        report->reportedPseudonym = reportedPseudonym;
-        report->isValid = validateReportReason(*report);
+        report->isValid = validateReportReason(report);
         report->score = scoreReport(report);
-        reportingPseudonym->addReport(*report);
-
-        auto reportSummary = std::make_shared<ma::ReportSummary>(report->reportId, report->score, report->reportedPseudonym);
+        reportingPseudonym->addReport(report);
+        auto reportSummary = std::make_shared<ma::ReportSummary>(report->reportId, report->score,
+                                                                 report->reportedPseudonym);
         reportedPseudonym->addReport(report->score, report->generationTime);
         mReports.emplace(reportSummary->id, reportSummary);
         mCurrentReports.emplace(report->reportId, report);
@@ -315,8 +277,8 @@ namespace artery {
             emit(reportingPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
             emit(reportingPseudonym->signalAverageReportScore, reportingPseudonym->getAverageReportScore());
         }
-        updateReactionType(*reportedPseudonym);
-        updateDetectionRates(*reportedPseudonym, *report);
+        updateReactionType(reportedPseudonym);
+        updateDetectionRates(reportedPseudonym, report);
     }
 
     double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report) {
@@ -353,6 +315,15 @@ namespace artery {
         return reportScore;
     }
 
+    simsignal_t MisbehaviorAuthority::createSignal(const std::string &signalName,
+                                                   const std::string &statisticTemplateName) {
+
+        simsignal_t signal = registerSignal(signalName.c_str());
+        cProperty *statisticTemplate = this->getProperties()->get("statisticTemplate", statisticTemplateName.c_str());
+        getEnvir()->addResultRecorders(this, signal, signalName.c_str(), statisticTemplate);
+        return signal;
+    }
+
     bool compareErrorCodes(std::bitset<16> reportedErrorCodes, std::bitset<16> actualErrorCodes) {
         for (int i = 0; i < actualErrorCodes.size(); i++) {
             if (reportedErrorCodes[i] == 1 && actualErrorCodes[i] == 0) {
@@ -362,47 +333,47 @@ namespace artery {
         return true;
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel1Report(const Report &report) {
-        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel1Report(*report.reportedMessage);
-        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
+    bool MisbehaviorAuthority::validateSemanticLevel1Report(const std::shared_ptr<Report> &report) {
+        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel1Report((report->reportedMessage));
+        std::bitset<16> reportedErrorCodes = report->detectionType.semantic->errorCode;
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel2Report(const Report &report) {
+    bool MisbehaviorAuthority::validateSemanticLevel2Report(const std::shared_ptr<Report> &report) {
         std::bitset<16> actualErrorCodes;
-        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
-        std::vector<std::shared_ptr<vanetza::asn1::Cam>> reportedMessages = report.evidence.reportedMessages;
-        mBaseChecks->initializeKalmanFilters(*reportedMessages.front());
+        std::bitset<16> reportedErrorCodes = report->detectionType.semantic->errorCode;
+        const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &reportedMessages = report->evidence.reportedMessages;
+        mBaseChecks->initializeKalmanFilters(reportedMessages.front());
         for (int i = (int) reportedMessages.size() - 1; i > 0; i--) {
-            actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*reportedMessages[i],
-                                                                       *reportedMessages[i - 1]);
+            actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(reportedMessages[i],
+                                                                       reportedMessages[i - 1]);
         }
-        actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(*report.reportedMessage,
-                                                                   *reportedMessages.back());
+        actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(report->reportedMessage,
+                                                                   reportedMessages.back());
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel3Report(const Report &report) {
-        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel3Report(*report.reportedMessage,
-                                                                                  report.evidence.neighbourMessages);
-        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
+    bool MisbehaviorAuthority::validateSemanticLevel3Report(const std::shared_ptr<Report> &report) {
+        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel3Report(report->reportedMessage,
+                                                                                  report->evidence.neighbourMessages);
+        std::bitset<16> reportedErrorCodes = report->detectionType.semantic->errorCode;
 
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateSemanticLevel4Report(const Report &report) {
-        Position senderPosition = convertReferencePosition(report.evidence.senderInfo->referencePosition,
+    bool MisbehaviorAuthority::validateSemanticLevel4Report(const std::shared_ptr<Report> &report) {
+        Position senderPosition = convertReferencePosition(report->evidence.senderInfo->referencePosition,
                                                            mSimulationBoundary, mTraciAPI);
-        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel4Report(*report.reportedMessage,
+        std::bitset<16> actualErrorCodes = mBaseChecks->checkSemanticLevel4Report(report->reportedMessage,
                                                                                   senderPosition,
-                                                                                  report.evidence.neighbourMessages);
-        std::bitset<16> reportedErrorCodes = report.detectionType.semantic->errorCode;
+                                                                                  report->evidence.neighbourMessages);
+        std::bitset<16> reportedErrorCodes = report->detectionType.semantic->errorCode;
         return compareErrorCodes(reportedErrorCodes, actualErrorCodes);
     }
 
-    bool MisbehaviorAuthority::validateReportReason(const Report &report) {
-        if (report.detectionType.semantic != nullptr) {
-            switch (report.detectionType.semantic->detectionLevel) {
+    bool MisbehaviorAuthority::validateReportReason(const std::shared_ptr<Report> &report) {
+        if (report->detectionType.semantic != nullptr) {
+            switch (report->detectionType.semantic->detectionLevel) {
                 case detectionLevels::Level1:
                     return validateSemanticLevel1Report(report);
                 case detectionLevels::Level2:
@@ -427,20 +398,41 @@ namespace artery {
         }
     }
 
-    void MisbehaviorAuthority::updateDetectionRates(ReportedPseudonym &reportedPseudonym, const Report &report) {
+    void MisbehaviorAuthority::updateReactionType(const shared_ptr<ReportedPseudonym> &reportedPseudonym) {
+        size_t score = reportedPseudonym->getTotalScore();
+        reactionTypes::ReactionTypes newReactionType = reactionTypes::Nothing;
+        if (score > 20) {
+            newReactionType = reactionTypes::Warning;
+        } else if (score > 50) {
+            newReactionType = reactionTypes::Ticket;
+        } else if (score > 250) {
+            newReactionType = reactionTypes::PassiveRevocation;
+        } else if (score > 1250) {
+            newReactionType = reactionTypes::ActiveRevocation;
+        }
+        reactionTypes::ReactionTypes oldReactionType = reportedPseudonym->getReactionType();
+        if (newReactionType != oldReactionType) {
+            mReactionsList[oldReactionType].erase(reportedPseudonym->getStationId());
+            mReactionsList[newReactionType].insert(reportedPseudonym->getStationId());
+            reportedPseudonym->setReactionType(newReactionType);
+        }
+    }
+
+    void MisbehaviorAuthority::updateDetectionRates(const shared_ptr<ReportedPseudonym> &reportedPseudonym,
+                                                    const std::shared_ptr<Report> &report) {
 
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType =
-                reportedPseudonym.predictMisbehaviorType();
+                reportedPseudonym->predictMisbehaviorType();
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorTypeAggregated =
-                reportedPseudonym.predictMisbehaviorTypeAggregate();
+                reportedPseudonym->predictMisbehaviorTypeAggregate();
 
-        if (predictedMisbehaviorType == getActualMisbehaviorType(reportedPseudonym.getStationId())) {
+        if (predictedMisbehaviorType == getActualMisbehaviorType(reportedPseudonym->getStationId())) {
             mTrueDetectionCount++;
         } else {
             mFalseDetectionCount++;
         }
         mDetectionRate = 100 * mTrueDetectionCount / (double) (mTrueDetectionCount + mFalseDetectionCount);
-        if (predictedMisbehaviorTypeAggregated == getActualMisbehaviorType(reportedPseudonym.getStationId())) {
+        if (predictedMisbehaviorTypeAggregated == getActualMisbehaviorType(reportedPseudonym->getStationId())) {
             mTrueDetectionAggregateCount++;
         } else {
             mFalseDetectionAggregateCount++;
@@ -448,10 +440,10 @@ namespace artery {
 
         mDetectionRateAggregate = 100 * mTrueDetectionAggregateCount /
                                   ((double) mTrueDetectionAggregateCount + mFalseDetectionAggregateCount);
-        if (report.generationTime - mLastUpdateTime >
+        if (report->generationTime - mLastUpdateTime >
             (long) mParameters->updateTimeStep * 1000) {
-            mLastUpdateTime = report.generationTime;
-            auto time = (std::time_t) (report.generationTime / 1000 + 1072915200 - 5);
+            mLastUpdateTime = report->generationTime;
+            auto time = (std::time_t) (report->generationTime / 1000 + 1072915200 - 5);
             std::tm t_tm = *std::gmtime(&time);
             std::stringstream ss;
             ss << std::put_time(&t_tm, "%H:%M:%S");

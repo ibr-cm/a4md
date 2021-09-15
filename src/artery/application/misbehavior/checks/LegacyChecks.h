@@ -32,16 +32,16 @@ namespace artery {
                                               const std::shared_ptr<vanetza::asn1::Cam> &lastCam,
                                               const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) override;
 
-        std::bitset<16> checkSemanticLevel1Report(const vanetza::asn1::Cam &currentCam) override;
+        std::bitset<16> checkSemanticLevel1Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam) override;
 
-        std::bitset<16> checkSemanticLevel2Report(const vanetza::asn1::Cam &currentCam,
-                                                  const vanetza::asn1::Cam &lastCam) override;
+        std::bitset<16> checkSemanticLevel2Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                                  const std::shared_ptr<vanetza::asn1::Cam> &lastCam) override;
 
-        std::bitset<16> checkSemanticLevel3Report(const vanetza::asn1::Cam &currentCam,
+        std::bitset<16> checkSemanticLevel3Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
                                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
         std::bitset<16>
-        checkSemanticLevel4Report(const vanetza::asn1::Cam &currentCam, const Position &receiverPosition,
+        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam, const Position &receiverPosition,
                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
     protected:
@@ -53,6 +53,9 @@ namespace artery {
 
         double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
                                           const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects);
+
+        double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
+                                          const std::vector<vanetza::asn1::Cam> &surroundingCamObjects);
 
         double RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const;
 
