@@ -153,8 +153,7 @@ namespace artery {
                                              cObject *) {
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
-            const vanetza::asn1::MisbehaviorReport &misbehaviorReport = *reportObject->shared_ptr();
-            std::shared_ptr<Report> report = std::make_shared<Report>(misbehaviorReport, mReports);
+            std::shared_ptr<Report> report = std::make_shared<Report>(*reportObject->shared_ptr());
             if (report->successfullyParsed) {
                 processReport(report);
             }
@@ -187,42 +186,8 @@ namespace artery {
         mTotalReportCount++;
         mNewReport = true;
 
-        std::shared_ptr<ReportingPseudonym> reportingPseudonym;
-        {
-            StationID_t reporterStationId = std::stoull(split(report->reportId, '_')[1]);
-            auto it = mReportingPseudonyms.find(reporterStationId);
-            if (it != mReportingPseudonyms.end()) {
-                reportingPseudonym = it->second;
-            } else {
-                reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId);
-                mReportingPseudonyms[reporterStationId] = reportingPseudonym;
-                reportingPseudonym->signalReportReportedPseudonym = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportedPseudonym"},
-                        "reportingPseudonym_reportedPseudonym");
-                reportingPseudonym->signalReportValidity = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportValidity"},
-                        "reportingPseudonym_reportValidity");
-                reportingPseudonym->signalReportScore = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportScore"},
-                        "reportingPseudonym_reportScore");
-                reportingPseudonym->signalReportDetectionType = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionType"},
-                        "reportingPseudonym_reportDetectionType");
-                reportingPseudonym->signalReportDetectionLevel = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionLevel"},
-                        "reportingPseudonym_reportDetectionLevel");
-                reportingPseudonym->signalReportErrorCode = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportErrorCode"},
-                        "reportingPseudonym_reportErrorCode");
-                reportingPseudonym->signalAverageReportScore = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_averageReportScore"},
-                        "reportingPseudonym_averageReportScore");
-            }
-            report->reportingPseudonym = reportingPseudonym;
-        }
-
-
         std::shared_ptr<ReportedPseudonym> reportedPseudonym;
+        std::shared_ptr<ReportingPseudonym> reportingPseudonym;
         {
             StationID_t reportedStationId = (*report->reportedMessage)->header.stationID;
             auto it = mReportedPseudonyms.find(reportedStationId);
@@ -250,17 +215,51 @@ namespace artery {
                         {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportErrorCode"},
                         "reportedPseudonym_reportErrorCode");
             }
-            report->reportedPseudonym = reportedPseudonym;
+        }
+
+        {
+            StationID_t reporterStationId = std::stoull(split(report->reportId, '_')[1]);
+            auto it = mReportingPseudonyms.find(reporterStationId);
+            if (it != mReportingPseudonyms.end()) {
+                reportingPseudonym = it->second;
+            } else {
+                reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId);
+                if (debugLevel >= 5) {
+                    mReportingPseudonyms.emplace(reporterStationId, reportingPseudonym);
+                } else {
+                    mReportingPseudonyms[reporterStationId] = reportingPseudonym;
+                }
+                reportingPseudonym->signalReportReportedPseudonym = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportedPseudonym"},
+                        "reportingPseudonym_reportedPseudonym");
+                reportingPseudonym->signalReportValidity = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportValidity"},
+                        "reportingPseudonym_reportValidity");
+                reportingPseudonym->signalReportScore = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportScore"},
+                        "reportingPseudonym_reportScore");
+                reportingPseudonym->signalReportDetectionType = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionType"},
+                        "reportingPseudonym_reportDetectionType");
+                reportingPseudonym->signalReportDetectionLevel = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionLevel"},
+                        "reportingPseudonym_reportDetectionLevel");
+                reportingPseudonym->signalReportErrorCode = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportErrorCode"},
+                        "reportingPseudonym_reportErrorCode");
+                reportingPseudonym->signalAverageReportScore = createSignal(
+                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_averageReportScore"},
+                        "reportingPseudonym_averageReportScore");
+            }
         }
         report->isValid = validateReportReason(report);
-        report->score = scoreReport(report);
+        report->score = scoreReport(report, reportingPseudonym);
         reportingPseudonym->addReport(report);
-        auto reportSummary = std::make_shared<ma::ReportSummary>(report->reportId, report->score,
-                                                                 report->reportedPseudonym);
         reportedPseudonym->addReport(report->score, report->generationTime);
-        mReports.emplace(reportSummary->id, reportSummary);
         mCurrentReports.emplace(report->reportId, report);
 
+        updateReactionType(reportedPseudonym);
+        updateDetectionRates(reportedPseudonym, report);
         {
             emit(reportedPseudonym->signalReportReportingPseudonym, reportingPseudonym->getStationId());
             emit(reportedPseudonym->signalReportValidity, report->isValid);
@@ -277,11 +276,10 @@ namespace artery {
             emit(reportingPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
             emit(reportingPseudonym->signalAverageReportScore, reportingPseudonym->getAverageReportScore());
         }
-        updateReactionType(reportedPseudonym);
-        updateDetectionRates(reportedPseudonym, report);
     }
 
-    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report) {
+    double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report,
+                                             const std::shared_ptr<ReportingPseudonym> &reportingPseudonym) {
         uint64_t currentTime = countTaiMilliseconds(mTimer.getTimeFor(simTime()));
         double ageScore = 1;
         double evidenceScore = 1;
@@ -298,7 +296,7 @@ namespace artery {
         }
 
         if (mParameters->considerReporterScore) {
-            reporterScore = std::max(0.1, report->reportingPseudonym->getAverageReportScore());
+            reporterScore = std::max(0.1, reportingPseudonym->getAverageReportScore());
         }
 
         if (mParameters->considerEvidenceScore) {

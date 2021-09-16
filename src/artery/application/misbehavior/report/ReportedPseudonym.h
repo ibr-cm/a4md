@@ -11,7 +11,6 @@
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/util/ReactionTypes.h"
 #include "artery/application/misbehavior/report/Report.h"
-#include "artery/application/misbehavior/report/ReportSummary.h"
 #include <map>
 #include <omnetpp.h>
 

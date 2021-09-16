@@ -11,7 +11,6 @@
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include "artery/application/misbehavior/report/ReportedPseudonym.h"
 #include "artery/application/misbehavior/report/ReportingPseudonym.h"
-#include "artery/application/misbehavior/report/ReportSummary.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
@@ -60,8 +59,7 @@ namespace artery {
 
     class Report {
     public:
-        Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
-               std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList);
+        Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport);
 
         Report(std::string reportId, std::shared_ptr<vanetza::asn1::Cam> cam, const uint64_t &generationTime);
 

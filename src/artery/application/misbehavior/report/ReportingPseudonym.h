@@ -17,7 +17,7 @@ namespace artery {
     public:
         explicit ReportingPseudonym(StationID_t stationId);
 
-        void addReport(const Report &report);
+        void addReport(const std::shared_ptr<Report> &report);
 
         double getAverageReportScore() const;
 

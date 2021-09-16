@@ -10,8 +10,8 @@ namespace artery {
 
     }
 
-    void ReportingPseudonym::addReport(const Report &report) {
-        mTotalReportScore += report.score / getAverageReportScore();
+    void ReportingPseudonym::addReport(const std::shared_ptr<Report> &report) {
+        mTotalReportScore += report->score / getAverageReportScore();
         mTotalReportCount++;
     }
 

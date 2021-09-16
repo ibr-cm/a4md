@@ -18,7 +18,6 @@
 #include "artery/application/misbehavior/report/ReportedPseudonym.h"
 #include "artery/application/misbehavior/report/ReportingPseudonym.h"
 #include "artery/application/misbehavior/report/Report.h"
-#include "artery/application/misbehavior/report/ReportSummary.h"
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 #include "artery/application/misbehavior/fusion/BaseFusion.h"
 #include <artery/application/misbehavior/checks/BaseChecks.h>
@@ -81,11 +80,10 @@ namespace artery {
         MisbehaviorAuthorityParameters *mParameters;
 
         std::map<StationID_t, std::shared_ptr<ReportedPseudonym>> mReportedPseudonyms;
-        std::map<StationID_t, std::shared_ptr<MisbehavingPseudonym>> mMisbehavingPseudonyms;
         std::map<StationID_t, std::shared_ptr<ReportingPseudonym>> mReportingPseudonyms;
+        std::map<StationID_t, std::shared_ptr<MisbehavingPseudonym>> mMisbehavingPseudonyms;
 
         std::map<std::string, std::shared_ptr<Report>> mCurrentReports;
-        std::map<std::string, std::shared_ptr<ma::ReportSummary>> mReports;
 
 
         std::list<std::string> mDetectionAccuracyLabels;
@@ -108,7 +106,7 @@ namespace artery {
 
         void processReport(const std::shared_ptr<Report> &report);
 
-        double scoreReport(const std::shared_ptr<Report> &report);
+        double scoreReport(const std::shared_ptr<Report> &report, const std::shared_ptr<ReportingPseudonym> &reportingPseudonym);
 
         misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
 

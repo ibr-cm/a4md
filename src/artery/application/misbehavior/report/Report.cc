@@ -31,8 +31,7 @@ namespace artery {
         evidence.neighbourMessages.clear();
     }
 
-    Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport,
-                   std::map<std::string, std::shared_ptr<ma::ReportSummary>> &reportSummaryList) {
+    Report::Report(const vanetza::asn1::MisbehaviorReport &misbehaviorReport) {
         generationTime = 0;
         isValid = false;
         score = 1;
