@@ -1,0 +1,19 @@
+***Starting server on port 41507 ***
+Loading net-file from 'f2md-networks/LuSTNanoScenario/lust.net.xml' ... done (26ms).
+Loading additional-files from 'f2md-networks/LuSTNanoScenario/vtypes.add.xml' ... done (1ms).
+Loading additional-files from 'f2md-networks/LuSTNanoScenario/lust.add.xml' ... done (8ms).
+Loading additional-files from 'f2md-networks/LuSTNanoScenario/lust.poly.xml' ... done (16ms).
+Loading done.
+Simulation version 1.9.2 started with time: 0.00
+Simulation ended at time: 1095.50
+Reason: TraCI requested termination.
+Performance: 
+ Duration: 3.03s
+ TraCI-Duration: 2.64s
+ Real time factor: 362.029
+ UPS: 5306.675479
+Vehicles: 
+ Inserted: 16 (Loaded: 21)
+ Running: 1
+ Waiting: 0
+
