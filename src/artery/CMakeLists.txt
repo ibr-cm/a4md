@@ -97,7 +97,7 @@ add_library(core SHARED
         application/misbehavior/util/HelperFunctions.cc
         )
 find_package(CURL REQUIRED)
-find_package(RapidJSON REQUIRED)
+#find_package(RapidJSON REQUIRED)
 target_link_libraries(core PUBLIC CURL::libcurl)
 target_link_libraries(artery INTERFACE core)
 add_library(Artery::Core ALIAS core)

@@ -129,15 +129,15 @@ namespace artery {
 
         void updateDetectionRates(const shared_ptr<ReportedPseudonym> &reportedPseudonym, const std::shared_ptr<Report> &report);
 
-        std::vector<RecentReported> getRecentReported();
-
-        rapidjson::Value getRadarData(rapidjson::Document::AllocatorType &allocator);
-
-        rapidjson::Value getRecentReported(rapidjson::Document::AllocatorType &allocator);
-
-        rapidjson::Value getDetectionRates(rapidjson::Document::AllocatorType &allocator);
-
-        void createGuiJsonData();
+//        std::vector<RecentReported> getRecentReported();
+//
+//        rapidjson::Value getRadarData(rapidjson::Document::AllocatorType &allocator);
+//
+//        rapidjson::Value getRecentReported(rapidjson::Document::AllocatorType &allocator);
+//
+//        rapidjson::Value getDetectionRates(rapidjson::Document::AllocatorType &allocator);
+//
+//        void createGuiJsonData();
 
         void printReportsPerPseudonym();
 
