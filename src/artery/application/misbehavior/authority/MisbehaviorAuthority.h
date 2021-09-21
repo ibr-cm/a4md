@@ -7,7 +7,7 @@
 
 #include <curl/curl.h>
 #include <omnetpp.h>
-#include <rapidjson/document.h>
+//#include <rapidjson/document.h>
 #include <vanetza/asn1/misbehavior_report.hpp>
 #include <vanetza/asn1/cam.hpp>
 #include "artery/envmod/GlobalEnvironmentModel.h"
