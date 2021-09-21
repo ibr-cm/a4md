@@ -6,6 +6,14 @@
 
 namespace artery {
 
+    using namespace omnetpp;
+    MisbehavingPseudonym::MisbehavingPseudonym(StationID_t stationId,
+                                               misbehaviorTypes::MisbehaviorTypes misbehaviorType,
+                                               attackTypes::AttackTypes attackType) :
+            mStationId(stationId),
+            mMisbehaviorType(misbehaviorType),
+            mAttackType(attackType) {
+    }
 
     StationID_t MisbehavingPseudonym::getStationId() const {
         return mStationId;
@@ -17,14 +25,5 @@ namespace artery {
 
     attackTypes::AttackTypes artery::MisbehavingPseudonym::getAttackType() const {
         return mAttackType;
-    }
-
-    MisbehavingPseudonym::MisbehavingPseudonym(StationID_t stationId,
-                                               misbehaviorTypes::MisbehaviorTypes misbehaviorType,
-                                               attackTypes::AttackTypes attackType) :
-            mStationId(stationId),
-            mMisbehaviorType(misbehaviorType),
-            mAttackType(attackType) {
-
     }
 } // namespace artery

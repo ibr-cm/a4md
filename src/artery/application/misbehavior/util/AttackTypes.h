@@ -48,7 +48,7 @@ namespace artery {
                                             "RandomSpeed", "RandomSpeedOffset", "EventualStop", "Disruptive",
                                             "DataReplay", "StaleMessages", "DoS", "DoSRandom", "DoSDisruptive",
                                             "GridSybil", "DataReplaySybil", "DoSRandomSybil", "DoSDisruptiveSybil",
-                                            "MAStress"};
+                                            "FakeReport"};
 
         static_assert(sizeof(attackTypes::AttackNames) / sizeof(char *) == attackTypes::SIZE_OF_ENUM,
                       "sizes dont match");

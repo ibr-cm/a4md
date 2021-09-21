@@ -139,7 +139,6 @@ namespace artery {
                 stationIds.emplace_back(stationId);
             }
         }
-        stationIds.emplace_back(mStationId);
 
         if (mAttackType == attackTypes::DoS || mAttackType == attackTypes::DoSRandom ||
             mAttackType == attackTypes::DoSDisruptive || mAttackType == attackTypes::GridSybil ||
@@ -149,9 +148,13 @@ namespace artery {
             mDccRestriction = !F2MDParameters::attackParameters.AttackDoSIgnoreDCC;
             mFixedRate = true;
         }
-        std::vector<StationID_t> *ptr = &stationIds;
-        auto *cObj = reinterpret_cast<cObject *>(ptr);
-        emit(scSignalMaMisbehaviorAnnouncement, cObj);
+
+        if(mAttackType != attackTypes::Benign){
+            stationIds.emplace_back(mStationId);
+            std::vector<StationID_t> *ptr = &stationIds;
+            auto *cObj = reinterpret_cast<cObject *>(ptr);
+            emit(scSignalMaMisbehaviorAnnouncement, cObj);
+        }
     }
 
     void MisbehaviorCaService::initializeStaticParameters() {

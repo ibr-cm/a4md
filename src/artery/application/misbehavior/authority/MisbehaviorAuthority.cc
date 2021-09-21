@@ -34,16 +34,11 @@ namespace artery {
         traciCloseSignal = cComponent::registerSignal("traci.close");
         maNewReport = cComponent::registerSignal("newMisbehaviorReport");
         maMisbehaviorAnnouncement = cComponent::registerSignal("misbehaviorAuthority.MisbehaviorAnnouncement");
-        signal_totalReportCount = cComponent::registerSignal("totalReportCount");
-        signal_truePositiveCount = cComponent::registerSignal("truePositiveCount");
-        signal_falsePositiveCount = cComponent::registerSignal("falsePositiveCount");
     }
 
     MisbehaviorAuthority::~MisbehaviorAuthority() {
         curl_easy_cleanup(curl);
         this->clear();
-//        dropAndDelete(mMsgGuiUpdate);
-//        dropAndDelete(mMsgReportCleanup);
         delete mBaseChecks;
     }
 
@@ -100,6 +95,49 @@ namespace artery {
                    mMsgReportCleanup);
     }
 
+    void MisbehaviorAuthority::finish() {
+        recordScalar("totalReportCount", mTotalReportCount);
+        recordScalar("truePositiveCount", mTruePositiveCount);
+        recordScalar("falsePositiveCount", mFalsePositiveCount);
+        recordScalar("parsedReportCount", mParsedReportCount);
+        recordScalar("validReportCount", mValidReportCount);
+
+        for (const auto &reportedPseudonym: mReportedPseudonyms) {
+            reportedPseudonym.second->recordStatistics();
+        }
+        for (const auto &reportingPseudonym: mReportingPseudonyms) {
+            reportingPseudonym.second->recordStatistics();
+        }
+
+        for (int i = 1; i <= 20; i++) {
+            std::string name = "attack_" + std::to_string(i) + "_" + attackTypes::AttackNames[i] + "_";
+            cHistogram attackTypeReportCounts((name + "reportCounts").c_str());
+            cHistogram attackTypeReportScores((name + "reportScores").c_str());
+            int detectedPseudonyms = 0;
+            int undetectedPseudonyms = 0;
+            for (const auto &misbehavingPseudonym: mMisbehavingPseudonyms) {
+                if (misbehavingPseudonym.second->getAttackType() == attackTypes::intAttacks[i]) {
+                    StationID_t misbehavingStationId = misbehavingPseudonym.second->getStationId();
+                    auto it = mReportedPseudonyms.find(misbehavingStationId);
+                    if (it != mReportedPseudonyms.end()) {
+                        attackTypeReportScores.collect(it->second->getTotalScore());
+                        attackTypeReportCounts.collect(it->second->getTotalReportCount());
+                        detectedPseudonyms++;
+                    } else {
+                        attackTypeReportScores.collect(0);
+                        attackTypeReportCounts.collect(0);
+                        undetectedPseudonyms++;
+                    }
+                }
+            }
+            attackTypeReportCounts.record();
+            attackTypeReportScores.record();
+            recordScalar((name + "detectedCount").c_str(), detectedPseudonyms);
+            recordScalar((name + "undetectedCount").c_str(), undetectedPseudonyms);
+        }
+        cComponent::finish();
+    }
+
     void MisbehaviorAuthority::handleMessage(omnetpp::cMessage *msg) {
         Enter_Method("handleMessage");
         if (msg == mMsgGuiUpdate) {
@@ -151,6 +189,7 @@ namespace artery {
 
     void MisbehaviorAuthority::receiveSignal(cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                                              cObject *) {
+        Enter_Method("receiveSignal");
         if (signal == maNewReport) {
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             std::shared_ptr<Report> report = std::make_shared<Report>(*reportObject->shared_ptr());
@@ -165,19 +204,10 @@ namespace artery {
                         std::make_shared<MisbehavingPseudonym>(stationId, misbehaviorCaService->getMisbehaviorType(),
                                                                misbehaviorCaService->getAttackType());
                 mMisbehavingPseudonyms[stationId] = misbehavingPseudonym;
-
-                misbehavingPseudonym->signalPseudonym = createSignal(
-                        {"misbehavingPseudonym_" + std::to_string(stationId) + "_pseudonym"},
-                        "misbehavingPseudonym_pseudonym");
-                misbehavingPseudonym->signalMisbehaviorType = createSignal(
-                        {"misbehavingPseudonym_" + std::to_string(stationId) + "_misbehaviorType"},
-                        "misbehavingPseudonym_misbehaviorType");
-                misbehavingPseudonym->signalAttackType = createSignal(
-                        {"misbehavingPseudonym_" + std::to_string(stationId) + "_attackType"},
-                        "misbehavingPseudonym_misbehaviorType");
-                emit(misbehavingPseudonym->signalPseudonym, misbehavingPseudonym->getStationId());
-                emit(misbehavingPseudonym->signalMisbehaviorType, misbehavingPseudonym->getMisbehaviorType());
-                emit(misbehavingPseudonym->signalAttackType, misbehavingPseudonym->getAttackType());
+                std::string prefix =
+                        "misbehavingPseudonym_" + std::to_string(misbehavingPseudonym->getStationId()) + "_";
+                recordScalar((prefix + "misbehaviorType").c_str(), misbehavingPseudonym->getMisbehaviorType());
+                recordScalar((prefix + "attackType").c_str(), misbehavingPseudonym->getAttackType());
             }
         }
     }
@@ -196,24 +226,6 @@ namespace artery {
             } else {
                 reportedPseudonym = std::make_shared<ReportedPseudonym>(report);
                 mReportedPseudonyms.emplace(reportedStationId, reportedPseudonym);
-                reportedPseudonym->signalReportReportingPseudonym = createSignal(
-                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportingStationId"},
-                        "reportedPseudonym_reportingPseudonym");
-                reportedPseudonym->signalReportValidity = createSignal(
-                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportValidity"},
-                        "reportedPseudonym_reportValidity");
-                reportedPseudonym->signalReportScore = createSignal(
-                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportScore"},
-                        "reportedPseudonym_reportScore");
-                reportedPseudonym->signalReportDetectionType = createSignal(
-                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportDetectionType"},
-                        "reportedPseudonym_reportDetectionType");
-                reportedPseudonym->signalReportDetectionLevel = createSignal(
-                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportDetectionLevel"},
-                        "reportedPseudonym_reportDetectionLevel");
-                reportedPseudonym->signalReportErrorCode = createSignal(
-                        {"reportedPseudonym_" + std::to_string(reportedStationId) + "_reportErrorCode"},
-                        "reportedPseudonym_reportErrorCode");
             }
         }
 
@@ -224,58 +236,19 @@ namespace artery {
                 reportingPseudonym = it->second;
             } else {
                 reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId);
-                if (debugLevel >= 5) {
-                    mReportingPseudonyms.emplace(reporterStationId, reportingPseudonym);
-                } else {
-                    mReportingPseudonyms[reporterStationId] = reportingPseudonym;
-                }
-                reportingPseudonym->signalReportReportedPseudonym = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportedPseudonym"},
-                        "reportingPseudonym_reportedPseudonym");
-                reportingPseudonym->signalReportValidity = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportValidity"},
-                        "reportingPseudonym_reportValidity");
-                reportingPseudonym->signalReportScore = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportScore"},
-                        "reportingPseudonym_reportScore");
-                reportingPseudonym->signalReportDetectionType = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionType"},
-                        "reportingPseudonym_reportDetectionType");
-                reportingPseudonym->signalReportDetectionLevel = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportDetectionLevel"},
-                        "reportingPseudonym_reportDetectionLevel");
-                reportingPseudonym->signalReportErrorCode = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_reportErrorCode"},
-                        "reportingPseudonym_reportErrorCode");
-                reportingPseudonym->signalAverageReportScore = createSignal(
-                        {"reportingPseudonym_" + std::to_string(reporterStationId) + "_averageReportScore"},
-                        "reportingPseudonym_averageReportScore");
+                mReportingPseudonyms.emplace(reporterStationId, reportingPseudonym);
             }
         }
         report->isValid = validateReportReason(report);
         report->score = scoreReport(report, reportingPseudonym);
+        report->reportingPseudonym = reportingPseudonym;
+        report->reportedPseudonym = reportedPseudonym;
         reportingPseudonym->addReport(report);
-        reportedPseudonym->addReport(report->score, report->generationTime);
+        reportedPseudonym->addReport(report);
         mCurrentReports.emplace(report->reportId, report);
 
         updateReactionType(reportedPseudonym);
         updateDetectionRates(reportedPseudonym, report);
-        {
-            emit(reportedPseudonym->signalReportReportingPseudonym, reportingPseudonym->getStationId());
-            emit(reportedPseudonym->signalReportValidity, report->isValid);
-            emit(reportedPseudonym->signalReportScore, report->score);
-            emit(reportedPseudonym->signalReportDetectionType, report->detectionType.present);
-            emit(reportedPseudonym->signalReportDetectionLevel, report->detectionType.semantic->detectionLevel);
-            emit(reportedPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
-
-            emit(reportingPseudonym->signalReportReportedPseudonym, reportedPseudonym->getStationId());
-            emit(reportingPseudonym->signalReportValidity, report->isValid);
-            emit(reportingPseudonym->signalReportScore, report->score);
-            emit(reportingPseudonym->signalReportDetectionType, report->detectionType.present);
-            emit(reportingPseudonym->signalReportDetectionLevel, report->detectionType.semantic->detectionLevel);
-            emit(reportingPseudonym->signalReportErrorCode, report->detectionType.semantic->errorCode.to_ulong());
-            emit(reportingPseudonym->signalAverageReportScore, reportingPseudonym->getAverageReportScore());
-        }
     }
 
     double MisbehaviorAuthority::scoreReport(const std::shared_ptr<Report> &report,
@@ -310,6 +283,9 @@ namespace artery {
         }
 
         double reportScore = ageScore * validityScore * reporterScore * evidenceScore;
+        if (isnan(reportScore)) {
+            reportScore = 0;
+        }
         return reportScore;
     }
 
@@ -389,11 +365,17 @@ namespace artery {
 
     misbehaviorTypes::MisbehaviorTypes MisbehaviorAuthority::getActualMisbehaviorType(const StationID_t &stationId) {
         auto it = mMisbehavingPseudonyms.find(stationId);
+        misbehaviorTypes::MisbehaviorTypes misbehaviorType;
         if (it != mMisbehavingPseudonyms.end()) {
-            return (*it).second->getMisbehaviorType();
+            if ((*it).second->getAttackType() != attackTypes::Benign) {
+                misbehaviorType = (*it).second->getMisbehaviorType();
+            } else {
+                misbehaviorType = misbehaviorTypes::Benign;
+            }
         } else {
-            return misbehaviorTypes::Benign;
+            misbehaviorType = misbehaviorTypes::Benign;
         }
+        return misbehaviorType;
     }
 
     void MisbehaviorAuthority::updateReactionType(const shared_ptr<ReportedPseudonym> &reportedPseudonym) {
@@ -425,11 +407,11 @@ namespace artery {
                 reportedPseudonym->predictMisbehaviorTypeAggregate();
 
         if (predictedMisbehaviorType == getActualMisbehaviorType(reportedPseudonym->getStationId())) {
-            mTrueDetectionCount++;
+            mTruePositiveCount++;
         } else {
-            mFalseDetectionCount++;
+            mFalsePositiveCount++;
         }
-        mDetectionRate = 100 * mTrueDetectionCount / (double) (mTrueDetectionCount + mFalseDetectionCount);
+        mDetectionRate = 100 * mTruePositiveCount / (double) (mTruePositiveCount + mFalsePositiveCount);
         if (predictedMisbehaviorTypeAggregated == getActualMisbehaviorType(reportedPseudonym->getStationId())) {
             mTrueDetectionAggregateCount++;
         } else {
@@ -447,13 +429,13 @@ namespace artery {
             ss << std::put_time(&t_tm, "%H:%M:%S");
             std::string timeString = ss.str();
             mDetectionAccuracyLabels.emplace_back(timeString);
-            int trueDetectionCurrent = mTrueDetectionCount - mTrueDetectionCountInst;
-            int falseDetectionCurrent = mFalseDetectionCount - mFalseDetectionCountInst;
+            int trueDetectionCurrent = mTruePositiveCount - mTrueDetectionCountInst;
+            int falseDetectionCurrent = mFalsePositiveCount - mFalseDetectionCountInst;
             if (trueDetectionCurrent + falseDetectionCurrent > 0) {
                 mDetectionRateCur = 100 * trueDetectionCurrent / (trueDetectionCurrent + falseDetectionCurrent);
             }
-            mTrueDetectionCountInst = mTrueDetectionCount;
-            mFalseDetectionCountInst = mFalseDetectionCount;
+            mTrueDetectionCountInst = mTruePositiveCount;
+            mFalseDetectionCountInst = mFalsePositiveCount;
             auto data = std::make_tuple(trueDetectionCurrent, falseDetectionCurrent, mDetectionRateCur);
             mDetectionAccuracyData.emplace_back(data);
             if (mDetectionAccuracyData.size() > mParameters->displaySteps) {
@@ -461,9 +443,6 @@ namespace artery {
                 mDetectionAccuracyLabels.pop_front();
             }
         }
-        emit(signal_totalReportCount, mTotalReportCount);
-        emit(signal_truePositiveCount, mTrueDetectionCount);
-        emit(signal_falsePositiveCount, mFalseDetectionCount);
     }
 
     rapidjson::Value MisbehaviorAuthority::getRadarData(rapidjson::Document::AllocatorType &allocator) {
@@ -659,5 +638,4 @@ namespace artery {
                   << std::endl;
         std::cout << "Reports per benign pseudonym: " << meanReportsPerBenign << " StdDev: " << sdBenign << std::endl;
     }
-
 } // namespace artery

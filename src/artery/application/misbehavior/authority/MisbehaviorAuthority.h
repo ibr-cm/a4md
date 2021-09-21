@@ -56,6 +56,8 @@ namespace artery {
         void receiveSignal(omnetpp::cComponent *source, omnetpp::simsignal_t signal, cObject *obj,
                            omnetpp::cObject *) override;
 
+        void finish() override;
+
     private:
 
         void clear();
@@ -64,9 +66,6 @@ namespace artery {
         omnetpp::simsignal_t traciCloseSignal;
         omnetpp::simsignal_t maNewReport;
         omnetpp::simsignal_t maMisbehaviorAnnouncement;
-        omnetpp::simsignal_t signal_totalReportCount;
-        omnetpp::simsignal_t signal_truePositiveCount;
-        omnetpp::simsignal_t signal_falsePositiveCount;
 
         omnetpp::cMessage *mMsgGuiUpdate;
         omnetpp::cMessage *mMsgReportCleanup;
@@ -90,12 +89,15 @@ namespace artery {
         std::list<std::tuple<int, int, double>> mDetectionAccuracyData;
         std::map<reactionTypes::ReactionTypes, std::set<StationID_t>> mReactionsList;
 
-        int mTotalReportCount = 0;
         bool mNewReport = false;
         uint64_t mLastUpdateTime = 0;
 
-        int mTrueDetectionCount = 0;
-        int mFalseDetectionCount = 0;
+        int mTotalReportCount = 0;
+        int mParsedReportCount = 0;
+        int mValidReportCount = 0;
+        int mTruePositiveCount = 0;
+        int mFalsePositiveCount = 0;
+
         double mDetectionRate = 0;
         int mTrueDetectionAggregateCount = 0;
         int mFalseDetectionAggregateCount = 0;

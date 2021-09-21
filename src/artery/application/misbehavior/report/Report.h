@@ -7,6 +7,7 @@
 
 #include <string>
 #include "vanetza/asn1/cam.hpp"
+#include <vanetza/asn1/misbehavior_report.hpp>
 #include <bitset>
 #include "artery/application/misbehavior/util/DetectionLevels.h"
 #include "artery/application/misbehavior/report/ReportedPseudonym.h"
@@ -22,7 +23,7 @@ namespace artery {
     class Report;
 
     struct SemanticDetection {
-        detectionLevels::DetectionLevels detectionLevel;
+        detectionLevels::DetectionLevels detectionLevel = detectionLevels::SIZE_OF_ENUM;
         std::bitset<16> errorCode;
     };
 

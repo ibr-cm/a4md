@@ -19,22 +19,23 @@ namespace artery {
 
         void addReport(const std::shared_ptr<Report> &report);
 
+        void recordStatistics();
+
         double getAverageReportScore() const;
 
         StationID_t getStationId() const;
-
-        omnetpp::simsignal_t signalReportReportedPseudonym;
-        omnetpp::simsignal_t signalReportValidity;
-        omnetpp::simsignal_t signalReportScore;
-        omnetpp::simsignal_t signalReportDetectionType;
-        omnetpp::simsignal_t signalReportDetectionLevel;
-        omnetpp::simsignal_t signalReportErrorCode;
-        omnetpp::simsignal_t signalAverageReportScore;
 
     private:
         StationID_t mStationId;
         int mTotalReportCount = 0;
         double mTotalReportScore = 0;
+
+        omnetpp::cHistogram statsReportedPseudonym;
+        omnetpp::cStdDev statsValidity;
+        omnetpp::cStdDev statsScore;
+        omnetpp::cHistogram statsDetectionType;
+        omnetpp::cHistogram statsDetectionLevel;
+        omnetpp::cHistogram statsErrorCode;
     };
 
 } // namespace artery

@@ -5,7 +5,6 @@
 #ifndef ARTERY_REPORTEDPSEUDONYM_H
 #define ARTERY_REPORTEDPSEUDONYM_H
 
-#include <vanetza/asn1/misbehavior_report.hpp>
 #include "vanetza/asn1/md/StationID.h"
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
@@ -13,6 +12,7 @@
 #include "artery/application/misbehavior/report/Report.h"
 #include <map>
 #include <omnetpp.h>
+#include <boost/shared_ptr.hpp>
 
 namespace artery {
 
@@ -22,11 +22,13 @@ namespace artery {
     public:
         explicit ReportedPseudonym(const std::shared_ptr<Report> &report);
 
+        void addReport(const std::shared_ptr<Report> &report);
+
+        void recordStatistics();
+
         StationID_t getStationId() const { return mStationId; };
 
-        void addReport(double reportScore, uint64_t generationTime);
-
-        int getReportCount() { return mTotalReportCount; };
+        int getTotalReportCount() { return mTotalReportCount; };
 
         int getTotalScore() { return mTotalScore; };
 
@@ -42,13 +44,6 @@ namespace artery {
 
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorTypeAggregate();
 
-        omnetpp::simsignal_t signalReportReportingPseudonym;
-        omnetpp::simsignal_t signalReportValidity;
-        omnetpp::simsignal_t signalReportScore;
-        omnetpp::simsignal_t signalReportDetectionType;
-        omnetpp::simsignal_t signalReportDetectionLevel;
-        omnetpp::simsignal_t signalReportErrorCode;
-
     private:
         StationID_t mStationId;
         int mTotalReportCount = 0;
@@ -59,6 +54,12 @@ namespace artery {
         reactionTypes::ReactionTypes mReactionType;
         uint64_t mLastReportGenerationTime;
 
+        omnetpp::cHistogram statsReportingPseudonym;
+        omnetpp::cStdDev statsValidity;
+        omnetpp::cStdDev statsScore;
+        omnetpp::cHistogram statsDetectionType;
+        omnetpp::cHistogram statsDetectionLevel;
+        omnetpp::cHistogram statsErrorCode;
     };
 } //namespace artery
 

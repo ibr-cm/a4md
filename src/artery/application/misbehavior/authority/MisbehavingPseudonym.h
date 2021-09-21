@@ -23,11 +23,6 @@ namespace artery {
 
         attackTypes::AttackTypes getAttackType() const;
 
-        omnetpp::simsignal_t signalPseudonym;
-        omnetpp::simsignal_t signalMisbehaviorType;
-        omnetpp::simsignal_t signalAttackType;
-
-
     private:
         StationID_t mStationId;
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
