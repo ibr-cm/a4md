@@ -33,6 +33,7 @@ namespace artery {
         omnetpp::cHistogram statsReportedPseudonym;
         omnetpp::cStdDev statsValidity;
         omnetpp::cStdDev statsScore;
+        omnetpp::cOutVector vectorScore;
         omnetpp::cHistogram statsDetectionType;
         omnetpp::cHistogram statsDetectionLevel;
         omnetpp::cHistogram statsErrorCode;

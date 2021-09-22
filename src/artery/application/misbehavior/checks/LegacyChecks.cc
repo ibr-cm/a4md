@@ -245,8 +245,8 @@ namespace artery {
         std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
         result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
         result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
-        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
-                                                                   surroundingCamObjects);
+//        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
+//                                                                   surroundingCamObjects);
         result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
 
         if (mCheckingFirstCam) {
