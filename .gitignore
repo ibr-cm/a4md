@@ -10,3 +10,15 @@ build/
 .qtenvrc
 .idea/
 cmake-build-debug/
+build/
+build_release/
+build_release_2/
+scenarios/f2md/valgrind_results/
+scenarios/f2md/f2md-networks/*/due.actuated.log
+scenarios/f2md/f2md-networks/*/due.actuated.summary.xml
+scenarios/f2md/f2md-networks/*/due.actuated.tripinfo.xml
+scenarios/f2md/f2md-networks/*/e1_begin_output.xml
+scenarios/f2md/f2md-networks/*/e1_end_output.xml
+scenarios/f2md/f2md-networks/*/e1_OffRamp_output.xml
+scenarios/f2md/f2md-networks/*/e1_OnRamp_output.xml
+scenarios/f2md/f2md-networks/*/e1_link_output.xml
