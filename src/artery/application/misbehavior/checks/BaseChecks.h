@@ -12,6 +12,7 @@
 #include <artery/application/misbehavior/checks/kalman/Kalman_SC.h>
 #include <artery/application/misbehavior/checks/kalman/Kalman_SI.h>
 #include <artery/application/misbehavior/checks/BaseChecks.h>
+#include <artery/application/misbehavior/util/DetectionLevels.h>
 #include "artery/application/Timer.h"
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/envmod/GlobalEnvironmentModel.h>
@@ -27,12 +28,14 @@ namespace artery {
     class BaseChecks {
     public:
         BaseChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                   DetectionParameters *detectionParameters, const Timer *timer, const std::shared_ptr<vanetza::asn1::Cam> &message);
+                   DetectionParameters *detectionParameters, const Timer *timer,
+                   std::map<detectionLevels::DetectionLevels, bool> checkableDetectionLevels,
+                   const std::shared_ptr<vanetza::asn1::Cam> &message);
 
         BaseChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                    DetectionParameters *detectionParameters, const Timer *timer);
 
-        virtual ~BaseChecks(){};
+        virtual ~BaseChecks() {};
 
         void initializeKalmanFilters(const std::shared_ptr<vanetza::asn1::Cam> &message);
 
@@ -51,7 +54,8 @@ namespace artery {
                                                           const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) = 0;
 
         virtual std::bitset<16>
-        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam, const Position &receiverPosition,
+        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                  const Position &receiverPosition,
                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) = 0;
 
 
@@ -63,6 +67,7 @@ namespace artery {
         static const Timer *mTimer;
         DetectionParameters *detectionParameters;
         ThresholdFusion *mThresholdFusion;
+        std::map<detectionLevels::DetectionLevels, bool> mCheckableDetectionLevels;
 
         Kalman_SVI *kalmanSVI = nullptr;
         Kalman_SC *kalmanSVSI = nullptr;

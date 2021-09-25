@@ -13,7 +13,8 @@ namespace artery {
                                    GlobalEnvironmentModel *globalEnvironmentModel,
                                    DetectionParameters *detectionParameters,
                                    const Timer *timer,
-                                   const std::shared_ptr<vanetza::asn1::Cam> &message) {
+                                   const std::shared_ptr<vanetza::asn1::Cam> &message,
+                                   const std::map<detectionLevels::DetectionLevels, bool> &checkableDetectionLevels) {
         mStationId = (*message)->header.stationID;
         mHasBeenReported = false;
         mOmittedReportsPerErrorCode = std::vector<int>(16);
@@ -21,10 +22,12 @@ namespace artery {
         mCamsArraySize = detectionParameters->detectedSenderCamArrayMaxSize;
         switch (detectionParameters->checkType) {
             case checkTypes::LegacyChecks:
-                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, message);
+                baseChecks = new LegacyChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer,
+                                              checkableDetectionLevels, message);
                 break;
             case checkTypes::CatchChecks:
-                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer, message);
+                baseChecks = new CatchChecks(traciAPI, globalEnvironmentModel, detectionParameters, timer,
+                                             checkableDetectionLevels, message);
         }
     }
 
@@ -39,14 +42,14 @@ namespace artery {
     DetectedSender::addAndCheckCam(const std::shared_ptr<vanetza::asn1::Cam> &message,
                                    const VehicleDataProvider *receiverVDP,
                                    const std::vector<Position> &receiverVehicleOutline,
-                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams) {
+                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) {
         std::shared_ptr<CheckResult> result;
         if (!mCams.empty()) {
             result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message,
-                                          mCams.back(), relevantCams);
+                                          mCams.back(), surroundingCamObjects);
         } else {
             result = baseChecks->checkCAM(receiverVDP, receiverVehicleOutline, message, nullptr,
-                                          relevantCams);
+                                          surroundingCamObjects);
         }
         mCams.emplace_back(message);
         if (mCams.size() > mCamsArraySize) {

@@ -10,6 +10,11 @@ simple MisbehaviorDetectionService like artery.application.ItsG5Service
         double misbehaviorThreshold = default(0.5);
         int detectedSenderCamArrayMaxSize = default(10);
 
+        double generateLevel4AndBelowProbability = default(1);
+        double generateLevel3AndBelowProbability = default(1);
+        double generateLevel2AndBelowProbability = default(1);
+        double generateLevel1Probability = default(1);
+
         // in meters per second
         double maxPlausibleSpeed = default(60);
         double maxPlausibleAcceleration = default(10);

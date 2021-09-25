@@ -67,6 +67,10 @@ namespace artery {
             if (checkResult.kalmanSpeedConsistencyConfidence < threshold) {
                 detectionLevelErrorCodes[detectionLevels::Level2][2] = true;
             }
+        } else {
+            if (checkResult.suddenAppearance < threshold) {
+                detectionLevelErrorCodes[detectionLevels::Level4][0] = true;
+            }
         }
         return detectionLevelErrorCodes;
     }

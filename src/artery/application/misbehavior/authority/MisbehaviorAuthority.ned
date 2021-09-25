@@ -29,4 +29,6 @@ simple MisbehaviorAuthority
         double updateTimeStep @unit(s) = default(1s);
         int displaySteps = default(40);
         int recentReportedCount = default(10);
+
+        bool enableVectorRecording = default(false);
 }

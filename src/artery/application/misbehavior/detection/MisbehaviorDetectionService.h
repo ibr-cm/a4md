@@ -36,6 +36,8 @@ namespace artery {
         static GlobalEnvironmentModel *mGlobalEnvironmentModel;
         const Timer *mTimer = nullptr;
 
+        std::map<detectionLevels::DetectionLevels, bool> mCheckableDetectionLevels;
+
         static bool staticInitializationComplete;
         static traci::Boundary mSimulationBoundary;
         static std::shared_ptr<const traci::API> mTraciAPI;

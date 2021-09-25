@@ -80,6 +80,11 @@ namespace artery {
         double misbehaviorThreshold;
         int detectedSenderCamArrayMaxSize;
 
+        double generateLevel4AndBelowProbability;
+        double generateLevel3AndBelowProbability;
+        double generateLevel2AndBelowProbability;
+        double generateLevel1Probability;
+
         double maxPlausibleSpeed;
         double maxPlausibleAcceleration;
         double maxPlausibleDeceleration;
@@ -121,6 +126,7 @@ namespace artery {
         int reportCountThreshold;
         double misbehaviorThreshold;
         int checkType;
+        bool enableVectorRecording;
 
         double reportCleanupInterval;
         double reportCleanupAge;
