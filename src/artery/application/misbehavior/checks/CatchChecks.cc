@@ -368,25 +368,18 @@ namespace artery {
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
 
         std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
-        result->positionPlausibility =
-                PositionPlausibilityCheck(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
-                                          currentCamSpeedConfidence);
-        result->speedPlausibility =
-                SpeedPlausibilityCheck(currentCamSpeed, currentCamSpeedConfidence);
-        result->proximityPlausibility =
-                ProximityPlausibilityCheck(currentCamPosition, receiverPosition, surroundingCamObjects);
-        result->rangePlausibility =
-                RangePlausibilityCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
-                                       receiverPosition, receiverPositionEllipse, receiverEllipseRadius);
-        if (mCheckingFirstCam) {
 
-            result->suddenAppearance =
-                    SuddenAppearanceCheck(currentCamPosition, currentCamPositionConfidence, receiverPosition,
-                                          receiverPositionConfidence);
-            mCheckingFirstCam = false;
-        } else {
-            auto camDeltaTime = (double) (uint16_t) ((*currentCam)->cam.generationDeltaTime -
-                                                     (*lastCam)->cam.generationDeltaTime);
+        double camDeltaTime;
+        if (!mCheckingFirstCam) {
+            camDeltaTime = (double) (uint16_t) ((*currentCam)->cam.generationDeltaTime -
+                                                (*lastCam)->cam.generationDeltaTime);
+        }
+
+        if (mCheckableDetectionLevels[detectionLevels::Level1]) {
+            result->speedPlausibility =
+                    SpeedPlausibilityCheck(currentCamSpeed, currentCamSpeedConfidence);
+        }
+        if (mCheckableDetectionLevels[detectionLevels::Level2] && !mCheckingFirstCam) {
             result->consistencyIsChecked = true;
             result->positionConsistency =
                     PositionConsistencyCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
@@ -415,14 +408,34 @@ namespace artery {
                                                     currentCamSpeedConfidence, camDeltaTime);
             result->frequency =
                     FrequencyCheck(camDeltaTime);
-            result->intersection =
-                    IntersectionCheck(receiverPositionEllipse, surroundingCamObjects, currentCamPositionEllipse,
-                                      camDeltaTime);
             KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                          currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
                          currentCamAccelerationVector, currentCamHeading, mLastCamPosition,
                          mLastCamSpeedVector, camDeltaTime, result);
         }
+        if (mCheckableDetectionLevels[detectionLevels::Level3]) {
+            result->positionPlausibility =
+                    PositionPlausibilityCheck(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
+                                              currentCamSpeedConfidence);
+            if (!mCheckingFirstCam) {
+                result->intersection =
+                        IntersectionCheck(receiverPositionEllipse, surroundingCamObjects, currentCamPositionEllipse,
+                                          camDeltaTime);
+            }
+        }
+        if (mCheckableDetectionLevels[detectionLevels::Level4]) {
+            result->proximityPlausibility =
+                    ProximityPlausibilityCheck(currentCamPosition, receiverPosition, surroundingCamObjects);
+            result->rangePlausibility =
+                    RangePlausibilityCheck(currentCamPosition, currentCamPositionEllipse, currentCamEllipseRadius,
+                                           receiverPosition, receiverPositionEllipse, receiverEllipseRadius);
+            if (mCheckingFirstCam) {
+                result->suddenAppearance =
+                        SuddenAppearanceCheck(currentCamPosition, currentCamPositionConfidence, receiverPosition,
+                                              receiverPositionConfidence);
+            }
+        }
+        mCheckingFirstCam = false;
         mLastCamPosition = currentCamPosition;
         mLastCamPositionConfidence = currentCamPositionConfidence;
         mLastCamPositionEllipse = currentCamPositionEllipse;
@@ -548,7 +561,8 @@ namespace artery {
 
         std::vector<Position> currentCamOutline = getVehicleOutline(currentCamPosition,
                                                                     Angle::from_degree(currentCamHeading),
-                                                                    currentCamVehicleLength, currentCamVehicleWidth);
+                                                                    currentCamVehicleLength,
+                                                                    currentCamVehicleWidth);
         auto camDeltaTime = (double) (uint16_t) ((uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) -
                                                  (*currentCam)->cam.generationDeltaTime);
         result->positionPlausibility =
@@ -562,7 +576,8 @@ namespace artery {
     }
 
     std::bitset<16>
-    CatchChecks::checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam, const Position &receiverPosition,
+    CatchChecks::checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                           const Position &receiverPosition,
                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
         std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
 //        Position currentCamPosition = convertReferencePosition(
@@ -575,15 +590,22 @@ namespace artery {
         return mThresholdFusion->checkForReport(*result)[detectionLevels::Level4];
     }
 
-    CatchChecks::CatchChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                             DetectionParameters *detectionParameters, const Timer *timer,
+    CatchChecks::CatchChecks(std::shared_ptr<const traci::API>
+                             traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                             DetectionParameters *detectionParameters,
+                             const Timer *timer,
+                             const std::map<detectionLevels::DetectionLevels, bool> &checkableDetectionLevels,
                              const std::shared_ptr<vanetza::asn1::Cam> &message)
-            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer, message) {
+            : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer,
+                         checkableDetectionLevels, message) {
         mThresholdFusion = nullptr;
     }
 
-    CatchChecks::CatchChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                             DetectionParameters *detectionParameters, double misbehaviorThreshold, const Timer *timer)
+    CatchChecks::CatchChecks(std::shared_ptr<const traci::API>
+                             traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
+                             DetectionParameters *detectionParameters, double
+                             misbehaviorThreshold,
+                             const Timer *timer)
             : BaseChecks(std::move(traciAPI), globalEnvironmentModel, detectionParameters, timer) {
         mThresholdFusion = new ThresholdFusion(misbehaviorThreshold);
     }

@@ -14,6 +14,7 @@
 #include <artery/application/misbehavior/checks/kalman/Kalman_SC.h>
 #include <artery/application/misbehavior/checks/kalman/Kalman_SI.h>
 #include <artery/application/misbehavior/checks/CheckResult.h>
+#include <artery/application/misbehavior/util/DetectionLevels.h>
 #include <artery/traci/VehicleController.h>
 #include <artery/application/misbehavior/util/F2MDParameters.h>
 #include <bitset>
@@ -26,7 +27,8 @@ namespace artery {
                        GlobalEnvironmentModel *globalEnvironmentModel,
                        DetectionParameters *detectionParameters,
                        const Timer *timer,
-                       const std::shared_ptr<vanetza::asn1::Cam> &message);
+                       const std::shared_ptr<vanetza::asn1::Cam> &message,
+                       const std::map<detectionLevels::DetectionLevels, bool> &checkableDetectionLevels);
 
 
         ~DetectedSender();
@@ -35,7 +37,7 @@ namespace artery {
         std::shared_ptr<CheckResult> addAndCheckCam(const std::shared_ptr<vanetza::asn1::Cam> &message,
                                                     const VehicleDataProvider *receiverVDP,
                                                     const std::vector<Position> &receiverVehicleOutline,
-                                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams);
+                                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects);
 
         StationID_t getStationId() const { return mStationId; };
 

@@ -21,6 +21,7 @@ namespace artery {
 
         LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                      DetectionParameters *detectionParameters, const Timer *timer,
+                     const std::map<detectionLevels::DetectionLevels, bool> &checkableDetectionLevels,
                      const std::shared_ptr<vanetza::asn1::Cam> &message);
 
         LegacyChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,

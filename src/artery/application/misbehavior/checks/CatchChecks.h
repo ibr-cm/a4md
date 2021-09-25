@@ -22,7 +22,9 @@ namespace artery {
         }
 
         CatchChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
-                    DetectionParameters *detectionParameters, const Timer *timer, const std::shared_ptr<vanetza::asn1::Cam> &message);
+                    DetectionParameters *detectionParameters, const Timer *timer,
+                    const std::map<detectionLevels::DetectionLevels, bool> &checkableDetectionLevels,
+                    const std::shared_ptr<vanetza::asn1::Cam> &message);
 
         CatchChecks(std::shared_ptr<const traci::API> traciAPI, GlobalEnvironmentModel *globalEnvironmentModel,
                     DetectionParameters *detectionParameters, double misbehaviorThreshold, const Timer *timer);
@@ -42,7 +44,8 @@ namespace artery {
                                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
         std::bitset<16>
-        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam, const Position &receiverPosition,
+        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                  const Position &receiverPosition,
                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
     protected:

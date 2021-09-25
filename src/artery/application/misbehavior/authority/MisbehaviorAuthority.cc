@@ -84,6 +84,8 @@ namespace artery {
         mParameters->guiJsonDataUpdateInterval = par("guiJsonDataUpdateInterval");
         mParameters->displaySteps = par("displaySteps");
         mParameters->recentReportedCount = par("recentReportedCount");
+        
+        mParameters->enableVectorRecording = par("enableVectorRecording");
 
         if (mParameters->enableWebGui) {
             mMsgGuiUpdate = new cMessage("getDataScheduleMessage");
@@ -93,6 +95,7 @@ namespace artery {
         mMsgReportCleanup = new cMessage("reportCleanupMessage");
         scheduleAt(simTime() + mParameters->reportCleanupInterval,
                    mMsgReportCleanup);
+
     }
 
     void MisbehaviorAuthority::finish() {
@@ -235,7 +238,7 @@ namespace artery {
             if (it != mReportingPseudonyms.end()) {
                 reportingPseudonym = it->second;
             } else {
-                reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId);
+                reportingPseudonym = std::make_shared<ReportingPseudonym>(reporterStationId,mParameters->enableVectorRecording);
                 mReportingPseudonyms.emplace(reporterStationId, reportingPseudonym);
             }
         }

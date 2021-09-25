@@ -15,7 +15,7 @@ namespace artery {
 
     class ReportingPseudonym {
     public:
-        explicit ReportingPseudonym(StationID_t stationId);
+        explicit ReportingPseudonym(StationID_t stationId, bool enableVectorRecording);
 
         void addReport(const std::shared_ptr<Report> &report);
 
@@ -29,6 +29,7 @@ namespace artery {
         StationID_t mStationId;
         int mTotalReportCount = 0;
         double mTotalReportScore = 0;
+        bool mEnableVectorRecording;
 
         omnetpp::cHistogram statsReportedPseudonym;
         omnetpp::cStdDev statsValidity;

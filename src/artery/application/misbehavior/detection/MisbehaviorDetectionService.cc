@@ -69,6 +69,23 @@ namespace artery {
             initializeParameters();
         }
 
+        mCheckableDetectionLevels[detectionLevels::Level1] = true;
+        mCheckableDetectionLevels[detectionLevels::Level2] = true;
+        mCheckableDetectionLevels[detectionLevels::Level3] = true;
+        mCheckableDetectionLevels[detectionLevels::Level4] = true;
+
+        if(uniform(0,1) > F2MDParameters::detectionParameters.generateLevel4Probability){
+            mCheckableDetectionLevels[detectionLevels::Level4] = false;
+        }
+        if(uniform(0,1) > F2MDParameters::detectionParameters.generateLevel3Probability){
+            mCheckableDetectionLevels[detectionLevels::Level3] = false;
+        }
+        if(uniform(0,1) > F2MDParameters::detectionParameters.generateLevel2Probability){
+            mCheckableDetectionLevels[detectionLevels::Level2] = false;
+        }
+        if(uniform(0,1) > F2MDParameters::detectionParameters.generateLevel1Probability){
+            mCheckableDetectionLevels[detectionLevels::Level1] = false;
+        }
 
         mFusionApplication = new ThresholdFusion(F2MDParameters::detectionParameters.misbehaviorThreshold);
     }
@@ -78,6 +95,12 @@ namespace artery {
         F2MDParameters::detectionParameters.checkType = par("checkType");
         F2MDParameters::detectionParameters.misbehaviorThreshold = par("misbehaviorThreshold");
         F2MDParameters::detectionParameters.detectedSenderCamArrayMaxSize = par("detectedSenderCamArrayMaxSize");
+
+        F2MDParameters::detectionParameters.generateLevel4Probability = par("generateLevel4Probability");
+        F2MDParameters::detectionParameters.generateLevel3Probability = par("generateLevel3Probability");
+        F2MDParameters::detectionParameters.generateLevel2Probability = par("generateLevel2Probability");
+        F2MDParameters::detectionParameters.generateLevel1Probability = par("generateLevel1Probability");
+
         F2MDParameters::detectionParameters.maxPlausibleSpeed = par("maxPlausibleSpeed");
         F2MDParameters::detectionParameters.maxPlausibleAcceleration = par("maxPlausibleAcceleration");
         F2MDParameters::detectionParameters.maxPlausibleDeceleration = par("maxPlausibleDeceleration");
@@ -202,13 +225,12 @@ namespace artery {
         if (detectedSenders.find(senderStationId) == detectedSenders.end()) {
             detectedSenders[senderStationId] = std::make_shared<DetectedSender>(mTraciAPI, mGlobalEnvironmentModel,
                                                                                 &F2MDParameters::detectionParameters,
-                                                                                mTimer, message);
+                                                                                mTimer, message, mCheckableDetectionLevels);
         }
         std::shared_ptr<CheckResult> result = detectedSenders[senderStationId]->addAndCheckCam(message,
                                                                                                mVehicleDataProvider,
                                                                                                mVehicleOutline,
                                                                                                surroundingCamObjects);
-        std::vector<std::bitset<16>> detectionLevelErrorCodes = mFusionApplication->checkForReport(*result);
         return result;
     }
 

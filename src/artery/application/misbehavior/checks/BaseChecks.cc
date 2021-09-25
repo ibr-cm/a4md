@@ -3,6 +3,8 @@
 //
 
 #include "BaseChecks.h"
+
+#include <utility>
 #include "artery/application/misbehavior/util/HelperFunctions.h"
 
 namespace artery {
@@ -18,8 +20,10 @@ namespace artery {
                            GlobalEnvironmentModel *globalEnvironmentModel,
                            DetectionParameters *detectionParameters,
                            const Timer *timer,
+                           std::map<detectionLevels::DetectionLevels, bool> checkableDetectionLevels,
                            const std::shared_ptr<vanetza::asn1::Cam> &message) :
-            detectionParameters(detectionParameters) {
+            detectionParameters(detectionParameters),
+            mCheckableDetectionLevels(std::move(checkableDetectionLevels)) {
         if (!staticInitializationComplete) {
             staticInitializationComplete = true;
             mGlobalEnvironmentModel = globalEnvironmentModel;
@@ -60,7 +64,7 @@ namespace artery {
         }
     }
 
-    void BaseChecks::initializeKalmanFilters(const std::shared_ptr<vanetza::asn1::Cam> &message){
+    void BaseChecks::initializeKalmanFilters(const std::shared_ptr<vanetza::asn1::Cam> &message) {
         Position position = convertReferencePosition(
                 (*message)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         double speed =
@@ -280,8 +284,8 @@ namespace artery {
                                                   camDeltaTime);
         result->kalmanSpeedConsistencyConfidence =
                 KalmanSpeedConsistencyCheck(currentCamSpeedVector, lastCamSpeedVector, currentCamSpeedConfidence,
-                                                                             currentCamAccelerationVector,
-                                                                             camDeltaTime);
+                                            currentCamAccelerationVector,
+                                            camDeltaTime);
     }
 
 //    CheckResult *
