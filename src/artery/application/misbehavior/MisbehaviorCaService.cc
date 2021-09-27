@@ -95,8 +95,9 @@ namespace artery {
                 boost::units::si::meter_per_second);
 
         //Constant Speed Offset Attack
-        AttackConstantSpeedOffsetValue =
-                ((long) uniform(0, F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax)) *
+        attackConstantSpeedOffsetValue =
+                ((long) uniform(-F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax,
+                                F2MDParameters::attackParameters.AttackConstantSpeedOffsetMax)) *
                 boost::units::si::meter_per_second;
 
         // Eventual Stop Attack
@@ -149,7 +150,7 @@ namespace artery {
             mFixedRate = true;
         }
 
-        if(mAttackType != attackTypes::Benign){
+        if (mAttackType != attackTypes::Benign) {
             stationIds.emplace_back(mStationId);
             std::vector<StationID_t> *ptr = &stationIds;
             auto *cObj = reinterpret_cast<cObject *>(ptr);
@@ -370,8 +371,15 @@ namespace artery {
                 break;
             }
             case attackTypes::ConstSpeedOffset: {
-                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
-                        mVehicleDataProvider->speed() + AttackConstantSpeedOffsetValue);
+                vanetza::units::Velocity speed;
+                if (mVehicleDataProvider->speed() + attackConstantSpeedOffsetValue <
+                    0 * boost::units::si::meter_per_second) {
+                    speed = 0 * boost::units::si::meter_per_second;
+                } else {
+                    speed = mVehicleDataProvider->speed() + attackConstantSpeedOffsetValue;
+                }
+                message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue =
+                        buildSpeedValue(speed);
                 break;
             }
             case attackTypes::RandomSpeed: {
@@ -382,10 +390,11 @@ namespace artery {
                 break;
             }
             case attackTypes::RandomSpeedOffset: {
+                double speed = std::min(0.0, uniform(-F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax,
+                                                     F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax));
                 message->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency.speed.speedValue = buildSpeedValue(
                         mVehicleDataProvider->speed() +
-                        (uniform(0, F2MDParameters::attackParameters.AttackRandomSpeedOffsetMax) *
-                         boost::units::si::meter_per_second));
+                        (speed * boost::units::si::meter_per_second));
                 break;
             }
             case attackTypes::EventualStop: {
@@ -700,7 +709,6 @@ namespace artery {
         }
         return message;
     }
-
 
     void MisbehaviorCaService::createFakeReport() {
         if (!receivedMessages.empty()) {

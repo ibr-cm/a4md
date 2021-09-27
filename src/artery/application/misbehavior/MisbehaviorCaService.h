@@ -79,7 +79,7 @@ namespace artery {
         long AttackConstantPositionOffsetLatitudeMicrodegrees;
         long AttackConstantPositionOffsetLongitudeMicrodegrees;
         long AttackConstantSpeedValue;
-        vanetza::units::Velocity AttackConstantSpeedOffsetValue;
+        vanetza::units::Velocity attackConstantSpeedOffsetValue;
         bool attackEventualStopHasStopped;
         ReferencePosition_t attackEventualStopPosition;
         int64_t attackDataReplayCurrentStationId;
