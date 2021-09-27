@@ -54,7 +54,7 @@ namespace artery {
         reactionTypes::ReactionTypes mReactionType;
         uint64_t mLastReportGenerationTime;
 
-        omnetpp::cHistogram statsReportingPseudonym;
+        omnetpp::cOutVector vectorReportingPseudonym;
         omnetpp::cStdDev statsValidity;
         omnetpp::cStdDev statsScore;
         omnetpp::cHistogram statsDetectionType;

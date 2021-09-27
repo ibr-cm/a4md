@@ -19,7 +19,7 @@ namespace artery {
             mPredictedMisbehaviorTypeCount[static_cast<misbehaviorTypes::MisbehaviorTypes>(misbehaviorType)] = 0;
         }
         std::string prefix = {"reportedPseudonym_" + std::to_string(mStationId) + "_"};
-        statsReportingPseudonym.setName((prefix + "reportingPseudonym").c_str());
+        vectorReportingPseudonym.setName((prefix + "reportingPseudonym").c_str());
         statsValidity.setName((prefix + "validity").c_str());
         statsScore.setName((prefix + "score").c_str());
         statsDetectionType.setName((prefix + "detectionType").c_str());
@@ -34,7 +34,7 @@ namespace artery {
         }
         mTotalReportCount++;
         mLastReportGenerationTime = report->generationTime;
-        statsReportingPseudonym.collect(report->reportingPseudonym->getStationId());
+        vectorReportingPseudonym.record(report->reportingPseudonym->getStationId());
         statsValidity.collect(report->isValid);
         statsScore.collect(report->score);
         statsDetectionType.collect(report->detectionType.present);
@@ -43,7 +43,6 @@ namespace artery {
     }
 
     void ReportedPseudonym::recordStatistics() {
-        statsReportingPseudonym.record();
         statsValidity.record();
         statsScore.record();
         statsDetectionType.record();

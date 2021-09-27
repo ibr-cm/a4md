@@ -31,7 +31,7 @@ namespace artery {
         double mTotalReportScore = 0;
         bool mEnableVectorRecording;
 
-        omnetpp::cHistogram statsReportedPseudonym;
+        omnetpp::cOutVector vectorReportedPseudonym;
         omnetpp::cStdDev statsValidity;
         omnetpp::cStdDev statsScore;
         omnetpp::cOutVector vectorScore;

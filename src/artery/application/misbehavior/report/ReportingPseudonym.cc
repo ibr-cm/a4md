@@ -9,7 +9,7 @@ namespace artery {
     ReportingPseudonym::ReportingPseudonym(StationID_t stationId, bool enableVectorRecording) : mStationId(stationId), mEnableVectorRecording(enableVectorRecording) {
 
         std::string prefix = {"reportingPseudonym_" + std::to_string(mStationId) + "_"};
-        statsReportedPseudonym.setName((prefix + "reportedPseudonym").c_str());
+        vectorReportedPseudonym.setName((prefix + "reportedPseudonym").c_str());
         statsValidity.setName((prefix + "validity").c_str());
         statsScore.setName((prefix + "score_hist").c_str());
         statsDetectionType.setName((prefix + "detectionType").c_str());
@@ -24,7 +24,7 @@ namespace artery {
         mTotalReportScore += report->score / getAverageReportScore();
         mTotalReportCount++;
 
-        statsReportedPseudonym.collect(report->reportingPseudonym->getStationId());
+        vectorReportedPseudonym.record(report->reportingPseudonym->getStationId());
         statsValidity.collect(report->isValid);
         statsScore.collect(report->score);
         statsDetectionType.collect(report->detectionType.present);
@@ -36,7 +36,6 @@ namespace artery {
     }
 
     void ReportingPseudonym::recordStatistics() {
-        statsReportedPseudonym.record();
         statsValidity.record();
         statsScore.record();
         statsDetectionType.record();
