@@ -123,7 +123,7 @@ namespace artery {
 
     struct MisbehaviorAuthorityParameters {
         double maxReportAge;
-        int reportCountThreshold;
+        int reportScoreThreshold;
         double misbehaviorThreshold;
         int checkType;
         bool enableVectorRecording;

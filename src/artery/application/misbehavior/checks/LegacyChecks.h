@@ -3,6 +3,8 @@
 
 #include <artery/application/misbehavior/checks/BaseChecks.h>
 #include <artery/application/misbehavior/checks/CheckResult.h>
+#include <vector>
+#include "../../../utility/Geometry.h"
 
 namespace artery {
 
@@ -42,8 +44,9 @@ namespace artery {
                                                   const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
 
         std::bitset<16>
-        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam, const Position &receiverPosition,
-                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
+        checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
+                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams,
+                                  const SenderInfoContainer_t &senderInfo) override;
 
     protected:
 
@@ -53,10 +56,12 @@ namespace artery {
         double SpeedPlausibilityCheck(const double &speed) const;
 
         double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects);
+                                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects,
+                                          const StationID_t &senderStationId);
 
         double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                          const std::vector<vanetza::asn1::Cam> &surroundingCamObjects);
+                                          const std::vector<vanetza::asn1::Cam> &surroundingCamObjects,
+                                          const StationID_t &senderStationId);
 
         double RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const;
 
@@ -81,6 +86,9 @@ namespace artery {
                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams,
                                  const Position &senderPosition, const double &senderLength,
                                  const double &senderWidth, const double &senderHeading);
+
+        double IntersectionCheck(const std::vector<Position> &senderVehicleOutline,
+                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams);
 
         double SuddenAppearanceCheck(const Position &senderPosition, const Position &receiverPosition) const;
 

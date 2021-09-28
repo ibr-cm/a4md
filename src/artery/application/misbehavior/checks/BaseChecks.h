@@ -16,6 +16,7 @@
 #include "artery/application/Timer.h"
 #include <artery/envmod/LocalEnvironmentModel.h>
 #include <artery/envmod/GlobalEnvironmentModel.h>
+#include <vanetza/asn1/md/SenderInfoContainer.h>
 #include <artery/application/VehicleDataProvider.h>
 #include <artery/application/misbehavior/util/F2MDParameters.h>
 #include "artery/traci/VehicleController.h"
@@ -55,8 +56,8 @@ namespace artery {
 
         virtual std::bitset<16>
         checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
-                                  const Position &receiverPosition,
-                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) = 0;
+                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams,
+                                  const SenderInfoContainer_t &senderInfo) = 0;
 
 
     protected:
@@ -92,8 +93,8 @@ namespace artery {
                           const Position &currentCamSpeedVector, const double &currentCamSpeedConfidence,
                           const double &currentCamAcceleration, const Position &currentCamAccelerationVector,
                           const double &currentCamHeading, const Position &lastCamPosition,
-                          const Position &lastCamSpeedVector, const double camDeltaTime,
-                          const std::shared_ptr<CheckResult> &result);
+                          const Position &lastCamSpeedVector, const double &camDeltaTime,
+                          CheckResult &result);
 
 
     private:

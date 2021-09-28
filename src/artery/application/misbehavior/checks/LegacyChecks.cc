@@ -27,7 +27,8 @@ namespace artery {
     }
 
     double LegacyChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects) {
+                                                    const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects,
+                                                    const StationID_t &senderStationId) {
         Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
         double deltaAngle = calculateHeadingAngle(
                 Position(senderPosition.x - receiverPosition.x, senderPosition.y - receiverPosition.y));
@@ -38,11 +39,13 @@ namespace artery {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
                 for (const auto &cam: surroundingCamObjects) {
-                    Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
-                            (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
-                            mTraciAPI));
-                    if (currentDistance < minimumDistance) {
-                        minimumDistance = currentDistance;
+                    if ((*cam)->header.stationID != senderStationId) {
+                        Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
+                                (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
+                                mTraciAPI));
+                        if (currentDistance < minimumDistance) {
+                            minimumDistance = currentDistance;
+                        }
                     }
                 }
                 if (minimumDistance.value() < detectionParameters->maxProximityDistance) {
@@ -56,7 +59,8 @@ namespace artery {
     }
 
     double LegacyChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                                    const std::vector<vanetza::asn1::Cam> &surroundingCamObjects) {
+                                                    const std::vector<vanetza::asn1::Cam> &surroundingCamObjects,
+                                                    const StationID_t &senderStationId) {
         Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
         double deltaAngle = calculateHeadingAngle(
                 Position(senderPosition.x - receiverPosition.x, senderPosition.y - receiverPosition.y));
@@ -67,11 +71,13 @@ namespace artery {
                 Position::value_type minimumDistance = Position::value_type::from_value(9999);
 
                 for (const auto &cam: surroundingCamObjects) {
-                    Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
-                            cam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
-                            mTraciAPI));
-                    if (currentDistance < minimumDistance) {
-                        minimumDistance = currentDistance;
+                    if (cam->header.stationID != senderStationId) {
+                        Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
+                                cam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
+                                mTraciAPI));
+                        if (currentDistance < minimumDistance) {
+                            minimumDistance = currentDistance;
+                        }
                     }
                 }
                 if (minimumDistance.value() < detectionParameters->maxProximityDistance) {
@@ -195,12 +201,16 @@ namespace artery {
         if (boost::geometry::intersects(senderOutline, receiverVehicleOutline)) {
             return 0;
         }
-        for (const auto &currentCam: relevantCams) {
+        return IntersectionCheck(senderOutline, relevantCams);
+    }
 
+    double LegacyChecks::IntersectionCheck(const std::vector<Position> &senderVehicleOutline,
+                                           const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &relevantCams) {
+        for (const auto &currentCam: relevantCams) {
             auto camDeltaTime = ((double) (uint16_t) ((uint16_t) countTaiMilliseconds(mTimer->getTimeFor(simTime())) -
                                                       (*currentCam)->cam.generationDeltaTime)) / 1000;
             std::vector<Position> outline = getVehicleOutline((*currentCam), mSimulationBoundary, mTraciAPI);
-            double iFactor = intersectionFactor(senderOutline, outline);
+            double iFactor = intersectionFactor(senderVehicleOutline, outline);
             double factor = iFactor *
                             ((detectionParameters->maxIntersectionDeltaTime - camDeltaTime) /
                              detectionParameters->maxIntersectionDeltaTime);
@@ -242,48 +252,49 @@ namespace artery {
         Position currentCamSpeedVector = getVector(currentCamSpeed, currentCamHeading);
         Position currentCamAccelerationVector = getVector(currentCamAcceleration, currentCamHeading);
 
-        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
+        CheckResult result;
 
         if (mCheckableDetectionLevels[detectionLevels::Level1]) {
-            result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
+            result.speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
         }
         if (mCheckableDetectionLevels[detectionLevels::Level2] && !mCheckingFirstCam) {
             auto camDeltaTime = (double) (uint16_t) ((*currentCam)->cam.generationDeltaTime -
                                                      (*lastCam)->cam.generationDeltaTime);
-            result->positionConsistency = PositionConsistencyCheck(currentCamPosition, mLastCamPosition, camDeltaTime);
-            result->speedConsistency = SpeedConsistencyCheck(currentCamSpeed, mLastCamSpeed, camDeltaTime);
-            result->positionSpeedConsistency =
+            result.positionConsistency = PositionConsistencyCheck(currentCamPosition, mLastCamPosition, camDeltaTime);
+            result.speedConsistency = SpeedConsistencyCheck(currentCamSpeed, mLastCamSpeed, camDeltaTime);
+            result.positionSpeedConsistency =
                     PositionSpeedConsistencyCheck(currentCamPosition, mLastCamPosition, currentCamSpeed, mLastCamSpeed,
                                                   camDeltaTime);
-            result->positionSpeedMaxConsistency =
+            result.positionSpeedMaxConsistency =
                     PositionSpeedMaxConsistencyCheck(currentCamPosition, mLastCamPosition, currentCamSpeed,
                                                      mLastCamSpeed,
                                                      camDeltaTime);
-            result->positionHeadingConsistency =
+            result.positionHeadingConsistency =
                     PositionHeadingConsistencyCheck(currentCamHeading, currentCamPosition, mLastCamPosition,
                                                     camDeltaTime, currentCamSpeed);
             KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                          currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
                          currentCamAccelerationVector, currentCamHeading, mLastCamPosition,
                          mLastCamSpeedVector, camDeltaTime, result);
-            result->frequency = BaseChecks::FrequencyCheck(camDeltaTime);
+            result.frequency = BaseChecks::FrequencyCheck(camDeltaTime);
         }
         if (mCheckableDetectionLevels[detectionLevels::Level3]) {
             std::vector<Position> currentCamOutline = getVehicleOutline(currentCamPosition,
                                                                         Angle::from_degree(currentCamHeading),
                                                                         currentCamVehicleLength,
                                                                         currentCamVehicleWidth);
-            result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
-            result->intersection =
-                    IntersectionCheck(currentCamOutline, surroundingCamObjects, currentCamPosition,
+            result.positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
+            result.intersection =
+                    IntersectionCheck(receiverVehicleOutline, surroundingCamObjects, currentCamPosition,
                                       currentCamVehicleLength, currentCamVehicleWidth, currentCamHeading);
         }
         if (mCheckableDetectionLevels[detectionLevels::Level4]) {
-            result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
-                                                                       surroundingCamObjects);
-            result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
+            result.proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
+                                                                       surroundingCamObjects,
+                                                                       (*currentCam)->header.stationID);
+            result.rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
             if (mCheckingFirstCam) {
-                result->suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
+                result.suddenAppearance = SuddenAppearanceCheck(currentCamPosition, receiverPosition);
             }
         }
         mCheckingFirstCam = false;
@@ -291,24 +302,24 @@ namespace artery {
         mLastCamSpeed = currentCamSpeed;
         mLastCamSpeedConfidence = currentCamSpeedConfidence;
         mLastCamSpeedVector = currentCamSpeedVector;
-        return result;
+        return std::make_shared<CheckResult>(result);
     }
 
     std::bitset<16> LegacyChecks::checkSemanticLevel1Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam) {
 
-        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
+        CheckResult result;
 
         BasicVehicleContainerHighFrequency_t currentHfc =
                 (*currentCam)->cam.camParameters.highFrequencyContainer.choice.basicVehicleContainerHighFrequency;
         double currentCamSpeed = (double) currentHfc.speed.speedValue / 100.0;
 
-        result->speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
-        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level1];
+        result.speedPlausibility = SpeedPlausibilityCheck(currentCamSpeed);
+        return mThresholdFusion->checkForReport(result)[detectionLevels::Level1];
     }
 
     std::bitset<16> LegacyChecks::checkSemanticLevel2Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
                                                             const std::shared_ptr<vanetza::asn1::Cam> &lastCam) {
-        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
+        CheckResult result;
 
         Position currentCamPosition = convertReferencePosition(
                 (*currentCam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
@@ -339,31 +350,30 @@ namespace artery {
 
         auto camDeltaTime = (double) (uint16_t) ((*currentCam)->cam.generationDeltaTime -
                                                  (*lastCam)->cam.generationDeltaTime);
-        result->consistencyIsChecked = true;
+        result.consistencyIsChecked = true;
 
-        result->positionConsistency = PositionConsistencyCheck(currentCamPosition, lastCamPosition, camDeltaTime);
-        result->speedConsistency = SpeedConsistencyCheck(currentCamSpeed, lastCamSpeed, camDeltaTime);
-        result->positionSpeedConsistency =
+        result.positionConsistency = PositionConsistencyCheck(currentCamPosition, lastCamPosition, camDeltaTime);
+        result.speedConsistency = SpeedConsistencyCheck(currentCamSpeed, lastCamSpeed, camDeltaTime);
+        result.positionSpeedConsistency =
                 PositionSpeedConsistencyCheck(currentCamPosition, lastCamPosition, currentCamSpeed, lastCamSpeed,
                                               camDeltaTime);
-        result->positionSpeedMaxConsistency =
+        result.positionSpeedMaxConsistency =
                 PositionSpeedMaxConsistencyCheck(currentCamPosition, lastCamPosition, currentCamSpeed, lastCamSpeed,
                                                  camDeltaTime);
-        result->positionHeadingConsistency =
+        result.positionHeadingConsistency =
                 PositionHeadingConsistencyCheck(currentCamHeading, currentCamPosition, lastCamPosition,
                                                 camDeltaTime, currentCamSpeed);
         KalmanChecks(currentCamPosition, currentCamPositionConfidence, currentCamSpeed,
                      currentCamSpeedVector, currentCamSpeedConfidence, currentCamAcceleration,
                      currentCamAccelerationVector, currentCamHeading, lastCamPosition,
                      lastCamSpeedVector, camDeltaTime, result);
-        result->frequency = BaseChecks::FrequencyCheck(camDeltaTime);
-        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level2];
+        result.frequency = BaseChecks::FrequencyCheck(camDeltaTime);
+        return mThresholdFusion->checkForReport(result)[detectionLevels::Level2];
     }
 
     std::bitset<16> LegacyChecks::checkSemanticLevel3Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
                                                             const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
-        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
-
+        CheckResult result;
         Position currentCamPosition = convertReferencePosition(
                 (*currentCam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
         BasicVehicleContainerHighFrequency_t currentHfc =
@@ -377,26 +387,25 @@ namespace artery {
         std::vector<Position> currentCamOutline = getVehicleOutline(currentCamPosition,
                                                                     Angle::from_degree(currentCamHeading),
                                                                     currentCamVehicleLength, currentCamVehicleWidth);
-        result->positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
-        result->intersection =
-                IntersectionCheck(currentCamOutline, neighbourCams, currentCamPosition,
-                                  currentCamVehicleLength, currentCamVehicleWidth, currentCamHeading);
-        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level3];
+        result.positionPlausibility = PositionPlausibilityCheck(currentCamPosition, currentCamSpeed);
+        result.intersection = IntersectionCheck(currentCamOutline, neighbourCams);
+        return mThresholdFusion->checkForReport(result)[detectionLevels::Level3];
     }
 
     std::bitset<16>
     LegacyChecks::checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
-                                            const Position &receiverPosition,
-                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) {
-        std::shared_ptr<CheckResult> result = std::make_shared<CheckResult>();
+                                            const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams,
+                                            const SenderInfoContainer_t &senderInfo) {
+        CheckResult result;
+        Position receiverPosition = convertReferencePosition(senderInfo.referencePosition, mSimulationBoundary, mTraciAPI);
         Position currentCamPosition = convertReferencePosition(
                 (*currentCam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);
 
-        result->proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
-                                                                   neighbourCams);
-        result->rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
+        result.proximityPlausibility = ProximityPlausibilityCheck(currentCamPosition, receiverPosition,
+                                                                   neighbourCams, (*currentCam)->header.stationID);
+        result.rangePlausibility = RangePlausibilityCheck(currentCamPosition, receiverPosition);
 
-        return mThresholdFusion->checkForReport(*result)[detectionLevels::Level4];
+        return mThresholdFusion->checkForReport(result)[detectionLevels::Level4];
     }
 
     LegacyChecks::LegacyChecks(std::shared_ptr<const traci::API> traciAPI,

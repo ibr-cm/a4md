@@ -15,6 +15,7 @@
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
 #include "artery/application/misbehavior/authority/MisbehavingPseudonym.h"
+#include "artery/application/misbehavior/authority/MisbehavingVehicle.h"
 #include "artery/application/misbehavior/report/ReportedPseudonym.h"
 #include "artery/application/misbehavior/report/ReportingPseudonym.h"
 #include "artery/application/misbehavior/report/Report.h"
@@ -81,12 +82,15 @@ namespace artery {
         std::map<StationID_t, std::shared_ptr<ReportedPseudonym>> mReportedPseudonyms;
         std::map<StationID_t, std::shared_ptr<ReportingPseudonym>> mReportingPseudonyms;
         std::map<StationID_t, std::shared_ptr<MisbehavingPseudonym>> mMisbehavingPseudonyms;
+        std::map<StationID_t, std::shared_ptr<MisbehavingVehicle>> mMisbehavingVehicles;
 
         std::map<std::string, std::shared_ptr<Report>> mCurrentReports;
 
 
         std::list<std::string> mDetectionAccuracyLabels;
         std::list<std::tuple<int, int, double>> mDetectionAccuracyData;
+        std::map<attackTypes::AttackTypes, std::set<std::shared_ptr<MisbehavingVehicle>>> mMisbehavingVehiclesByAttackType;
+        std::map<attackTypes::AttackTypes, std::set<std::shared_ptr<MisbehavingVehicle>>> mDetectedVehiclesByAttackType;
         std::map<reactionTypes::ReactionTypes, std::set<StationID_t>> mReactionsList;
 
         bool mNewReport = false;
@@ -110,7 +114,7 @@ namespace artery {
 
         double scoreReport(const std::shared_ptr<Report> &report, const std::shared_ptr<ReportingPseudonym> &reportingPseudonym);
 
-        misbehaviorTypes::MisbehaviorTypes getActualMisbehaviorType(const StationID_t &stationId);
+        std::shared_ptr<MisbehavingPseudonym> getMisbehavingPseudonym(const StationID_t &stationId);
 
 
         bool validateSemanticLevel1Report(const std::shared_ptr<Report> &report);
@@ -125,9 +129,11 @@ namespace artery {
 
         void removeOldReports();
 
-        void updateReactionType(const shared_ptr<ReportedPseudonym> &reportedPseudonym);
+        void updateReactionType(const std::shared_ptr<ReportedPseudonym> &reportedPseudonym);
 
-        void updateDetectionRates(const shared_ptr<ReportedPseudonym> &reportedPseudonym, const std::shared_ptr<Report> &report);
+        void updateDetectionRates(const std::shared_ptr<Report> &report,
+                                  const std::shared_ptr<ReportedPseudonym> &reportedPseudonym,
+                                  const std::shared_ptr<ReportingPseudonym> &reportingPseudonym);
 
 //        std::vector<RecentReported> getRecentReported();
 //

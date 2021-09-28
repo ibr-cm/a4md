@@ -56,7 +56,7 @@ namespace artery {
 
     misbehaviorTypes::MisbehaviorTypes ReportedPseudonym::predictMisbehaviorType() {
         misbehaviorTypes::MisbehaviorTypes predictedMisbehaviorType;
-        if (mValidReportCount > F2MDParameters::misbehaviorAuthorityParameters.reportCountThreshold) {
+        if (mTotalScore > F2MDParameters::misbehaviorAuthorityParameters.reportScoreThreshold) {
             predictedMisbehaviorType = misbehaviorTypes::LocalAttacker;
         } else {
             predictedMisbehaviorType = misbehaviorTypes::Benign;

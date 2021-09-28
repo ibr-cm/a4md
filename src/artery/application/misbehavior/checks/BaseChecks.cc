@@ -262,27 +262,27 @@ namespace artery {
                                   const Position &currentCamSpeedVector, const double &currentCamSpeedConfidence,
                                   const double &currentCamAcceleration, const Position &currentCamAccelerationVector,
                                   const double &currentCamHeading, const Position &lastCamPosition,
-                                  const Position &lastCamSpeedVector, const double camDeltaTime,
-                                  const std::shared_ptr<CheckResult> &result) {
+                                  const Position &lastCamSpeedVector, const double &camDeltaTime,
+                                  CheckResult &result) {
         double returnValue[2];
         KalmanPositionSpeedConsistencyCheck(currentCamPosition, currentCamPositionConfidence, currentCamSpeedVector,
                                             currentCamAccelerationVector,
                                             currentCamSpeedConfidence, camDeltaTime, returnValue);
-        result->kalmanPositionSpeedConsistencyPosition = returnValue[0];
-        result->kalmanPositionSpeedConsistencySpeed = returnValue[1];
+        result.kalmanPositionSpeedConsistencyPosition = returnValue[0];
+        result.kalmanPositionSpeedConsistencySpeed = returnValue[1];
         KalmanPositionSpeedScalarConsistencyCheck(currentCamPosition, lastCamPosition, currentCamPositionConfidence,
                                                   currentCamSpeed, currentCamAcceleration,
                                                   currentCamSpeedConfidence, camDeltaTime, returnValue);
-        result->kalmanPositionSpeedScalarConsistencyPosition = returnValue[0];
-        result->kalmanPositionSpeedScalarConsistencySpeed = returnValue[1];
-        result->kalmanPositionConsistencyConfidence =
+        result.kalmanPositionSpeedScalarConsistencyPosition = returnValue[0];
+        result.kalmanPositionSpeedScalarConsistencySpeed = returnValue[1];
+        result.kalmanPositionConsistencyConfidence =
                 KalmanPositionConsistencyCheck(currentCamPosition, lastCamPosition, currentCamPositionConfidence,
                                                camDeltaTime);
-        result->kalmanPositionAccelerationConsistencySpeed =
+        result.kalmanPositionAccelerationConsistencySpeed =
                 KalmanPositionAccConsistencyCheck(currentCamPosition, currentCamSpeedVector,
                                                   currentCamPositionConfidence,
                                                   camDeltaTime);
-        result->kalmanSpeedConsistencyConfidence =
+        result.kalmanSpeedConsistencyConfidence =
                 KalmanSpeedConsistencyCheck(currentCamSpeedVector, lastCamSpeedVector, currentCamSpeedConfidence,
                                             currentCamAccelerationVector,
                                             camDeltaTime);

@@ -5,7 +5,7 @@ simple MisbehaviorAuthority
     parameters:
 		string datetime;
         double maxReportAge @unit(s) = default(5.0s);
-        int reportCountThreshold = default(5);
+        int reportScoreThreshold = default(5);
         int checkType = default(0);
         double misbehaviorThreshold = default(0.5);
 

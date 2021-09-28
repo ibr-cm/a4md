@@ -73,6 +73,7 @@ add_library(core SHARED
         application/misbehavior/MisbehaviorCaService.cc
         application/misbehavior/authority/MisbehaviorAuthority.cc
         application/misbehavior/authority/MisbehavingPseudonym.cc
+        application/misbehavior/authority/MisbehavingVehicle.cc
         application/misbehavior/checks/LegacyChecks.cc
         application/misbehavior/checks/CatchChecks.cc
         application/misbehavior/checks/BaseChecks.cc

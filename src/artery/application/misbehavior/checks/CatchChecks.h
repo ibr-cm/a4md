@@ -45,8 +45,8 @@ namespace artery {
 
         std::bitset<16>
         checkSemanticLevel4Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
-                                  const Position &receiverPosition,
-                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams) override;
+                                  const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &neighbourCams,
+                                  const SenderInfoContainer_t &senderInfo) override;
 
     protected:
         double PositionPlausibilityCheck(const Position &senderPosition,
@@ -56,7 +56,8 @@ namespace artery {
         double SpeedPlausibilityCheck(const double &currentSpeed, const double &currentSpeedConfidence);
 
         double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects);
+                                          const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects,
+                                          const StationID_t &senderStationId);
 
         double RangePlausibilityCheck(const Position &senderPosition, const std::vector<Position> &senderEllipse,
                                       const double &senderEllipseRadius,

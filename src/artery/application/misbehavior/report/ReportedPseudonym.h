@@ -12,6 +12,7 @@
 #include "artery/application/misbehavior/report/Report.h"
 #include <map>
 #include <omnetpp.h>
+#include <omnetpp/ccomponent.h>
 #include <boost/shared_ptr.hpp>
 
 namespace artery {
@@ -34,6 +35,7 @@ namespace artery {
 
         int getValidReportCount() { return mValidReportCount; };
 
+
         uint64_t getPreviousReportGenerationTime() { return mLastReportGenerationTime; };
 
         reactionTypes::ReactionTypes getReactionType() { return mReactionType; };
@@ -43,6 +45,10 @@ namespace artery {
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorType();
 
         misbehaviorTypes::MisbehaviorTypes predictMisbehaviorTypeAggregate();
+
+    public:
+        int falsePositiveCount = 0;
+        int truePositiveCount = 0;
 
     private:
         StationID_t mStationId;

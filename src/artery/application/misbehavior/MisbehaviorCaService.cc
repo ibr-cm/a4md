@@ -70,8 +70,6 @@ namespace artery {
         }
 
 
-        mMisbehaviorType = misbehaviorTypes::LocalAttacker;
-
         //Constant Position Attack
         AttackConstantPositionLatitudeMicrodegrees =
                 (long) (uniform(F2MDParameters::attackParameters.AttackConstantPositionMinLatitude,
@@ -129,17 +127,19 @@ namespace artery {
         mAttackType = attackTypes::AttackTypes((int) par("StaticAttackType"));
         par("AttackType").setStringValue(attackTypes::AttackNames[mAttackType]);
 
+        switch(mAttackType){
+            case attackTypes::Benign:
+                mMisbehaviorType = misbehaviorTypes::Benign;
+                break;
+            case attackTypes::FakeReport:
+                mMisbehaviorType = misbehaviorTypes::GlobalAttacker;
+                break;
+            default:
+                mMisbehaviorType = misbehaviorTypes::LocalAttacker;
+        }
+
         mTraciAPI->vehicle.setColor(mVehicleController->getVehicleId(), libsumo::TraCIColor(255, 0, 0, 255));
 
-        std::vector<StationID_t> stationIds;
-        if (mAttackType == attackTypes::GridSybil || mAttackType == attackTypes::DoSRandomSybil ||
-            mAttackType == attackTypes::DoSDisruptiveSybil) {
-            for (int i = 0; i < attackGridSybilVehicleCount; i++) {
-                StationType_t stationId = Identity::randomStationId(getRNG(0));
-                mPseudonyms.emplace_back(stationId);
-                stationIds.emplace_back(stationId);
-            }
-        }
 
         if (mAttackType == attackTypes::DoS || mAttackType == attackTypes::DoSRandom ||
             mAttackType == attackTypes::DoSDisruptive || mAttackType == attackTypes::GridSybil ||
@@ -151,7 +151,16 @@ namespace artery {
         }
 
         if (mAttackType != attackTypes::Benign) {
+            std::vector<StationID_t> stationIds;
             stationIds.emplace_back(mStationId);
+            if (mAttackType == attackTypes::GridSybil || mAttackType == attackTypes::DoSRandomSybil ||
+                mAttackType == attackTypes::DoSDisruptiveSybil) {
+                for (int i = 0; i < attackGridSybilVehicleCount; i++) {
+                    StationType_t stationId = Identity::randomStationId(getRNG(0));
+                    mPseudonyms.emplace_back(stationId);
+                    stationIds.emplace_back(stationId);
+                }
+            }
             std::vector<StationID_t> *ptr = &stationIds;
             auto *cObj = reinterpret_cast<cObject *>(ptr);
             emit(scSignalMaMisbehaviorAnnouncement, cObj);

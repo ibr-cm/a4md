@@ -9,13 +9,17 @@
 #include "vanetza/asn1/md/StationID.h"
 #include "artery/application/misbehavior/util/MisbehaviorTypes.h"
 #include "artery/application/misbehavior/util/AttackTypes.h"
+#include "MisbehavingVehicle.h"
 #include <omnetpp.h>
+#include <memory>
 
 namespace artery {
 
     class MisbehavingPseudonym {
     public:
-        MisbehavingPseudonym(StationID_t stationId, misbehaviorTypes::MisbehaviorTypes misbehaviorType, attackTypes::AttackTypes attackType);
+        MisbehavingPseudonym(StationID_t stationId, misbehaviorTypes::MisbehaviorTypes misbehaviorType,
+                             attackTypes::AttackTypes attackType,
+                             std::shared_ptr<MisbehavingVehicle> misbehavingVehicle);
 
         StationID_t getStationId() const;
 
@@ -25,6 +29,11 @@ namespace artery {
 
     private:
         StationID_t mStationId;
+    public:
+        const std::shared_ptr<MisbehavingVehicle> &getVehicle() const;
+
+    private:
+        std::shared_ptr<MisbehavingVehicle> mVehicle;
         misbehaviorTypes::MisbehaviorTypes mMisbehaviorType;
         attackTypes::AttackTypes mAttackType;
     };
