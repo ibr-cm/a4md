@@ -80,10 +80,11 @@ namespace artery {
         double misbehaviorThreshold;
         int detectedSenderCamArrayMaxSize;
 
-        double generateLevel4Probability;
-        double generateLevel3Probability;
-        double generateLevel2Probability;
-        double generateLevel1Probability;
+        double detectLevel4Probability;
+        double detectLevel3Probability;
+        double detectLevel2Probability;
+        double detectLevel1Probability;
+        bool detectLevelsLowerThanHighest;
 
         double maxPlausibleSpeed;
         double maxPlausibleAcceleration;

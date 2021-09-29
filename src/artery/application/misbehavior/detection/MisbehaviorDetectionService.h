@@ -62,6 +62,7 @@ namespace artery {
 
         vector<shared_ptr<vanetza::asn1::Cam>> getOverlappingCams(const DetectedSender &detectedSender);
 
+        void setCheckableDetectionLevels();
     };
 
 } // namespace artery

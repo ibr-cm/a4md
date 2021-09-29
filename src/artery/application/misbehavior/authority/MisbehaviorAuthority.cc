@@ -119,7 +119,7 @@ namespace artery {
         }
 
         for (int i = 1; i <= 20; i++) {
-            std::string name = "attack_" + std::to_string(i) + "_" + attackTypes::AttackNames[i] + "_";
+            std::string name = "attack_" + std::to_string(i) + "_" + attackTypes::AttackNames[i] + "_pseudonyms_";
             cHistogram attackTypeReportCounts((name + "reportCounts").c_str());
             cHistogram attackTypeReportScores((name + "reportScores").c_str());
             int detectedPseudonyms = 0;
@@ -139,10 +139,43 @@ namespace artery {
                     }
                 }
             }
+
             attackTypeReportCounts.record();
             attackTypeReportScores.record();
             recordScalar((name + "detectedCount").c_str(), detectedPseudonyms);
             recordScalar((name + "undetectedCount").c_str(), undetectedPseudonyms);
+        }
+
+        for (int i = 1; i <= 20; i++) {
+            std::string name = "attack_" + std::to_string(i) + "_" + attackTypes::AttackNames[i] + "_vehicles_";
+            cHistogram attackTypeReportCounts((name + "reportCounts").c_str());
+            cHistogram attackTypeReportScores((name + "reportScores").c_str());
+            int detectedVehicles = 0;
+            int undetectedVehicles = 0;
+            for (const auto &misbehavingVehicle: mMisbehavingVehiclesByAttackType[attackTypes::AttackTypes(i)]) {
+                auto it = mDetectedVehiclesByAttackType[attackTypes::AttackTypes(i)].find(misbehavingVehicle);
+                if (it != mDetectedVehiclesByAttackType[attackTypes::AttackTypes(i)].end()) {
+                    detectedVehicles++;
+                    double vehicleTotalScore = 0;
+                    int vehicleTotalCount = 0;
+                    for (const auto &misbehavingPseudonym: misbehavingVehicle->getPseudonyms()) {
+                        auto it2 = mReportedPseudonyms.find(misbehavingPseudonym->getStationId());
+                        if (it2 != mReportedPseudonyms.end()) {
+                            vehicleTotalScore += it2->second->getTotalScore();
+                            vehicleTotalCount += it2->second->getTotalReportCount();
+                        }
+                    }
+                    attackTypeReportScores.collect(vehicleTotalScore);
+                    attackTypeReportCounts.collect(vehicleTotalCount);
+                } else {
+                    attackTypeReportScores.collect(0);
+                    attackTypeReportCounts.collect(0);
+                    undetectedVehicles++;
+                }
+            }
+            recordScalar((name + "detectedCount").c_str(), detectedVehicles);
+            recordScalar((name + "undetectedCount").c_str(), undetectedVehicles);
+
         }
         cComponent::finish();
     }
@@ -282,7 +315,7 @@ namespace artery {
                 mReportingPseudonyms.emplace(reporterStationId, reportingPseudonym);
             }
         }
-        if(reportedPseudonym->getStationId() == 2317069623){
+        if (reportedPseudonym->getStationId() == 2317069623) {
             std::cout << "";
         }
         report->isValid = validateReportReason(report);

@@ -27,6 +27,8 @@ namespace artery {
 
         void addPseudonym(std::shared_ptr<MisbehavingPseudonym> &misbehavingPseudonym);
 
+        std::vector<std::shared_ptr<MisbehavingPseudonym>> getPseudonyms() const {return mPseudonyms;};
+
     private:
         StationID_t mStationId;
         std::vector<std::shared_ptr<MisbehavingPseudonym>> mPseudonyms;
