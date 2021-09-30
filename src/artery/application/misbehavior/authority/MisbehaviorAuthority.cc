@@ -108,11 +108,15 @@ namespace artery {
         for (const auto &r: mReportedPseudonyms) {
             auto reportedPseudonym = r.second;
             reportedPseudonym->recordStatistics();
+            std::string name = "reportedPseudonym_" + std::to_string(reportedPseudonym->getStationId());
             if (reportedPseudonym->falsePositiveCount > 0) {
-                std::string name = "reportedPseudonym_" + std::to_string(reportedPseudonym->getStationId());
                 recordScalar((name + "_count_FP").c_str(), reportedPseudonym->falsePositiveCount);
+            } else {
                 recordScalar((name + "_count_TP").c_str(), reportedPseudonym->truePositiveCount);
             }
+            recordScalar((name + "_score_total").c_str(),reportedPseudonym->getTotalScore());
+            recordScalar((name + "_valid_total").c_str(),reportedPseudonym->getValidReportCount());
+            recordScalar((name + "_score_sum_FP").c_str(),reportedPseudonym->falsePositiveScoreSum);
         }
         for (const auto &reportingPseudonym: mReportingPseudonyms) {
             reportingPseudonym.second->recordStatistics();
@@ -364,6 +368,8 @@ namespace artery {
         double reportScore = ageScore * validityScore * reporterScore * evidenceScore;
         if (isnan(reportScore)) {
             reportScore = 0;
+        } else if(isinf(reportScore)){
+            reportScore = 1;
         }
         return reportScore;
     }
@@ -502,6 +508,7 @@ namespace artery {
                         (reportingMisbehavingPseudonym != nullptr &&
                          reportingMisbehavingPseudonym->getAttackType() != attackTypes::FakeReport))) {
                 reportedPseudonym->falsePositiveCount++;
+                reportedPseudonym->falsePositiveScoreSum += report->score;
             }
         }
 

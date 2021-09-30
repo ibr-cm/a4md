@@ -49,6 +49,7 @@ namespace artery {
     public:
         int falsePositiveCount = 0;
         int truePositiveCount = 0;
+        double falsePositiveScoreSum = 0;
 
     private:
         StationID_t mStationId;
