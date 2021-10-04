@@ -31,7 +31,7 @@ namespace artery {
 
         int getTotalReportCount() { return mTotalReportCount; };
 
-        int getTotalScore() { return mTotalScore; };
+        double getTotalScore() { return mTotalScore; };
 
         int getValidReportCount() { return mValidReportCount; };
 

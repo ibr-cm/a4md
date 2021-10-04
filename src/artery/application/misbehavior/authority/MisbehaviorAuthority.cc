@@ -111,12 +111,12 @@ namespace artery {
             std::string name = "reportedPseudonym_" + std::to_string(reportedPseudonym->getStationId());
             if (reportedPseudonym->falsePositiveCount > 0) {
                 recordScalar((name + "_count_FP").c_str(), reportedPseudonym->falsePositiveCount);
+                recordScalar((name + "_score_sum_FP").c_str(),reportedPseudonym->falsePositiveScoreSum);
             } else {
                 recordScalar((name + "_count_TP").c_str(), reportedPseudonym->truePositiveCount);
             }
             recordScalar((name + "_score_total").c_str(),reportedPseudonym->getTotalScore());
             recordScalar((name + "_valid_total").c_str(),reportedPseudonym->getValidReportCount());
-            recordScalar((name + "_score_sum_FP").c_str(),reportedPseudonym->falsePositiveScoreSum);
         }
         for (const auto &reportingPseudonym: mReportingPseudonyms) {
             reportingPseudonym.second->recordStatistics();
@@ -319,9 +319,6 @@ namespace artery {
                 mReportingPseudonyms.emplace(reporterStationId, reportingPseudonym);
             }
         }
-        if (reportedPseudonym->getStationId() == 2317069623) {
-            std::cout << "";
-        }
         report->isValid = validateReportReason(report);
         report->score = scoreReport(report, reportingPseudonym);
         report->reportingPseudonym = reportingPseudonym;
@@ -372,15 +369,6 @@ namespace artery {
             reportScore = 1;
         }
         return reportScore;
-    }
-
-    simsignal_t MisbehaviorAuthority::createSignal(const std::string &signalName,
-                                                   const std::string &statisticTemplateName) {
-
-        simsignal_t signal = registerSignal(signalName.c_str());
-        cProperty *statisticTemplate = this->getProperties()->get("statisticTemplate", statisticTemplateName.c_str());
-        getEnvir()->addResultRecorders(this, signal, signalName.c_str(), statisticTemplate);
-        return signal;
     }
 
     bool compareErrorCodes(std::bitset<16> reportedErrorCodes, std::bitset<16> actualErrorCodes) {
@@ -460,7 +448,7 @@ namespace artery {
     void MisbehaviorAuthority::updateReactionType(const shared_ptr<ReportedPseudonym> &reportedPseudonym) {
         size_t score = reportedPseudonym->getTotalScore();
         reactionTypes::ReactionTypes newReactionType = reactionTypes::Nothing;
-        if (score > 20) {
+        if (score > 3) {
             newReactionType = reactionTypes::Warning;
         } else if (score > 50) {
             newReactionType = reactionTypes::Ticket;

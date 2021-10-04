@@ -146,8 +146,6 @@ namespace artery {
 //        void createGuiJsonData();
 
         void printReportsPerPseudonym();
-
-        simsignal_t createSignal(const string &signalName, const string &statisticTemplateName);
     };
 } // namespace artery
 
