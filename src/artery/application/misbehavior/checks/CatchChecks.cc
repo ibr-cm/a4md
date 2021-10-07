@@ -538,7 +538,6 @@ namespace artery {
                      currentCamAccelerationVector, currentCamHeading, lastCamPosition,
                      lastCamSpeedVector, camDeltaTime, result);
         result.frequency = BaseChecks::FrequencyCheck(camDeltaTime);
-        std::cout << result.toString(0.5) << std::endl;
 
         return mThresholdFusion->checkForReport(result)[detectionLevels::Level2];
 

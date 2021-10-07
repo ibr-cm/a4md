@@ -59,10 +59,6 @@ namespace artery {
                                           const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &surroundingCamObjects,
                                           const StationID_t &senderStationId);
 
-        double ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                          const std::vector<vanetza::asn1::Cam> &surroundingCamObjects,
-                                          const StationID_t &senderStationId);
-
         double RangePlausibilityCheck(const Position &senderPosition, const Position &receiverPosition) const;
 
         double

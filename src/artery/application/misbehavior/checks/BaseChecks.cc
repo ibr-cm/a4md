@@ -288,11 +288,4 @@ namespace artery {
                                             camDeltaTime);
     }
 
-//    CheckResult *
-//    BaseChecks::checkCAM(const VehicleDataProvider *receiverVDP, const vector<Position> &receiverVehicleOutline,
-//                         const vanetza::asn1::Cam &currentCam, const vanetza::asn1::Cam *lastCamPtr,
-//                         const vector<vanetza::asn1::Cam *> &surroundingCamObjects) {
-//        return nullptr;
-//    }
-
 } // namespace artery

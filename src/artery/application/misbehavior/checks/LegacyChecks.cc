@@ -43,41 +43,7 @@ namespace artery {
                         Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
                                 (*cam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
                                 mTraciAPI));
-                        if (currentDistance < minimumDistance) {
-                            minimumDistance = currentDistance;
-                        }
-                    }
-                }
-                if (minimumDistance.value() < detectionParameters->maxProximityDistance) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            }
-        }
-        return 1;
-    }
-
-    double LegacyChecks::ProximityPlausibilityCheck(const Position &senderPosition, const Position &receiverPosition,
-                                                    const std::vector<vanetza::asn1::Cam> &surroundingCamObjects,
-                                                    const StationID_t &senderStationId) {
-        Position::value_type deltaDistance = distance(senderPosition, receiverPosition);
-        double deltaAngle = calculateHeadingAngle(
-                Position(senderPosition.x - receiverPosition.x, senderPosition.y - receiverPosition.y));
-        if (deltaDistance.value() < detectionParameters->maxProximityRangeL) {
-            if (deltaDistance.value() < detectionParameters->maxProximityRangeW * 2 ||
-                (deltaAngle < 90 && deltaDistance.value() <
-                                    (detectionParameters->maxProximityRangeW / cos((90 - deltaAngle) * PI / 180)))) {
-                Position::value_type minimumDistance = Position::value_type::from_value(9999);
-
-                for (const auto &cam: surroundingCamObjects) {
-                    if (cam->header.stationID != senderStationId) {
-                        Position::value_type currentDistance = distance(senderPosition, convertReferencePosition(
-                                cam->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary,
-                                mTraciAPI));
-                        if (currentDistance < minimumDistance) {
-                            minimumDistance = currentDistance;
-                        }
+                        minimumDistance = std::min(currentDistance, minimumDistance);
                     }
                 }
                 if (minimumDistance.value() < detectionParameters->maxProximityDistance) {

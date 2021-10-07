@@ -93,8 +93,7 @@ namespace artery {
                         if (reportContainer.evidenceContainer->reportedMessageContainer == nullptr) {
                             std::cout
                                     << "invalid report, reportedMessageContainer (messageEvidenceContainer) missing!"
-                                    <<
-                                    std::endl;
+                                    << std::endl;
                             successfullyParsed = false;
                             return;
                         }

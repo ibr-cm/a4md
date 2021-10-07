@@ -66,7 +66,6 @@ namespace artery {
         if (F2MDParameters::reportParameters.omittedReportsCountPerErrorCode) {
             bool omittedLimitReached = false;
             for (int i = 0; i < mOmittedReportsPerErrorCode.size(); i++) {
-                std::cout << mOmittedReportsPerErrorCode[15 - i];
                 if (mOmittedReportsPerErrorCode[i] >= F2MDParameters::reportParameters.omittedReportsCount &&
                     reportedErrorCodes[i]) {
                     omittedLimitReached = true;
@@ -88,9 +87,7 @@ namespace artery {
                     reportedErrorCodes[i]) {
                     mOmittedReportsPerErrorCode[i] = 0;
                 }
-                std::cout << mOmittedReportsPerErrorCode[15 - i];
             }
-            std::cout << std::endl;
         } else {
             if (mOmittedReportsCumulated >= F2MDParameters::reportParameters.omittedReportsCount) {
                 mOmittedReportsCumulated = 0;
@@ -109,9 +106,7 @@ namespace artery {
                 if (errorCodesCumulated[i] && !reportedErrorCodes[i]) {
                     mOmittedReportsPerErrorCode[i]++;
                 }
-                std::cout << mOmittedReportsPerErrorCode[15 - i];
             }
-            std::cout << std::endl;
         } else {
             if (errorCodesCumulated.any() && reportedErrorCodes.none()) {
                 mOmittedReportsCumulated++;
