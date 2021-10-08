@@ -177,6 +177,8 @@ namespace artery {
                     undetectedVehicles++;
                 }
             }
+            attackTypeReportCounts.record();
+            attackTypeReportScores.record();
             recordScalar((name + "detectedCount").c_str(), detectedVehicles);
             recordScalar((name + "undetectedCount").c_str(), undetectedVehicles);
 
