@@ -41,12 +41,11 @@ namespace artery {
 
         StationID_t getStationId() const { return mStationId; };
 
-        std::list<std::shared_ptr<vanetza::asn1::Cam>> getCams() const { return mCams; };
-
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> getCamVector() const {
-            std::vector<std::shared_ptr<vanetza::asn1::Cam>> cams{mCams.begin(), mCams.end()};
+            std::vector<std::shared_ptr<vanetza::asn1::Cam>> cams{camList.begin(), camList.end()};
             return cams;
         };
+
 
         bool hasBeenReported() const { return mHasBeenReported; };
 
@@ -64,11 +63,13 @@ namespace artery {
 
         void resetOmittedReports(const bitset<16> &reportedErrorCodes);
 
+        std::list<std::shared_ptr<vanetza::asn1::Cam>> camList;
+        std::shared_ptr<vanetza::asn1::Cam> latestCam;
+
     private:
         BaseChecks *baseChecks;
         int mCamsArraySize;
 
-        std::list<std::shared_ptr<vanetza::asn1::Cam>> mCams;
         Position mPosition;
         StationID_t mStationId;
         bool mHasBeenReported;

@@ -35,7 +35,6 @@ namespace artery {
 
         int getValidReportCount() { return mValidReportCount; };
 
-
         uint64_t getPreviousReportGenerationTime() { return mLastReportGenerationTime; };
 
         reactionTypes::ReactionTypes getReactionType() { return mReactionType; };

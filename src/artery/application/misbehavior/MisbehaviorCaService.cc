@@ -778,11 +778,6 @@ namespace artery {
                         break;
                 }
                 report.setSemanticDetection(detectionLevel, errorCode);
-//                if (detectionLevel == attackFakeReportDetectionLevel) {
-//                    vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
-//                    MisbehaviorReportObject obj(std::move(misbehaviorReport));
-//                    emit(scSignalMisbehaviorAuthorityNewReport, &obj);
-//                }
                 vanetza::asn1::MisbehaviorReport misbehaviorReport = report.encode();
                 MisbehaviorReportObject obj(std::move(misbehaviorReport));
                 emit(scSignalMisbehaviorAuthorityNewReport, &obj);

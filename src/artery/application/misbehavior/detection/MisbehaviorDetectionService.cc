@@ -189,7 +189,17 @@ namespace artery {
                                        F2MDParameters::reportParameters.omittedReportsCount
                                        ? F2MDParameters::reportParameters.omittedReportsCount
                                        : F2MDParameters::reportParameters.evidenceContainerMaxCamCount;
-                        report.setReportedMessages(detectedSender.getCamVector(), camCount);
+                        if(camCount >= detectedSender.camList.size()){
+                            report.setReportedMessages(detectedSender.getCamVector(), camCount);
+                            detectedSender.camList.clear();
+                        } else {
+                            std::vector<std::shared_ptr<vanetza::asn1::Cam>> camVector;
+                            auto it = detectedSender.camList.begin();
+                            while (it != detectedSender.camList.end()){
+                                camVector.emplace_back(*it);
+                                detectedSender.camList.erase(it);
+                            }
+                        }
                         break;
                     }
                     case detectionLevels::Level3:
@@ -250,7 +260,7 @@ namespace artery {
         for (const auto &it: detectedSenders) {
             auto detectedSender = it.second;
             if (detectedSender->getStationId() != senderStationId) {
-                std::shared_ptr<vanetza::asn1::Cam> latestCam = detectedSender->getCams().back();
+                std::shared_ptr<vanetza::asn1::Cam> latestCam = detectedSender->latestCam;
                 uint16_t oldTime = (*latestCam)->cam.generationDeltaTime;
                 uint16_t currentTime = countTaiMilliseconds(mTimer->getCurrentTime());
                 if ((uint16_t) (currentTime - oldTime) <
@@ -264,7 +274,7 @@ namespace artery {
 
     std::vector<std::shared_ptr<vanetza::asn1::Cam>>
     MisbehaviorDetectionService::getOverlappingCams(const DetectedSender &detectedSender) {
-        std::vector<Position> senderOutline = getVehicleOutline(*detectedSender.getCams().back(),
+        std::vector<Position> senderOutline = getVehicleOutline(*detectedSender.latestCam,
                                                                 mSimulationBoundary,
                                                                 mTraciAPI);
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> overlappingCams;
