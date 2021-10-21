@@ -330,7 +330,8 @@ namespace artery {
             }
         }
         report->isValid = validateReportReason(report);
-        if(report->isValid){
+        if (report->isValid && report->detectionType.present == detectionTypes::SemanticType &&
+            report->detectionType.semantic->detectionLevel == detectionLevels::Level2) {
             statsValidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
         } else {
             statsInvalidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
