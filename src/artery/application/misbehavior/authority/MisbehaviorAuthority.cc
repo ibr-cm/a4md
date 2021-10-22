@@ -330,11 +330,13 @@ namespace artery {
             }
         }
         report->isValid = validateReportReason(report);
-        if (report->isValid && report->detectionType.present == detectionTypes::SemanticType &&
-            report->detectionType.semantic->detectionLevel == detectionLevels::Level2) {
-            statsValidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
-        } else {
-            statsInvalidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
+        if(report->detectionType.present == detectionTypes::SemanticType &&
+           report->detectionType.semantic->detectionLevel == detectionLevels::Level2){
+            if (report->isValid) {
+                statsValidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
+            } else {
+                statsInvalidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
+            }
         }
         report->score = scoreReport(report, reportingPseudonym);
         report->reportingPseudonym = reportingPseudonym;
