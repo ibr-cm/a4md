@@ -189,17 +189,10 @@ namespace artery {
                                        F2MDParameters::reportParameters.omittedReportsCount
                                        ? F2MDParameters::reportParameters.omittedReportsCount
                                        : F2MDParameters::reportParameters.evidenceContainerMaxCamCount;
-                        if(camCount >= detectedSender.camList.size()){
-                            report.setReportedMessages(detectedSender.getCamVector(), camCount);
-                            detectedSender.camList.clear();
-                        } else {
-                            std::vector<std::shared_ptr<vanetza::asn1::Cam>> camVector;
-                            auto it = detectedSender.camList.begin();
-                            while (it != detectedSender.camList.end()){
-                                camVector.emplace_back(*it);
-                                detectedSender.camList.erase(it);
-                            }
+                        while(detectedSender.camList.size() > camCount){
+                            detectedSender.camList.pop_front();
                         }
+                        report.setReportedMessages(detectedSender.getCamVector(), camCount);
                         break;
                     }
                     case detectionLevels::Level3:
