@@ -108,6 +108,12 @@ namespace artery {
         recordScalar("validReportCount", mValidReportCount);
         statsValidLevel2ReportEvidenceCount.record();
         statsInvalidLevel2ReportEvidenceCount.record();
+//        for(auto& stat : statsValidLevel2ReportSizes){
+//            stat.record();
+//        }
+//        for(auto& stat : statsInvalidLevel2ReportSizes){
+//            stat.record();
+//        }
 
         for (const auto &r: mReportedPseudonyms) {
             auto reportedPseudonym = r.second;
@@ -243,8 +249,17 @@ namespace artery {
                                              cObject *) {
         Enter_Method("receiveSignal");
         if (signal == maNewReport) {
+//            if(firstReport){
+//                for(int i = 0; i < F2MDParameters::reportParameters.evidenceContainerMaxCamCount;i++){
+//                    statsValidLevel2ReportSizes.emplace_back(cHistogram(("validLevel2ReportEvidenceSize_count_"+std::to_string(i)).c_str()));
+//                    statsInvalidLevel2ReportSizes.emplace_back(cHistogram(("invalidLevel2ReportEvidenceSize_count_"+std::to_string(i)).c_str()));
+//                }
+//                firstReport = false;
+//            }
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             std::shared_ptr<Report> report = std::make_shared<Report>(*reportObject->shared_ptr());
+//            vanetza::ByteBuffer bla = reportObject->shared_ptr()->encode();
+//            reportObject->shared_ptr()->encode().size();
             if (report->successfullyParsed) {
                 processReport(report);
             }
@@ -334,8 +349,10 @@ namespace artery {
            report->detectionType.semantic->detectionLevel == detectionLevels::Level2){
             if (report->isValid) {
                 statsValidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
+                statsValidLevel2ReportSizes[report->evidence.reportedMessages.size()].collect(report->sizeEncoded);
             } else {
                 statsInvalidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
+                statsInvalidLevel2ReportSizes[report->evidence.reportedMessages.size()].collect(report->sizeEncoded);
             }
         }
         report->score = scoreReport(report, reportingPseudonym);
