@@ -465,7 +465,6 @@ namespace artery {
     std::bitset<16> CatchChecks::checkSemanticLevel2Report(const std::shared_ptr<vanetza::asn1::Cam> &currentCam,
                                                            const std::shared_ptr<vanetza::asn1::Cam> &lastCam) {
         CheckResult result;
-        initializeKalmanFilters(lastCam);
 
         Position currentCamPosition = convertReferencePosition(
                 (*currentCam)->cam.camParameters.basicContainer.referencePosition, mSimulationBoundary, mTraciAPI);

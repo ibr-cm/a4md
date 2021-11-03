@@ -43,6 +43,7 @@ namespace artery {
 
         std::vector<std::shared_ptr<vanetza::asn1::Cam>> getCamVector() const {
             std::vector<std::shared_ptr<vanetza::asn1::Cam>> cams{camList.begin(), camList.end()};
+            cams.pop_back();
             return cams;
         };
 

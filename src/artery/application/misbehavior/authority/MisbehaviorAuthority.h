@@ -114,8 +114,6 @@ namespace artery {
         bool firstReport = true;
         omnetpp::cHistogram statsValidLevel2ReportEvidenceCount;
         omnetpp::cHistogram statsInvalidLevel2ReportEvidenceCount;
-        std::vector<omnetpp::cHistogram> statsValidLevel2ReportSizes;
-        std::vector<omnetpp::cHistogram> statsInvalidLevel2ReportSizes;
 
         void processMisbehaviorAnnouncement(const std::vector<StationID_t>& stationIds, MisbehaviorCaService *misbehaviourCaService);
 

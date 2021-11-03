@@ -249,17 +249,8 @@ namespace artery {
                                              cObject *) {
         Enter_Method("receiveSignal");
         if (signal == maNewReport) {
-//            if(firstReport){
-//                for(int i = 0; i < F2MDParameters::reportParameters.evidenceContainerMaxCamCount;i++){
-//                    statsValidLevel2ReportSizes.emplace_back(cHistogram(("validLevel2ReportEvidenceSize_count_"+std::to_string(i)).c_str()));
-//                    statsInvalidLevel2ReportSizes.emplace_back(cHistogram(("invalidLevel2ReportEvidenceSize_count_"+std::to_string(i)).c_str()));
-//                }
-//                firstReport = false;
-//            }
             auto *reportObject = dynamic_cast<MisbehaviorReportObject *>(obj);
             std::shared_ptr<Report> report = std::make_shared<Report>(*reportObject->shared_ptr());
-//            vanetza::ByteBuffer bla = reportObject->shared_ptr()->encode();
-//            reportObject->shared_ptr()->encode().size();
             if (report->successfullyParsed) {
                 processReport(report);
             }
@@ -349,10 +340,8 @@ namespace artery {
            report->detectionType.semantic->detectionLevel == detectionLevels::Level2){
             if (report->isValid) {
                 statsValidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
-                statsValidLevel2ReportSizes[report->evidence.reportedMessages.size()].collect(report->sizeEncoded);
             } else {
                 statsInvalidLevel2ReportEvidenceCount.collect(report->evidence.reportedMessages.size());
-                statsInvalidLevel2ReportSizes[report->evidence.reportedMessages.size()].collect(report->sizeEncoded);
             }
         }
         report->score = scoreReport(report, reportingPseudonym);
@@ -426,7 +415,8 @@ namespace artery {
         std::bitset<16> reportedErrorCodes = report->detectionType.semantic->errorCode;
         const std::vector<std::shared_ptr<vanetza::asn1::Cam>> &reportedMessages = report->evidence.reportedMessages;
         mBaseChecks->initializeKalmanFilters(reportedMessages.front());
-        for (int i = (int) reportedMessages.size() - 1; i > 0; i--) {
+//        for (int i = (int) reportedMessages.size() - 1; i > 0; i--) {
+        for (int i = 1; i < (int) reportedMessages.size(); i++) {
             actualErrorCodes |= mBaseChecks->checkSemanticLevel2Report(reportedMessages[i],
                                                                        reportedMessages[i - 1]);
         }

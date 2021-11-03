@@ -52,29 +52,29 @@ namespace artery {
         detectedSenders.clear();
     }
 
-    void MisbehaviorDetectionService::setCheckableDetectionLevels(){
+    void MisbehaviorDetectionService::setCheckableDetectionLevels() {
         mCheckableDetectionLevels[detectionLevels::Level1] = true;
         mCheckableDetectionLevels[detectionLevels::Level2] = true;
         mCheckableDetectionLevels[detectionLevels::Level3] = true;
         mCheckableDetectionLevels[detectionLevels::Level4] = true;
 
         bool detectLowerThanHighest = F2MDParameters::detectionParameters.detectLevelsLowerThanHighest;
-        if(uniform(0,1) > F2MDParameters::detectionParameters.detectLevel4Probability){
+        if (uniform(0, 1) > F2MDParameters::detectionParameters.detectLevel4Probability) {
             mCheckableDetectionLevels[detectionLevels::Level4] = false;
-        } else if(detectLowerThanHighest){
+        } else if (detectLowerThanHighest) {
             return;
         }
-        if(uniform(0,1) > F2MDParameters::detectionParameters.detectLevel3Probability){
+        if (uniform(0, 1) > F2MDParameters::detectionParameters.detectLevel3Probability) {
             mCheckableDetectionLevels[detectionLevels::Level3] = false;
-        } else if(detectLowerThanHighest){
+        } else if (detectLowerThanHighest) {
             return;
         }
-        if(uniform(0,1) > F2MDParameters::detectionParameters.detectLevel2Probability){
+        if (uniform(0, 1) > F2MDParameters::detectionParameters.detectLevel2Probability) {
             mCheckableDetectionLevels[detectionLevels::Level2] = false;
-        } else if(detectLowerThanHighest){
+        } else if (detectLowerThanHighest) {
             return;
         }
-        if(uniform(0,1) > F2MDParameters::detectionParameters.detectLevel1Probability){
+        if (uniform(0, 1) > F2MDParameters::detectionParameters.detectLevel1Probability) {
             mCheckableDetectionLevels[detectionLevels::Level1] = false;
         }
     }
@@ -189,7 +189,7 @@ namespace artery {
                                        F2MDParameters::reportParameters.omittedReportsCount
                                        ? F2MDParameters::reportParameters.omittedReportsCount
                                        : F2MDParameters::reportParameters.evidenceContainerMaxCamCount;
-                        while(detectedSender.camList.size() > camCount){
+                        while (detectedSender.camList.size() - 1 > camCount) {
                             detectedSender.camList.pop_front();
                         }
                         report.setReportedMessages(detectedSender.getCamVector(), camCount);
@@ -238,7 +238,8 @@ namespace artery {
         if (detectedSenders.find(senderStationId) == detectedSenders.end()) {
             detectedSenders[senderStationId] = std::make_shared<DetectedSender>(mTraciAPI, mGlobalEnvironmentModel,
                                                                                 &F2MDParameters::detectionParameters,
-                                                                                mTimer, message, mCheckableDetectionLevels);
+                                                                                mTimer, message,
+                                                                                mCheckableDetectionLevels);
         }
         std::shared_ptr<CheckResult> result = detectedSenders[senderStationId]->addAndCheckCam(message,
                                                                                                mVehicleDataProvider,
